@@ -1,0 +1,27 @@
+{
+  "name": "headless-dms",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.2.0",
+    "drizzle-orm": "^0.44.3",
+    "fastify": "^5.4.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "pg": "^8.16.3",
+    "uuid": "^11.1.0",
+    "zod": "^4.0.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}
