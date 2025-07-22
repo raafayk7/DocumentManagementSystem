@@ -1,5 +1,6 @@
 // src/app.ts
 import Fastify from 'fastify';
+import authRoutes from './auth/auth.routes';
 
 const app = Fastify({ logger: true });
 
@@ -19,4 +20,5 @@ const start = async () => {
   }
 };
 
+app.register(authRoutes);
 start();
