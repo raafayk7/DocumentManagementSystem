@@ -1,5 +1,6 @@
 // src/app.ts
 import Fastify from 'fastify';
+import documentsRoutes from './documents/documents.routes';
 
 const app = Fastify({ logger: true });
 
@@ -7,6 +8,8 @@ const app = Fastify({ logger: true });
 app.get('/ping', async (request, reply) => {
   return { pong: 'it works!' };
 });
+
+app.register(documentsRoutes);
 
 // Start server
 const start = async () => {
