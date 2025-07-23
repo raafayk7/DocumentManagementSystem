@@ -1,6 +1,6 @@
 import { db } from '../db';
 import { documents } from '../db/schema';
-import { CreateDocumentDto, DocumentDto, DocumentSchema, DocumentsListSchema } from './dto/documents.dto';
+import { CreateDocumentDto, DocumentDto, DocumentSchema, DocumentsListSchema, UpdateDocumentSchema, UpdateDocumentDto } from './dto/documents.dto';
 import { v4 as uuidv4 } from 'uuid';
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { arrayOverlaps } from 'drizzle-orm'; // If using Drizzle's arrayOverlaps
@@ -92,4 +92,60 @@ export async function findOneDocument(id: string) {
     throw err;
   }
   return DocumentSchema.parse(result[0]);
+}
+
+// Update a document by ID
+export async function updateDocument(id: string, updateDto: UpdateDocumentDto) {
+  // Validate input (double safety)
+  const validatedUpdate = UpdateDocumentSchema.parse(updateDto);
+
+  // Check if document exists
+  const existing = await db.select().from(documents).where(eq(documents.id, id)).execute();
+  if (!existing || existing.length === 0) {
+    const err = new Error(`Document with id ${id} not found`);
+    (err as any).statusCode = 404;
+    throw err;
+  }
+
+  // Prepare update data
+  const updateData = { ...validatedUpdate, updatedAt: new Date() };
+  Object.keys(updateData).forEach(
+    (key) => (updateData as any)[key] === undefined && delete (updateData as any)[key]
+  );
+
+  const updated = await db.update(documents)
+    .set(updateData)
+    .where(eq(documents.id, id))
+    .returning()
+    .execute();
+
+  if (!updated || updated.length === 0) {
+    const err = new Error(`Document with id ${id} not found after update`);
+    (err as any).statusCode = 404;
+    throw err;
+  }
+  return DocumentSchema.parse(updated[0]);
+}
+
+// Delete a document by ID
+export async function removeDocument(id: string) {
+  // Check if document exists
+  const existing = await db.select().from(documents).where(eq(documents.id, id)).execute();
+  if (!existing || existing.length === 0) {
+    const err = new Error(`Document with id ${id} not found`);
+    (err as any).statusCode = 404;
+    throw err;
+  }
+
+  const deleted = await db.delete(documents)
+    .where(eq(documents.id, id))
+    .execute();
+
+  if (deleted.rowCount && deleted.rowCount > 0) {
+    return { deleted: true };
+  } else {
+    const err = new Error(`Document with id ${id} not found after delete`);
+    (err as any).statusCode = 404;
+    throw err;
+  }
 }
