@@ -5,8 +5,11 @@ import { createDocument } from './documents.service';
 import { findAllDocuments, findOneDocument } from './documents.service';
 import { UpdateDocumentSchema } from './dto/documents.dto';
 import { updateDocument, removeDocument } from './documents.service';
+import { authenticateJWT } from '../auth/authenticate';
 
 export default async function documentsRoutes(app: FastifyInstance) {
+  app.addHook('preHandler', authenticateJWT);
+
   app.post('/documents', async (request, reply) => {
     try {
       const data = zodValidate(CreateDocumentSchema, request.body);
