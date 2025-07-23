@@ -6,11 +6,12 @@ import { findAllDocuments, findOneDocument } from './documents.service';
 import { UpdateDocumentSchema } from './dto/documents.dto';
 import { updateDocument, removeDocument } from './documents.service';
 import { authenticateJWT } from '../auth/authenticate';
+import { requireRole } from '../auth/roleGuard';
 
 export default async function documentsRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authenticateJWT);
 
-  app.post('/documents', async (request, reply) => {
+  app.post('/documents',{ preHandler: requireRole('admin') }, async (request, reply) => {
     try {
       const data = zodValidate(CreateDocumentSchema, request.body);
       // TODO: Add authentication/authorization if needed
@@ -44,7 +45,7 @@ export default async function documentsRoutes(app: FastifyInstance) {
   });
 
   // PATCH /documents/:id
-  app.patch('/documents/:id', async (request, reply) => {
+  app.patch('/documents/:id',{ preHandler: requireRole('admin') }, async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
       const updateDto = zodValidate(UpdateDocumentSchema, request.body);
@@ -56,7 +57,7 @@ export default async function documentsRoutes(app: FastifyInstance) {
   });
 
   // DELETE /documents/:id
-  app.delete('/documents/:id', async (request, reply) => {
+  app.delete('/documents/:id',{ preHandler: requireRole('admin') }, async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
       const result = await removeDocument(id);
