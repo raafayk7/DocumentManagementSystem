@@ -17,7 +17,9 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 export default async function documentsRoutes(app: FastifyInstance) {
-  app.post('/', async (request, reply) => {
+  app.addHook('preHandler', authenticateJWT);
+
+  app.post('/', { preHandler: requireRole('admin') }, async (request, reply) => {
     try {
       const data = zodValidate(CreateDocumentSchema, request.body);
       // TODO: Add authentication/authorization if needed
@@ -57,7 +59,7 @@ export default async function documentsRoutes(app: FastifyInstance) {
   
 
   // PATCH /documents/:id
-  app.patch('/:id', async (request, reply) => {
+  app.patch('/:id',{ preHandler: requireRole('admin') }, async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
       const updateDto = zodValidate(UpdateDocumentSchema, request.body);
@@ -69,7 +71,7 @@ export default async function documentsRoutes(app: FastifyInstance) {
   });
 
   // DELETE /documents/:id
-  app.delete('/:id', async (request, reply) => {
+  app.delete('/:id',{ preHandler: requireRole('admin') }, async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
       const result = await removeDocument(id);
@@ -80,7 +82,7 @@ export default async function documentsRoutes(app: FastifyInstance) {
   });
 
   // POST /documents/upload
-  app.post('/upload', async (request, reply) => {
+  app.post('/upload',{ preHandler: requireRole('admin') }, async (request, reply) => {
     const parts = request.parts();
 
     // Prepare to collect fields and file
