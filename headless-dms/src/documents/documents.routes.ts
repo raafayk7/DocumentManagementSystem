@@ -8,6 +8,8 @@ import { updateDocument, removeDocument } from './documents.service';
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { createReadStream } from 'fs';
+import { join } from 'path';
 
 export default async function documentsRoutes(app: FastifyInstance) {
   app.post('/documents', async (request, reply) => {
@@ -45,6 +47,8 @@ export default async function documentsRoutes(app: FastifyInstance) {
     }
   });
 
+  
+
   // PATCH /documents/:id
   app.patch('/documents/:id', async (request, reply) => {
     try {
@@ -68,7 +72,7 @@ export default async function documentsRoutes(app: FastifyInstance) {
     }
   });
 
-
+  // POST /documents/upload
   app.post('/documents/upload', async (request, reply) => {
     const parts = request.parts();
 
@@ -137,5 +141,24 @@ export default async function documentsRoutes(app: FastifyInstance) {
     reply.code(201).send(doc);
   });
 
-  
+  // GET /documents/:id/download
+  app.get('/documents/:id/download', async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const doc = await findOneDocument(id);
+      const filePath = doc.filePath;
+      const fileName = doc.name;
+
+      // Set headers
+      reply.header('Content-Type', doc.mimeType);
+      reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
+
+      // Stream the file
+      const stream = createReadStream(join(process.cwd(), filePath));
+      return reply.send(stream);
+    } catch (err: any) {
+      reply.code(err.statusCode || 404).send({ error: err.message });
+    }
+  });
+
 }
