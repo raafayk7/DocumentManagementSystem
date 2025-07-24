@@ -1,12 +1,17 @@
 // src/app.ts
 import Fastify from 'fastify';
 import documentsRoutes from './documents/documents.routes';
+import fastifyMultipart from '@fastify/multipart';
 
 const app = Fastify({ logger: true });
 
 // Health check route
 app.get('/ping', async (request, reply) => {
   return { pong: 'it works!' };
+});
+
+app.register(fastifyMultipart, {
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB, adjust as needed
 });
 
 app.register(documentsRoutes);
