@@ -4,6 +4,8 @@ import { CreateDocumentDto, DocumentDto, DocumentSchema, DocumentsListSchema, Up
 import { v4 as uuidv4 } from 'uuid';
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { arrayOverlaps } from 'drizzle-orm'; // If using Drizzle's arrayOverlaps
+import fs from 'fs';
+import path from 'path';
 
 export async function createDocument(createDocumentDto: CreateDocumentDto): Promise<DocumentDto> {
   const newDocuments = await db.insert(documents).values({
@@ -137,11 +139,24 @@ export async function removeDocument(id: string) {
     throw err;
   }
 
+  // Get the file path before deleting from DB
+  const filePath = existing[0].filePath;
+
+  // Perform delete in DB
   const deleted = await db.delete(documents)
     .where(eq(documents.id, id))
     .execute();
 
   if (deleted.rowCount && deleted.rowCount > 0) {
+    // Try to delete the file from disk
+    if (filePath && fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
+      } catch (e) {
+        // Optionally log error, but don't block DB delete
+        console.error(`Failed to delete file at ${filePath}:`, e);
+      }
+    }
     return { deleted: true };
   } else {
     const err = new Error(`Document with id ${id} not found after delete`);

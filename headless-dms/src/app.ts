@@ -2,6 +2,8 @@
 import Fastify from 'fastify';
 import authRoutes from './auth/auth.routes';
 import documentsRoutes from './documents/documents.routes';
+import fastifyMultipart from '@fastify/multipart';
+
 
 const app = Fastify({ logger: true });
 
@@ -10,13 +12,21 @@ app.get('/ping', async (request, reply) => {
   return { pong: 'it works!' };
 });
 
-app.register(documentsRoutes);
+app.register(fastifyMultipart, {
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB, adjust as needed
+});
+
+app.register(documentsRoutes, { prefix: '/documents' });
+
 
 // Start server
 const start = async () => {
   try {
     await app.listen({ port: 3000, host: '0.0.0.0' });
     app.log.info('Server listening on http://localhost:3000');
+    app.ready(() => {
+      console.log(app.printRoutes());
+    });
   } catch (err) {
     app.log.error(err);
     process.exit(1);
