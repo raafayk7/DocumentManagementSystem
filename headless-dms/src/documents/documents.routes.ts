@@ -10,9 +10,12 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { createReadStream } from 'fs';
 import { join } from 'path';
+import jwt from 'jsonwebtoken';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 export default async function documentsRoutes(app: FastifyInstance) {
-  app.post('/documents', async (request, reply) => {
+  app.post('/', async (request, reply) => {
     try {
       const data = zodValidate(CreateDocumentSchema, request.body);
       // TODO: Add authentication/authorization if needed
@@ -26,7 +29,7 @@ export default async function documentsRoutes(app: FastifyInstance) {
   
 
   // GET /documents
-  app.get('/documents', async (request, reply) => {
+  app.get('/', async (request, reply) => {
     try {
       const { name, mimeType, from, to, tags, metadata } = request.query as any;
       const docs = await findAllDocuments({ name, mimeType, from, to, tags, metadata });
@@ -36,8 +39,10 @@ export default async function documentsRoutes(app: FastifyInstance) {
     }
   });
 
+  
+
   // GET /documents/:id
-  app.get('/documents/:id', async (request, reply) => {
+  app.get('/:id', async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
       const doc = await findOneDocument(id);
@@ -50,7 +55,7 @@ export default async function documentsRoutes(app: FastifyInstance) {
   
 
   // PATCH /documents/:id
-  app.patch('/documents/:id', async (request, reply) => {
+  app.patch('/:id', async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
       const updateDto = zodValidate(UpdateDocumentSchema, request.body);
@@ -62,7 +67,7 @@ export default async function documentsRoutes(app: FastifyInstance) {
   });
 
   // DELETE /documents/:id
-  app.delete('/documents/:id', async (request, reply) => {
+  app.delete('/:id', async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
       const result = await removeDocument(id);
@@ -73,7 +78,7 @@ export default async function documentsRoutes(app: FastifyInstance) {
   });
 
   // POST /documents/upload
-  app.post('/documents/upload', async (request, reply) => {
+  app.post('/upload', async (request, reply) => {
     const parts = request.parts();
 
     // Prepare to collect fields and file
@@ -142,7 +147,7 @@ export default async function documentsRoutes(app: FastifyInstance) {
   });
 
   // GET /documents/:id/download
-  app.get('/documents/:id/download', async (request, reply) => {
+  app.get('/:id/download', async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
       const doc = await findOneDocument(id);
@@ -160,5 +165,48 @@ export default async function documentsRoutes(app: FastifyInstance) {
       reply.code(err.statusCode || 404).send({ error: err.message });
     }
   });
+
+
+  // POST /documents/:id/generate-download-link
+  app.post('/:id/generate-download-link', async (request, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      // Optionally check if document exists
+      await findOneDocument(id);
+
+      const token = jwt.sign(
+        { documentId: id },
+        process.env.DOWNLOAD_JWT_SECRET!,
+        { expiresIn: '5m' }
+      );
+    //   const url = `/download-link/${encodeURIComponent(token)}`;
+    const url = `/documents/download-link?token=${encodeURIComponent(token)}`;
+      reply.send({ url });
+    } catch (err: any) {
+      reply.code(err.statusCode || 400).send({ error: err.message });
+    }
+  });
+
+  app.get('/download-link', async (request, reply) => {
+    console.log('Download link route hit!', request.params);
+    try {
+      const { token } = request.query as { token: string };
+      const payload = jwt.verify(token, process.env.DOWNLOAD_JWT_SECRET!) as { documentId: string };
+
+      const doc = await findOneDocument(payload.documentId);
+      const filePath = doc.filePath;
+      const fileName = doc.name;
+
+      reply.header('Content-Type', doc.mimeType);
+      reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
+      const stream = createReadStream(join(process.cwd(), filePath));
+      return reply.send(stream);
+    } catch (err) {
+      console.error('JWT verification error:', err);
+      reply.code(403).send({ error: 'Invalid or expired download link' });
+    }
+  });
+
+
 
 }
