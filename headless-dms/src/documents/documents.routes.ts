@@ -2,17 +2,11 @@ import { FastifyInstance } from 'fastify';
 import { CreateDocumentSchema } from './dto/documents.dto';
 import { zodValidate } from '../pipes/zod-validation.pipe';
 import { createDocument, uploadDocument, downloadDocument } from './documents.service';
-import { findAllDocuments, findOneDocument } from './documents.service';
+import { findAllDocuments, findOneDocument, generateDownloadLink } from './documents.service';
 import { UpdateDocumentSchema } from './dto/documents.dto';
 import { updateDocument, removeDocument } from './documents.service';
 import { authenticateJWT } from '../auth/authenticate';
 import { requireRole } from '../auth/roleGuard';
-import fs from 'fs';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
-import { createReadStream } from 'fs';
-import { join } from 'path';
-import jwt from 'jsonwebtoken';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
@@ -30,7 +24,6 @@ export default async function documentsRoutes(app: FastifyInstance) {
     }
   });
 
-  
 
   // GET /documents
   app.get('/', async (request, reply) => {
@@ -91,12 +84,11 @@ export default async function documentsRoutes(app: FastifyInstance) {
     }
   });
 
-
   // GET /documents/:id/download
   app.get('/:id/download', async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      await downloadDocument(id, reply);
+      await downloadDocument(reply,id,false);
     } catch (err: any) {
       reply.code(err.statusCode || 404).send({ error: err.message });
     }
@@ -107,42 +99,23 @@ export default async function documentsRoutes(app: FastifyInstance) {
   app.post('/:id/generate-download-link', async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      // Optionally check if document exists
-      await findOneDocument(id);
-
-      const token = jwt.sign(
-        { documentId: id },
-        process.env.DOWNLOAD_JWT_SECRET!,
-        { expiresIn: '5m' }
-      );
-    //   const url = `/download-link/${encodeURIComponent(token)}`;
-    const url = `/documents/download-link?token=${encodeURIComponent(token)}`;
+      const url = await generateDownloadLink(id);
       reply.send({ url });
     } catch (err: any) {
       reply.code(err.statusCode || 400).send({ error: err.message });
     }
   });
 
+ // GET /documents/download-link
   app.get('/download-link', async (request, reply) => {
     console.log('Download link route hit!', request.params);
     try {
       const { token } = request.query as { token: string };
-      const payload = jwt.verify(token, process.env.DOWNLOAD_JWT_SECRET!) as { documentId: string };
-
-      const doc = await findOneDocument(payload.documentId);
-      const filePath = doc.filePath;
-      const fileName = doc.name;
-
-      reply.header('Content-Type', doc.mimeType);
-      reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
-      const stream = createReadStream(join(process.cwd(), filePath));
-      return reply.send(stream);
+      await downloadDocument(reply,token,true);
     } catch (err) {
       console.error('JWT verification error:', err);
       reply.code(403).send({ error: 'Invalid or expired download link' });
     }
   });
-
-
 
 }

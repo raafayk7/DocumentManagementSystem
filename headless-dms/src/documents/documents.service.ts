@@ -9,6 +9,7 @@ import path from 'path';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { createReadStream } from 'fs';
 import { join } from 'path';
+import jwt from 'jsonwebtoken';
 
 export async function createDocument(createDocumentDto: CreateDocumentDto): Promise<DocumentDto> {
   const newDocuments = await db.insert(documents).values({
@@ -235,8 +236,17 @@ export async function uploadDocument(request:FastifyRequest) {
   return doc;
 }
 
-export async function downloadDocument(id:string, reply:FastifyReply) {
-  const doc = await findOneDocument(id);
+export async function downloadDocument(reply:FastifyReply,id_or_token:string,isdownloadLink:boolean) {
+  let doc_id: string;
+
+  if (isdownloadLink) {
+    const payload = jwt.verify(id_or_token, process.env.DOWNLOAD_JWT_SECRET!) as { documentId: string };
+    doc_id = payload.documentId;
+  } else {
+    doc_id = id_or_token;
+  }
+
+  const doc = await findOneDocument(doc_id);
   const filePath = doc.filePath;
   const fileName = doc.name;
 
@@ -247,4 +257,18 @@ export async function downloadDocument(id:string, reply:FastifyReply) {
   // Stream the file
   const stream = createReadStream(join(process.cwd(), filePath));
   return reply.send(stream);
+}
+
+export async function generateDownloadLink(id:string) {
+  // Optionally check if document exists
+  await findOneDocument(id);
+
+  const token = jwt.sign(
+    { documentId: id },
+    process.env.DOWNLOAD_JWT_SECRET!,
+    { expiresIn: '5m' }
+  );
+  //   const url = `/download-link/${encodeURIComponent(token)}`;
+  const url = `/documents/download-link?token=${encodeURIComponent(token)}`;
+  return url;
 }
