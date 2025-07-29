@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { CreateDocumentSchema } from './dto/documents.dto';
 import { zodValidate } from '../pipes/zod-validation.pipe';
-import { createDocument, uploadDocument } from './documents.service';
+import { createDocument, uploadDocument, downloadDocument } from './documents.service';
 import { findAllDocuments, findOneDocument } from './documents.service';
 import { UpdateDocumentSchema } from './dto/documents.dto';
 import { updateDocument, removeDocument } from './documents.service';
@@ -96,17 +96,7 @@ export default async function documentsRoutes(app: FastifyInstance) {
   app.get('/:id/download', async (request, reply) => {
     try {
       const { id } = request.params as { id: string };
-      const doc = await findOneDocument(id);
-      const filePath = doc.filePath;
-      const fileName = doc.name;
-
-      // Set headers
-      reply.header('Content-Type', doc.mimeType);
-      reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
-
-      // Stream the file
-      const stream = createReadStream(join(process.cwd(), filePath));
-      return reply.send(stream);
+      await downloadDocument(id, reply);
     } catch (err: any) {
       reply.code(err.statusCode || 404).send({ error: err.message });
     }

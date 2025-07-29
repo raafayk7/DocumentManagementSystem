@@ -6,7 +6,9 @@ import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { arrayOverlaps } from 'drizzle-orm'; // If using Drizzle's arrayOverlaps
 import fs from 'fs';
 import path from 'path';
-import { FastifyRequest } from 'fastify';
+import { FastifyReply, FastifyRequest } from 'fastify';
+import { createReadStream } from 'fs';
+import { join } from 'path';
 
 export async function createDocument(createDocumentDto: CreateDocumentDto): Promise<DocumentDto> {
   const newDocuments = await db.insert(documents).values({
@@ -231,4 +233,18 @@ export async function uploadDocument(request:FastifyRequest) {
   });
 
   return doc;
+}
+
+export async function downloadDocument(id:string, reply:FastifyReply) {
+  const doc = await findOneDocument(id);
+  const filePath = doc.filePath;
+  const fileName = doc.name;
+
+  // Set headers
+  reply.header('Content-Type', doc.mimeType);
+  reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
+
+  // Stream the file
+  const stream = createReadStream(join(process.cwd(), filePath));
+  return reply.send(stream);
 }
