@@ -1,4 +1,5 @@
 // src/app.ts
+import 'reflect-metadata';
 import Fastify from 'fastify';
 import authRoutes from './auth/auth.routes';
 import documentsRoutes from './documents/documents.routes';

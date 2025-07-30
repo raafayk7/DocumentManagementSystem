@@ -3,11 +3,10 @@ import { RegisterSchema } from './dto/register.dto';
 import { zodValidate } from '../pipes/zod-validation.pipe';
 import { LoginSchema } from './dto/login.dto';
 import { AuthService } from './auth.service';
-import { DrizzleUserRepository } from './repositories/drizzle-user.repository';
+import { container } from '../common/container';
 
-// Create repository and service instances
-const userRepository = new DrizzleUserRepository();
-const authService = new AuthService(userRepository);
+// Get service instance from DI container
+const authService = container.resolve(AuthService);
 
 export default async function authRoutes(app: FastifyInstance) {
   app.post('/auth/register', async (request, reply) => {

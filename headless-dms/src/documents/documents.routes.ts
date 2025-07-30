@@ -5,13 +5,10 @@ import { UpdateDocumentSchema } from './dto/documents.dto';
 import { authenticateJWT } from '../auth/authenticate';
 import { requireRole } from '../auth/roleGuard';
 import { DocumentService } from './documents.service';
-import { DrizzleDocumentRepository } from './repositories/drizzle-document.repository';
-import { LocalFileService } from '../common/services/local-file.service';
+import { container } from '../common/container';
 
-// Create repository and service instances
-const documentRepository = new DrizzleDocumentRepository();
-const fileService = new LocalFileService();
-const documentService = new DocumentService(documentRepository, fileService);
+// Get service instance from DI container
+const documentService = container.resolve(DocumentService);
 
 export default async function documentsRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authenticateJWT);

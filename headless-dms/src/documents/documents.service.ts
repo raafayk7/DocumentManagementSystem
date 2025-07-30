@@ -4,12 +4,14 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { IFileService } from '../common/services/file.service.interface';
 import jwt from 'jsonwebtoken';
 import * as dotenv from 'dotenv';
+import { injectable, inject } from 'tsyringe';
 dotenv.config();
 
+@injectable()
 export class DocumentService {
   constructor(
-    private documentRepository: IDocumentRepository,
-    private fileService: IFileService
+    @inject('IDocumentRepository') private documentRepository: IDocumentRepository,
+    @inject('IFileService') private fileService: IFileService
   ) {}
 
   async createDocument(data: CreateDocumentDto): Promise<DocumentDto> {

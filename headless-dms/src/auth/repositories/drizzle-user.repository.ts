@@ -5,7 +5,9 @@ import { RegisterDto } from '../dto/register.dto';
 import { eq, and } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
+import { injectable } from 'tsyringe';
 
+@injectable()
 export class DrizzleUserRepository implements IUserRepository {
   async save(data: RegisterDto): Promise<{
     id: string;
