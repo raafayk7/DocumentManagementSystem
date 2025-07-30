@@ -4,6 +4,7 @@ import { IUserRepository } from './user.repository.interface';
 import { RegisterDto } from '../dto/register.dto';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
 
 export class DrizzleUserRepository implements IUserRepository {
   async create(data: RegisterDto): Promise<{
@@ -26,6 +27,7 @@ export class DrizzleUserRepository implements IUserRepository {
 
     // Insert the new user
     const newUsers = await db.insert(users).values({
+      id: uuidv4(),
       email: data.email,
       passwordHash,
       role: data.role,

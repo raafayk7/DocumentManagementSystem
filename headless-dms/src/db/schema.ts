@@ -1,7 +1,7 @@
 import { pgTable, text, timestamp, uuid, jsonb } from 'drizzle-orm/pg-core';
 
 export const documents = pgTable('documents', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: uuid('id').primaryKey(),
   name: text('name').notNull(),
   filePath: text('file_path').notNull(),
   mimeType: text('mime_type').notNull(),
@@ -13,7 +13,7 @@ export const documents = pgTable('documents', {
 });
 
 export const users = pgTable('users', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: uuid('id').primaryKey(),
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   role: text('role').notNull(),

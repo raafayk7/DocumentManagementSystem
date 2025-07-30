@@ -1,17 +1,16 @@
 import { IDocumentRepository } from './repositories/documents.repository.interface';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentDto } from './dto/documents.dto';
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { createReadStream } from 'fs';
-import { join } from 'path';
+import { IFileService } from '../common/services/file.service.interface';
 import jwt from 'jsonwebtoken';
 import * as dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 dotenv.config();
 
 export class DocumentService {
-  constructor(private documentRepository: IDocumentRepository) {}
+  constructor(
+    private documentRepository: IDocumentRepository,
+    private fileService: IFileService
+  ) {}
 
   async createDocument(data: CreateDocumentDto): Promise<DocumentDto> {
     return this.documentRepository.create(data);
@@ -61,32 +60,9 @@ export class DocumentService {
   }
 
   async uploadDocument(request: FastifyRequest): Promise<DocumentDto> {
-    const parts = request.parts();
-    // Prepare to collect fields and file
-    let file: any = null;
-    const fields: any = {};
-
-    for await (const part of parts) {
-      if (part.type === 'file') {
-        // Handle file
-        const uniqueName = `${Date.now()}-${uuidv4()}${path.extname(part.filename)}`;
-        const uploadPath = path.join('uploads', uniqueName);
-        await fs.promises.mkdir('uploads', { recursive: true });
-        const writeStream = fs.createWriteStream(uploadPath);
-        await part.file.pipe(writeStream);
-        file = {
-          path: uploadPath,
-          filename: part.filename,
-          mimetype: part.mimetype,
-          size: 0, // We'll get the size after writing
-        };
-        await new Promise<void>((resolve) => writeStream.on('finish', resolve));
-        file.size = fs.statSync(uploadPath).size.toString();
-      } else {
-        // Handle fields (all are strings)
-        fields[part.fieldname] = part.value;
-      }
-    }
+    // Use file service to handle file upload and get form fields
+    const fileInfo = await this.fileService.saveFile(request);
+    const fields = fileInfo.fields;
 
     // Parse tags and metadata if present
     let tags: string[] = [];
@@ -105,6 +81,7 @@ export class DocumentService {
         tags = fields.tags.split(',').map((t: string) => t.trim());
       }
     }
+    
     let metadata: Record<string, string> = {};
     if (fields.metadata) {
       try {
@@ -114,14 +91,14 @@ export class DocumentService {
       }
     }
 
-    // Save file info and metadata to DB using repository
-    const doc = await this.documentRepository.create({
-      name: fields.name,
-      filePath: file.path,
-      mimeType: fields.mimeType || file.mimetype,
-      size: fields.size || file.size,
+    // Save file info and metadata to DB
+    const doc = await this.createDocument({
+      name: fields.name || fileInfo.name,
+      filePath: fileInfo.path,
+      mimeType: fields.mimeType || fileInfo.mimeType,
+      size: fields.size || fileInfo.size,
       tags, // always an array
-      metadata: fields.metadata || {}
+      metadata: metadata
     });
 
     return doc;
@@ -129,16 +106,7 @@ export class DocumentService {
 
   async downloadDocument(id: string, reply: FastifyReply): Promise<void> {
     const doc = await this.findOneDocument(id);
-    const filePath = doc.filePath;
-    const fileName = doc.name;
-
-    // Set headers
-    reply.header('Content-Type', doc.mimeType);
-    reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
-
-    // Stream the file
-    const stream = createReadStream(join(process.cwd(), filePath));
-    return reply.send(stream);
+    await this.fileService.streamFile(doc.filePath, reply);
   }
 
   async generateDownloadLink(id: string): Promise<string> {

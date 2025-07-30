@@ -6,10 +6,12 @@ import { authenticateJWT } from '../auth/authenticate';
 import { requireRole } from '../auth/roleGuard';
 import { DocumentService } from './documents.service';
 import { DrizzleDocumentRepository } from './repositories/drizzle-document.repository';
+import { LocalFileService } from '../common/services/local-file.service';
 
 // Create repository and service instances
 const documentRepository = new DrizzleDocumentRepository();
-const documentService = new DocumentService(documentRepository);
+const fileService = new LocalFileService();
+const documentService = new DocumentService(documentRepository, fileService);
 
 export default async function documentsRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authenticateJWT);
