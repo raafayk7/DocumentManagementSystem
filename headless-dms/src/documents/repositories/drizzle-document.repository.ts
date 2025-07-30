@@ -6,7 +6,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { arrayOverlaps } from 'drizzle-orm';
 import fs from 'fs';
+import { injectable } from 'tsyringe';
 
+@injectable()
 export class DrizzleDocumentRepository implements IDocumentRepository {
   async save(data: CreateDocumentDto): Promise<DocumentDto> {
     const newDocuments = await db.insert(documents).values({

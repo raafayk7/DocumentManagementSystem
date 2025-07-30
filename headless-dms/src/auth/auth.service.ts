@@ -3,9 +3,11 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { injectable, inject } from 'tsyringe';
 
+@injectable()
 export class AuthService {
-  constructor(private userRepository: IUserRepository) {}
+  constructor(@inject('IUserRepository') private userRepository: IUserRepository) {}
 
   async register(registerDto: RegisterDto) {
     const user = await this.userRepository.save(registerDto);
