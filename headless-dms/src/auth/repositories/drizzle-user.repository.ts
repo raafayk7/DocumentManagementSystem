@@ -1,13 +1,13 @@
 import { db } from '../../db';
 import { users } from '../../db/schema';
-import { IUserRepository } from './user.repository.interface';
+import { IUserRepository, UserFilterQuery } from './user.repository.interface';
 import { RegisterDto } from '../dto/register.dto';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 
 export class DrizzleUserRepository implements IUserRepository {
-  async create(data: RegisterDto): Promise<{
+  async save(data: RegisterDto): Promise<{
     id: string;
     email: string;
     role: string;
@@ -44,7 +44,39 @@ export class DrizzleUserRepository implements IUserRepository {
     return { id, email, role, createdAt, updatedAt };
   }
 
-  async findByEmail(email: string): Promise<{
+  async find(query?: UserFilterQuery): Promise<{
+    id: string;
+    email: string;
+    role: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }[]> {
+    const conditions: any[] = [];
+
+    if (query?.email) {
+      conditions.push(eq(users.email, query.email));
+    }
+    if (query?.role) {
+      conditions.push(eq(users.role, query.role));
+    }
+
+    const dbQuery = db.select({
+      id: users.id,
+      email: users.email,
+      role: users.role,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    }).from(users);
+
+    const baseQuery = conditions.length
+      ? dbQuery.where(and(...conditions))
+      : dbQuery;
+
+    const results = await baseQuery.execute();
+    return results;
+  }
+
+  async findOne(query: UserFilterQuery): Promise<{
     id: string;
     email: string;
     passwordHash: string;
@@ -52,7 +84,20 @@ export class DrizzleUserRepository implements IUserRepository {
     createdAt: Date;
     updatedAt: Date;
   } | null> {
-    const usersFound = await db.select().from(users).where(eq(users.email, email)).execute();
+    const conditions: any[] = [];
+
+    if (query?.email) {
+      conditions.push(eq(users.email, query.email));
+    }
+    if (query?.role) {
+      conditions.push(eq(users.role, query.role));
+    }
+
+    if (conditions.length === 0) {
+      return null;
+    }
+
+    const usersFound = await db.select().from(users).where(and(...conditions)).execute();
     if (usersFound.length === 0) {
       return null;
     }
@@ -66,13 +111,23 @@ export class DrizzleUserRepository implements IUserRepository {
     createdAt: Date;
     updatedAt: Date;
   } | null> {
-    const result = await db.select().from(users).where(eq(users.id, id)).execute();
+    const result = await db.select({
+      id: users.id,
+      email: users.email,
+      role: users.role,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    }).from(users).where(eq(users.id, id)).execute();
+    
     if (!result || result.length === 0) {
       return null;
     }
     
-    // Return only safe fields (no password hash)
-    const { id: userId, email, role, createdAt, updatedAt } = result[0];
-    return { id: userId, email, role, createdAt, updatedAt };
+    return result[0];
+  }
+
+  async exists(query: UserFilterQuery): Promise<boolean> {
+    const results = await this.find(query);
+    return results.length > 0;
   }
 } 

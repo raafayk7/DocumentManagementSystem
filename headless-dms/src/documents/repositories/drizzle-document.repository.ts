@@ -1,6 +1,6 @@
 import { db } from '../../db';
 import { documents } from '../../db/schema';
-import { IDocumentRepository } from './documents.repository.interface';
+import { IDocumentRepository, DocumentFilterQuery } from './documents.repository.interface';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentDto, DocumentSchema, DocumentsListSchema } from '../dto/documents.dto';
 import { v4 as uuidv4 } from 'uuid';
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
@@ -8,7 +8,7 @@ import { arrayOverlaps } from 'drizzle-orm';
 import fs from 'fs';
 
 export class DrizzleDocumentRepository implements IDocumentRepository {
-  async create(data: CreateDocumentDto): Promise<DocumentDto> {
+  async save(data: CreateDocumentDto): Promise<DocumentDto> {
     const newDocuments = await db.insert(documents).values({
       id: uuidv4(),
       name: data.name,
@@ -28,16 +28,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
     return DocumentSchema.parse(newDocuments[0]);
   }
 
-  async findAll(query?: {
-    name?: string;
-    mimeType?: string;
-    from?: string;
-    to?: string;
-    tags?: string | string[];
-    metadata?: Record<string, string>;
-    page?: number;
-    pageSize?: number;
-  }): Promise<{ items: DocumentDto[]; total: number }> {
+  async find(query?: DocumentFilterQuery): Promise<DocumentDto[]> {
     const conditions: any[] = [];
 
     if (query?.name) {
@@ -78,31 +69,18 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       }
     }
 
-    // Get total count
-    const countQuery = db.select({ count: sql<number>`count(*)` }).from(documents);
-    const totalResult = conditions.length
-      ? await countQuery.where(and(...conditions)).execute()
-      : await countQuery.execute();
-    const total = totalResult[0]?.count || 0;
-
-    // Get paginated results
     const dbQuery = db.select().from(documents);
     const baseQuery = conditions.length
       ? dbQuery.where(and(...conditions))
       : dbQuery;
 
-    // Add pagination
-    if (query?.page && query?.pageSize) {
-      const offset = (query.page - 1) * query.pageSize;
-      const allDocuments = await baseQuery.limit(query.pageSize).offset(offset).execute();
-      const items = DocumentsListSchema.parse(allDocuments);
-      return { items, total };
-    }
-
     const allDocuments = await baseQuery.execute();
-    const items = DocumentsListSchema.parse(allDocuments);
+    return DocumentsListSchema.parse(allDocuments);
+  }
 
-    return { items, total };
+  async findOne(query: DocumentFilterQuery): Promise<DocumentDto | null> {
+    const results = await this.find(query);
+    return results.length > 0 ? results[0] : null;
   }
 
   async findById(id: string): Promise<DocumentDto | null> {
@@ -138,11 +116,11 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
     return DocumentSchema.parse(updated[0]);
   }
 
-  async delete(id: string): Promise<{ deleted: boolean }> {
+  async delete(id: string): Promise<boolean> {
     // Check if document exists
     const existing = await db.select().from(documents).where(eq(documents.id, id)).execute();
     if (!existing || existing.length === 0) {
-      return { deleted: false };
+      return false;
     }
 
     // Get the file path before deleting from DB
@@ -163,9 +141,14 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
           console.error(`Failed to delete file at ${filePath}:`, e);
         }
       }
-      return { deleted: true };
+      return true;
     } else {
-      return { deleted: false };
+      return false;
     }
+  }
+
+  async exists(query: DocumentFilterQuery): Promise<boolean> {
+    const results = await this.find(query);
+    return results.length > 0;
   }
 } 

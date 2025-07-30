@@ -13,7 +13,7 @@ export class DocumentService {
   ) {}
 
   async createDocument(data: CreateDocumentDto): Promise<DocumentDto> {
-    return this.documentRepository.create(data);
+    return this.documentRepository.save(data);
   }
 
   async findAllDocuments(query?: {
@@ -26,7 +26,7 @@ export class DocumentService {
     page?: number;
     pageSize?: number;
   }) {
-    return this.documentRepository.findAll(query);
+    return this.documentRepository.find(query);
   }
 
   async findOneDocument(id: string): Promise<DocumentDto> {
@@ -51,12 +51,12 @@ export class DocumentService {
 
   async removeDocument(id: string): Promise<{ deleted: boolean }> {
     const result = await this.documentRepository.delete(id);
-    if (!result.deleted) {
+    if (!result) {
       const err = new Error(`Document with id ${id} not found`);
       (err as any).statusCode = 404;
       throw err;
     }
-    return result;
+    return { deleted: true };
   }
 
   async uploadDocument(request: FastifyRequest): Promise<DocumentDto> {

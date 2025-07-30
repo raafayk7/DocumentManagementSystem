@@ -1,14 +1,26 @@
 import { RegisterDto } from '../dto/register.dto';
 
+export interface UserFilterQuery {
+  email?: string;
+  role?: string;
+}
+
 export interface IUserRepository {
-  create(data: RegisterDto): Promise<{
+  save(data: RegisterDto): Promise<{
     id: string;
     email: string;
     role: string;
     createdAt: Date;
     updatedAt: Date;
   }>;
-  findByEmail(email: string): Promise<{
+  find(query?: UserFilterQuery): Promise<{
+    id: string;
+    email: string;
+    role: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }[]>;
+  findOne(query: UserFilterQuery): Promise<{
     id: string;
     email: string;
     passwordHash: string;
@@ -23,4 +35,5 @@ export interface IUserRepository {
     createdAt: Date;
     updatedAt: Date;
   } | null>;
+  exists(query: UserFilterQuery): Promise<boolean>;
 } 
