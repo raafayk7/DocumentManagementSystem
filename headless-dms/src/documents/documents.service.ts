@@ -6,6 +6,10 @@ import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { arrayOverlaps } from 'drizzle-orm'; // If using Drizzle's arrayOverlaps
 import fs from 'fs';
 import path from 'path';
+import { FastifyReply, FastifyRequest } from 'fastify';
+import { createReadStream } from 'fs';
+import { join } from 'path';
+import jwt from 'jsonwebtoken';
 
 export async function createDocument(createDocumentDto: CreateDocumentDto): Promise<DocumentDto> {
   const newDocuments = await db.insert(documents).values({
@@ -163,4 +167,108 @@ export async function removeDocument(id: string) {
     (err as any).statusCode = 404;
     throw err;
   }
+}
+
+export async function uploadDocument(request:FastifyRequest) {
+  const parts = request.parts();
+  // Prepare to collect fields and file
+  let file: any = null;
+  const fields: any = {};
+
+  for await (const part of parts) {
+    if (part.type === 'file') {
+      // Handle file
+      const uniqueName = `${Date.now()}-${uuidv4()}${path.extname(part.filename)}`;
+      const uploadPath = path.join('uploads', uniqueName);
+      await fs.promises.mkdir('uploads', { recursive: true });
+      const writeStream = fs.createWriteStream(uploadPath);
+      await part.file.pipe(writeStream);
+      file = {
+        path: uploadPath,
+        filename: part.filename,
+        mimetype: part.mimetype,
+        size: 0, // We'll get the size after writing
+      };
+      await new Promise<void>((resolve) => writeStream.on('finish', resolve));
+      file.size = fs.statSync(uploadPath).size.toString();
+    } else {
+      // Handle fields (all are strings)
+      fields[part.fieldname] = part.value;
+    }
+  }
+
+  // Parse tags and metadata if present
+  let tags: string[] = [];
+  if (fields.tags) {
+    try {
+      const parsed = JSON.parse(fields.tags);
+      if (Array.isArray(parsed)) {
+        tags = parsed.map(String);
+      } else if (typeof parsed === 'string') {
+        tags = [parsed];
+      } else {
+        tags = [];
+      }
+    } catch {
+      // fallback: comma-separated string
+      tags = fields.tags.split(',').map((t: string) => t.trim());
+    }
+  }
+  let metadata: Record<string, string> = {};
+  if (fields.metadata) {
+    try {
+      metadata = JSON.parse(fields.metadata);
+    } catch {
+      metadata = {};
+    }
+  }
+
+  // Save file info and metadata to DB
+  const doc = await createDocument({
+    name: fields.name,
+    filePath: file.path,
+    mimeType: fields.mimeType || file.mimetype,
+    size: fields.size || file.size,
+    tags, // always an array
+    metadata: fields.metadata || {}
+  });
+
+  return doc;
+}
+
+export async function downloadDocument(reply:FastifyReply,id_or_token:string,isdownloadLink:boolean) {
+  let doc_id: string;
+
+  if (isdownloadLink) {
+    const payload = jwt.verify(id_or_token, process.env.DOWNLOAD_JWT_SECRET!) as { documentId: string };
+    doc_id = payload.documentId;
+  } else {
+    doc_id = id_or_token;
+  }
+
+  const doc = await findOneDocument(doc_id);
+  const filePath = doc.filePath;
+  const fileName = doc.name;
+
+  // Set headers
+  reply.header('Content-Type', doc.mimeType);
+  reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
+
+  // Stream the file
+  const stream = createReadStream(join(process.cwd(), filePath));
+  return reply.send(stream);
+}
+
+export async function generateDownloadLink(id:string) {
+  // Optionally check if document exists
+  await findOneDocument(id);
+
+  const token = jwt.sign(
+    { documentId: id },
+    process.env.DOWNLOAD_JWT_SECRET!,
+    { expiresIn: '5m' }
+  );
+  //   const url = `/download-link/${encodeURIComponent(token)}`;
+  const url = `/documents/download-link?token=${encodeURIComponent(token)}`;
+  return url;
 }
