@@ -8,11 +8,19 @@ import { IFileService } from './services/file.service.interface';
 import { LocalFileService } from './services/local-file.service';
 import { DocumentService } from '../documents/documents.service';
 import { AuthService } from '../auth/auth.service';
+import { ILogger } from './services/logger.service.interface';
+import { ConsoleLogger } from './services/console-logger.service';
+import { FileLogger } from './services/file-logger.service';
 
 // Register repositories
 container.registerSingleton<IDocumentRepository>('IDocumentRepository', DrizzleDocumentRepository);
 container.registerSingleton<IUserRepository>('IUserRepository', DrizzleUserRepository);
 container.registerSingleton<IFileService>('IFileService', LocalFileService);
+
+// Register loggers
+container.registerSingleton<ILogger>('ILogger', ConsoleLogger);
+// Uncomment to use FileLogger instead:
+// container.registerSingleton<ILogger>('ILogger', FileLogger);
 
 // Register services
 container.registerSingleton(DocumentService);

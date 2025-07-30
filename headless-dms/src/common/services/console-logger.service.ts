@@ -5,10 +5,8 @@ import { injectable } from 'tsyringe';
 export class ConsoleLogger implements ILogger {
   private context: LogContext = {};
 
-  constructor(initialContext?: LogContext) {
-    if (initialContext) {
-      this.context = { ...initialContext };
-    }
+  constructor() {
+    // Default constructor for DI - no parameters needed
   }
 
   error(message: string, context?: LogContext): void {
@@ -83,7 +81,8 @@ export class ConsoleLogger implements ILogger {
   }
 
   child(context: LogContext): ILogger {
-    const childLogger = new ConsoleLogger({ ...this.context, ...context });
+    const childLogger = new ConsoleLogger();
+    childLogger.context = { ...this.context, ...context };
     return childLogger;
   }
 } 

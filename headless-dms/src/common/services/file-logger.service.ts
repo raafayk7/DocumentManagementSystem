@@ -9,14 +9,11 @@ export class FileLogger implements ILogger {
   private logDir: string;
   private logFile: string;
 
-  constructor(logDir: string = 'logs', initialContext?: LogContext) {
-    this.logDir = logDir;
-    this.logFile = path.join(logDir, `app-${new Date().toISOString().split('T')[0]}.log`);
+  constructor() {
+    // Default constructor for DI
+    this.logDir = 'logs';
+    this.logFile = path.join(this.logDir, `app-${new Date().toISOString().split('T')[0]}.log`);
     
-    if (initialContext) {
-      this.context = { ...initialContext };
-    }
-
     // Ensure log directory exists
     this.ensureLogDirectory();
   }
@@ -89,7 +86,8 @@ export class FileLogger implements ILogger {
   }
 
   child(context: LogContext): ILogger {
-    const childLogger = new FileLogger(this.logDir, { ...this.context, ...context });
+    const childLogger = new FileLogger();
+    childLogger.context = { ...this.context, ...context };
     return childLogger;
   }
 } 
