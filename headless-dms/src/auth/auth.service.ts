@@ -1,8 +1,8 @@
 import { IUserRepository } from './repositories/user.repository.interface.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import * as bcrypt from 'bcrypt';
+import * as jwt from 'jsonwebtoken';
 import { injectable, inject } from 'tsyringe';
 import { ILogger } from '../common/services/logger.service.interface.js';
 import { PaginationInput, PaginationOutput } from '../common/dto/pagination.dto.js';
@@ -118,4 +118,29 @@ export class AuthService {
       ));
     }
   }
-  }
+
+  async removeUser(id: string): Promise<Result<{ deleted: boolean }, AuthError>> {
+    this.logger.info('Removing user', { userId: id });
+    
+    try {
+      const result = await this.userRepository.delete(id);
+      if (!result) {
+        this.logger.warn('User not found for deletion', { userId: id });
+        return Result.Err(new AuthError(
+          'AuthService.removeUser',
+          'User not found',
+          { userId: id }
+        ));
+      }
+      this.logger.info('User removed successfully', { userId: id });
+      return Result.Ok({ deleted: true });
+    } catch (error) {
+      this.logger.logError(error as Error, { userId: id });
+      return Result.Err(new AuthError(
+        'AuthService.removeUser',
+        error instanceof Error ? error.message : 'Failed to remove user',
+        { userId: id }
+      ));
+    }
+  } 
+}

@@ -172,4 +172,13 @@ export class DrizzleUserRepository implements IUserRepository {
 
     return results[0]?.count || 0;
   }
+
+  async delete(id: string): Promise<boolean> {
+    const results = await db.delete(users)
+      .where(eq(users.id, id))
+      .returning()
+      .execute();
+
+    return results.length > 0;
+  }
 } 

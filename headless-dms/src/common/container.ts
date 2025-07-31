@@ -1,16 +1,16 @@
 import 'reflect-metadata';
 import { container } from 'tsyringe';
-import { IDocumentRepository } from '../documents/repositories/documents.repository.interface';
-import { DrizzleDocumentRepository } from '../documents/repositories/drizzle-document.repository';
-import { IUserRepository } from '../auth/repositories/user.repository.interface';
-import { DrizzleUserRepository } from '../auth/repositories/drizzle-user.repository';
-import { IFileService } from './services/file.service.interface';
-import { LocalFileService } from './services/local-file.service';
-import { DocumentService } from '../documents/documents.service';
-import { AuthService } from '../auth/auth.service';
-import { ILogger } from './services/logger.service.interface';
-import { ConsoleLogger } from './services/console-logger.service';
-import { FileLogger } from './services/file-logger.service';
+import { IDocumentRepository } from '../documents/repositories/documents.repository.interface.js';
+import { DrizzleDocumentRepository } from '../documents/repositories/drizzle-document.repository.js';
+import { IUserRepository } from '../auth/repositories/user.repository.interface.js';
+import { DrizzleUserRepository } from '../auth/repositories/drizzle-user.repository.js';
+import { IFileService } from './services/file.service.interface.js';
+import { LocalFileService } from './services/local-file.service.js';
+import { DocumentService } from '../documents/documents.service.js';
+import { AuthService } from '../auth/auth.service.js';
+import { ILogger } from './services/logger.service.interface.js';
+import { ConsoleLogger } from './services/console-logger.service.js';
+import { FileLogger } from './services/file-logger.service.js';
 
 // Register repositories
 container.registerSingleton<IDocumentRepository>('IDocumentRepository', DrizzleDocumentRepository);

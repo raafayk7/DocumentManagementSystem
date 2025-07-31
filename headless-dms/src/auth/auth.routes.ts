@@ -99,4 +99,39 @@ export default async function authRoutes(app: FastifyInstance) {
       reply.code(err.statusCode || 400).send({ error: err.message });
     }
   });
+
+  // DELETE /auth/users/:id - Admin only (protected route)
+  app.delete('/auth/users/:id', { 
+    preHandler: [authenticateJWT, requireRole('admin')]  
+  }, async (request, reply) => {
+    logger.logRequest(request);
+    
+    try {
+      const { id } = request.params as { id: string };
+      
+      // // Create a fresh AuthService instance to bypass caching issues
+      // const freshAuthService = new (await import('./auth.service.js')).AuthService(
+      //   container.resolve('IUserRepository'),
+      //   container.resolve('ILogger')
+      // );
+      
+      // const result = await freshAuthService.removeUser(id);
+      const result = await authService.removeUser(id);
+      
+      matchRes(result, {
+        Ok: (deleteResult) => {
+          logger.logResponse(reply, { statusCode: 200, userId: id });
+          reply.send(deleteResult);
+        },
+        Err: (error) => {
+          logger.error('User deletion failed', { error: error.message, operation: error.operation, userId: id });
+          const statusCode = error.operation.includes('removeUser') && error.message.includes('not found') ? 404 : 500;
+          reply.code(statusCode).send({ error: error.message });
+        }
+      });
+    } catch (err: any) {
+      logger.error('User deletion failed', { error: err.message, statusCode: err.statusCode || 404, userId: (request.params as any).id });
+      reply.code(err.statusCode || 404).send({ error: err.message });
+    }
+  });
 }
