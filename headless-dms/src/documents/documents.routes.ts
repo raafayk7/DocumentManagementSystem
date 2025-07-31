@@ -7,6 +7,7 @@ import { requireRole } from '../auth/roleGuard';
 import { DocumentService } from './documents.service';
 import { container } from '../common/container';
 import { ILogger } from '../common/services/logger.service.interface';
+import { PaginationInputSchema } from '../common/dto/pagination.dto';
 
 // Get service instances from DI container
 const documentService = container.resolve(DocumentService);
@@ -34,9 +35,21 @@ export default async function documentsRoutes(app: FastifyInstance) {
     logger.logRequest(request);
     
     try {
-      const { name, mimeType, from, to, tags, metadata, page, pageSize } = request.query as any;
-      const result = await documentService.findAllDocuments({ name, mimeType, from, to, tags, metadata, page, pageSize });
-      logger.logResponse(reply, { statusCode: 200, resultCount: result.length });
+      const { name, mimeType, from, to, tags, metadata, page, limit, sort, order } = request.query as any;
+      
+      // Parse pagination parameters
+      const pagination = zodValidate(PaginationInputSchema, { page, limit, sort, order });
+      
+      // Parse filter parameters
+      const query = { name, mimeType, from, to, tags, metadata };
+      
+      const result = await documentService.findAllDocuments(query, pagination);
+      logger.logResponse(reply, { 
+        statusCode: 200, 
+        resultCount: result.data.length,
+        total: result.pagination.total,
+        page: result.pagination.page
+      });
       reply.send(result);
     } catch (err: any) {
       logger.error('Document retrieval failed', { error: err.message, statusCode: err.statusCode || 400 });

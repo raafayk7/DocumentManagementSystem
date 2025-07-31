@@ -1,4 +1,5 @@
 import { RegisterDto } from '../dto/register.dto';
+import { PaginationInput, PaginationOutput } from '../../common/dto/pagination.dto';
 
 export interface UserFilterQuery {
   email?: string;
@@ -13,13 +14,13 @@ export interface IUserRepository {
     createdAt: Date;
     updatedAt: Date;
   }>;
-  find(query?: UserFilterQuery): Promise<{
+  find(query?: UserFilterQuery, pagination?: PaginationInput): Promise<PaginationOutput<{
     id: string;
     email: string;
     role: string;
     createdAt: Date;
     updatedAt: Date;
-  }[]>;
+  }>>;
   findOne(query: UserFilterQuery): Promise<{
     id: string;
     email: string;
@@ -36,4 +37,5 @@ export interface IUserRepository {
     updatedAt: Date;
   } | null>;
   exists(query: UserFilterQuery): Promise<boolean>;
+  count(query?: UserFilterQuery): Promise<number>;
 } 

@@ -5,6 +5,9 @@ import { LoginSchema } from './dto/login.dto';
 import { AuthService } from './auth.service';
 import { container } from '../common/container';
 import { ILogger } from '../common/services/logger.service.interface';
+import { PaginationInputSchema } from '../common/dto/pagination.dto';
+import { requireRole } from './roleGuard';
+import { authenticateJWT } from './authenticate';
 
 // Get service instances from DI container
 const authService = container.resolve(AuthService);
@@ -35,6 +38,35 @@ export default async function authRoutes(app: FastifyInstance) {
       reply.code(200).send(result);
     } catch (err: any) {
       logger.error('User login failed', { error: err.message, statusCode: err.statusCode || 400 });
+      reply.code(err.statusCode || 400).send({ error: err.message });
+    }
+  });
+
+  // GET /auth/users - Admin only (protected route)
+  app.get('/auth/users', { 
+    preHandler: [authenticateJWT, requireRole('admin')] 
+  }, async (request, reply) => {
+    logger.logRequest(request);
+    
+    try {
+      const { email, role, page, limit, sort, order } = request.query as any;
+      
+      // Parse pagination parameters
+      const pagination = zodValidate(PaginationInputSchema, { page, limit, sort, order });
+      
+      // Parse filter parameters
+      const query = { email, role };
+      
+      const result = await authService.findAllUsers(query, pagination);
+      logger.logResponse(reply, { 
+        statusCode: 200, 
+        resultCount: result.data.length,
+        total: result.pagination.total,
+        page: result.pagination.page
+      });
+      reply.send(result);
+    } catch (err: any) {
+      logger.error('User retrieval failed', { error: err.message, statusCode: err.statusCode || 400 });
       reply.code(err.statusCode || 400).send({ error: err.message });
     }
   });

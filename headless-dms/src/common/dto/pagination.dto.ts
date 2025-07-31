@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 // Pagination Input Schema
 export const PaginationInputSchema = z.object({
-  page: z.number().min(1).default(1),
-  limit: z.number().min(1).max(100).default(10),
+  page: z.union([z.string(), z.number()]).transform((val) => parseInt(String(val), 10)).pipe(z.number().min(1)).default(1),
+  limit: z.union([z.string(), z.number()]).transform((val) => parseInt(String(val), 10)).pipe(z.number().min(1).max(100)).default(10),
   sort: z.string().optional(),
   order: z.enum(['asc', 'desc']).default('desc')
 });

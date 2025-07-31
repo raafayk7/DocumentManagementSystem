@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import * as dotenv from 'dotenv';
 import { injectable, inject } from 'tsyringe';
 import { ILogger } from '../common/services/logger.service.interface';
+import { PaginationInput, PaginationOutput } from '../common/dto/pagination.dto';
 dotenv.config();
 
 @injectable()
@@ -38,17 +39,20 @@ export class DocumentService {
     to?: string;
     tags?: string | string[];
     metadata?: Record<string, string>;
-    page?: number;
-    pageSize?: number;
-  }) {
-    this.logger.debug('Finding documents', { query });
+  }, pagination?: PaginationInput): Promise<PaginationOutput<DocumentDto>> {
+    this.logger.debug('Finding documents', { query, pagination });
     
     try {
-      const documents = await this.documentRepository.find(query);
-      this.logger.info('Documents found', { count: documents.length });
-      return documents;
+      const result = await this.documentRepository.find(query, pagination);
+      this.logger.info('Documents found', { 
+        count: result.data.length, 
+        total: result.pagination.total,
+        page: result.pagination.page,
+        totalPages: result.pagination.totalPages
+      });
+      return result;
     } catch (error) {
-      this.logger.logError(error as Error, { query });
+      this.logger.logError(error as Error, { query, pagination });
       throw error;
     }
   }

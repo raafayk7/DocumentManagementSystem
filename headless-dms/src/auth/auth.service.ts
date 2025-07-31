@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { injectable, inject } from 'tsyringe';
 import { ILogger } from '../common/services/logger.service.interface';
+import { PaginationInput, PaginationOutput } from '../common/dto/pagination.dto';
 
 @injectable()
 export class AuthService {
@@ -61,6 +62,26 @@ export class AuthService {
       };
     } catch (error) {
       this.logger.logError(error as Error, { email: loginDto.email });
+      throw error;
+    }
+  }
+
+  async findAllUsers(query?: { email?: string; role?: string }, pagination?: PaginationInput): Promise<PaginationOutput<{
+    id: string; email: string; role: string; createdAt: Date; updatedAt: Date;
+  }>> {
+    this.logger.debug('Finding users', { query, pagination });
+    
+    try {
+      const result = await this.userRepository.find(query, pagination);
+      this.logger.info('Users found', { 
+        count: result.data.length, 
+        total: result.pagination.total,
+        page: result.pagination.page,
+        totalPages: result.pagination.totalPages
+      });
+      return result;
+    } catch (error) {
+      this.logger.logError(error as Error, { query, pagination });
       throw error;
     }
   }
