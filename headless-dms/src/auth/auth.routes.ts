@@ -1,13 +1,14 @@
 import { FastifyInstance } from 'fastify';
-import { RegisterSchema } from './dto/register.dto';
-import { zodValidate } from '../pipes/zod-validation.pipe';
-import { LoginSchema } from './dto/login.dto';
-import { AuthService } from './auth.service';
-import { container } from '../common/container';
-import { ILogger } from '../common/services/logger.service.interface';
-import { PaginationInputSchema } from '../common/dto/pagination.dto';
-import { requireRole } from './roleGuard';
-import { authenticateJWT } from './authenticate';
+import { RegisterSchema } from './dto/register.dto.js';
+import { zodValidate } from '../pipes/zod-validation.pipe.js';
+import { LoginSchema } from './dto/login.dto.js';
+import { AuthService } from './auth.service.js';
+import { container } from '../common/container.js';
+import { ILogger } from '../common/services/logger.service.interface.js';
+import { PaginationInputSchema } from '../common/dto/pagination.dto.js';
+import { requireRole } from './roleGuard.js';
+import { authenticateJWT } from './authenticate.js';
+import { matchRes } from '@carbonteq/fp';
 
 // Get service instances from DI container
 const authService = container.resolve(AuthService);
@@ -19,9 +20,18 @@ export default async function authRoutes(app: FastifyInstance) {
     
     try {
       const data = zodValidate(RegisterSchema, request.body);
-      const user = await authService.register(data);
-      logger.logResponse(reply, { statusCode: 201, userId: user.id });
-      reply.code(201).send(user);
+      const result = await authService.register(data);
+      
+      matchRes(result, {
+        Ok: (user) => {
+          logger.logResponse(reply, { statusCode: 201, userId: user.id });
+          reply.code(201).send(user);
+        },
+        Err: (error) => {
+          logger.error('User registration failed', { error: error.message, operation: error.operation });
+          reply.code(400).send({ error: error.message });
+        }
+      });
     } catch (err: any) {
       logger.error('User registration failed', { error: err.message, statusCode: err.statusCode || 400 });
       reply.code(err.statusCode || 400).send({ error: err.message });
@@ -34,8 +44,18 @@ export default async function authRoutes(app: FastifyInstance) {
     try {
       const data = zodValidate(LoginSchema, request.body);
       const result = await authService.login(data);
-      logger.logResponse(reply, { statusCode: 200, userId: result.user.id });
-      reply.code(200).send(result);
+      
+      matchRes(result, {
+        Ok: (loginResult) => {
+          logger.logResponse(reply, { statusCode: 200, userId: loginResult.user.id });
+          reply.code(200).send(loginResult);
+        },
+        Err: (error) => {
+          logger.error('User login failed', { error: error.message, operation: error.operation });
+          const statusCode = error.operation.includes('findUser') || error.operation.includes('validatePassword') ? 401 : 400;
+          reply.code(statusCode).send({ error: 'Invalid credentials' });
+        }
+      });
     } catch (err: any) {
       logger.error('User login failed', { error: err.message, statusCode: err.statusCode || 400 });
       reply.code(err.statusCode || 400).send({ error: err.message });
@@ -58,13 +78,22 @@ export default async function authRoutes(app: FastifyInstance) {
       const query = { email, role };
       
       const result = await authService.findAllUsers(query, pagination);
-      logger.logResponse(reply, { 
-        statusCode: 200, 
-        resultCount: result.data.length,
-        total: result.pagination.total,
-        page: result.pagination.page
+      
+      matchRes(result, {
+        Ok: (usersResult) => {
+          logger.logResponse(reply, { 
+            statusCode: 200, 
+            resultCount: usersResult.data.length,
+            total: usersResult.pagination.total,
+            page: usersResult.pagination.page
+          });
+          reply.send(usersResult);
+        },
+        Err: (error) => {
+          logger.error('User retrieval failed', { error: error.message, operation: error.operation });
+          reply.code(500).send({ error: error.message });
+        }
       });
-      reply.send(result);
     } catch (err: any) {
       logger.error('User retrieval failed', { error: err.message, statusCode: err.statusCode || 400 });
       reply.code(err.statusCode || 400).send({ error: err.message });

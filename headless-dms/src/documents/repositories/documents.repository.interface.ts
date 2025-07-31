@@ -1,5 +1,5 @@
-import { CreateDocumentDto, UpdateDocumentDto, DocumentDto } from '../dto/documents.dto';
-import { PaginationInput, PaginationOutput } from '../../common/dto/pagination.dto';
+import { CreateDocumentDto, UpdateDocumentDto, DocumentDto } from '../dto/documents.dto.js';
+import { PaginationInput, PaginationOutput } from '../../common/dto/pagination.dto.js';
 
 export interface DocumentFilterQuery {
   name?: string;

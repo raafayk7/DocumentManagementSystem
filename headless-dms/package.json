@@ -1,16 +1,19 @@
 {
   "name": "headless-dms",
   "version": "1.0.0",
+  "type": "module",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start:dev": "ts-node-dev --respawn --transpile-only src/app.ts"
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "start:dev": "tsx --watch src/app.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
+    "@carbonteq/fp": "^0.8.2",
     "@fastify/multipart": "^9.0.3",
     "bcrypt": "^6.0.0",
     "dotenv": "^17.2.0",
@@ -28,6 +31,7 @@
     "drizzle-kit": "^0.31.4",
     "reflect-metadata": "^0.2.2",
     "ts-node-dev": "^2.0.0",
+    "tsx": "^4.20.3",
     "tsyringe": "^4.10.0",
     "typescript": "^5.8.3"
   }

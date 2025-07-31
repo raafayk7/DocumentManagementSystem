@@ -1,12 +1,12 @@
-import { db } from '../../db';
-import { users } from '../../db/schema';
-import { IUserRepository, UserFilterQuery } from './user.repository.interface';
-import { RegisterDto } from '../dto/register.dto';
+import { db } from '../../db/index.js';
+import { users } from '../../db/schema.js';
+import { IUserRepository, UserFilterQuery } from './user.repository.interface.js';
+import { RegisterDto } from '../dto/register.dto.js';
 import { eq, and } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { injectable } from 'tsyringe';
-import { PaginationInput, PaginationOutput, calculatePaginationMetadata } from '../../common/dto/pagination.dto';
+import { PaginationInput, PaginationOutput, calculatePaginationMetadata } from '../../common/dto/pagination.dto.js';
 import { sql } from 'drizzle-orm';
 
 @injectable()

@@ -1,8 +1,8 @@
 // src/app.ts
 import 'reflect-metadata';
 import Fastify from 'fastify';
-import authRoutes from './auth/auth.routes';
-import documentsRoutes from './documents/documents.routes';
+import authRoutes from './auth/auth.routes.js';
+import documentsRoutes from './documents/documents.routes.js';
 import fastifyMultipart from '@fastify/multipart';
 
 

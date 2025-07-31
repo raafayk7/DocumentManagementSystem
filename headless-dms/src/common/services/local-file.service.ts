@@ -1,4 +1,4 @@
-import { IFileService } from './file.service.interface';
+import { IFileService } from './file.service.interface.js';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { createReadStream } from 'fs';
 import { join } from 'path';
@@ -6,7 +6,17 @@ import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { injectable, inject } from 'tsyringe';
-import { ILogger } from './logger.service.interface';
+import { ILogger } from './logger.service.interface.js';
+import { Result } from '@carbonteq/fp';
+import { FileError } from '../errors/application.errors.js';
+
+interface FileInfo {
+  path: string;
+  name: string;
+  mimeType: string;
+  size: string;
+  fields: Record<string, string>;
+}
 
 @injectable()
 export class LocalFileService implements IFileService {
@@ -16,9 +26,7 @@ export class LocalFileService implements IFileService {
     this.logger = this.logger.child({ service: 'LocalFileService' });
   }
 
-  async saveFile(request: FastifyRequest): Promise<{
-    path: string; name: string; mimeType: string; size: string; fields: Record<string, string>;
-  }> {
+  async saveFile(request: FastifyRequest): Promise<Result<FileInfo, FileError>> {
     this.logger.info('Starting file upload');
     
     try {
@@ -56,7 +64,10 @@ export class LocalFileService implements IFileService {
       
       if (!file) { 
         this.logger.error('No file found in request');
-        throw new Error('No file found in request'); 
+        return Result.Err(new FileError(
+          'LocalFileService.saveFile',
+          'No file found in request'
+        ));
       }
       
       this.logger.debug('Upload completed', { 
@@ -65,20 +76,28 @@ export class LocalFileService implements IFileService {
         fieldsCount: Object.keys(fields).length 
       });
       
-      return { ...file, fields };
+      return Result.Ok({ ...file, fields });
     } catch (error) {
       this.logger.logError(error as Error, { uploadDir: this.uploadDir });
-      throw error;
+      return Result.Err(new FileError(
+        'LocalFileService.saveFile',
+        error instanceof Error ? error.message : 'File upload failed',
+        { uploadDir: this.uploadDir }
+      ));
     }
   }
 
-  async streamFile(filePath: string, reply: FastifyReply): Promise<void> {
+  async streamFile(filePath: string, reply: FastifyReply): Promise<Result<void, FileError>> {
     this.logger.info('Starting file stream', { filePath });
     
     try {
       if (!fs.existsSync(filePath)) {
         this.logger.error('File not found for streaming', { filePath });
-        throw new Error('File not found');
+        return Result.Err(new FileError(
+          'LocalFileService.streamFile',
+          'File not found',
+          { filePath }
+        ));
       }
 
       const stat = fs.statSync(filePath);
@@ -89,33 +108,51 @@ export class LocalFileService implements IFileService {
       
       await reply.send(readStream);
       this.logger.info('File stream completed', { filePath, fileSize: stat.size });
+      return Result.Ok(undefined);
     } catch (error) {
       this.logger.logError(error as Error, { filePath });
-      throw error;
+      return Result.Err(new FileError(
+        'LocalFileService.streamFile',
+        error instanceof Error ? error.message : 'File streaming failed',
+        { filePath }
+      ));
     }
   }
 
-  async deleteFile(filePath: string): Promise<boolean> {
+  async deleteFile(filePath: string): Promise<Result<boolean, FileError>> {
     this.logger.info('Attempting to delete file', { filePath });
     
     try {
       if (!fs.existsSync(filePath)) {
         this.logger.warn('File not found for deletion', { filePath });
-        return false;
+        return Result.Ok(false);
       }
 
       fs.unlinkSync(filePath);
       this.logger.info('File deleted successfully', { filePath });
-      return true;
+      return Result.Ok(true);
     } catch (error) {
       this.logger.logError(error as Error, { filePath });
-      return false;
+      return Result.Err(new FileError(
+        'LocalFileService.deleteFile',
+        error instanceof Error ? error.message : 'File deletion failed',
+        { filePath }
+      ));
     }
   }
 
-  async fileExists(filePath: string): Promise<boolean> {
-    const exists = fs.existsSync(filePath);
-    this.logger.debug('File existence check', { filePath, exists });
-    return exists;
+  async fileExists(filePath: string): Promise<Result<boolean, FileError>> {
+    try {
+      const exists = fs.existsSync(filePath);
+      this.logger.debug('File existence check', { filePath, exists });
+      return Result.Ok(exists);
+    } catch (error) {
+      this.logger.logError(error as Error, { filePath });
+      return Result.Err(new FileError(
+        'LocalFileService.fileExists',
+        error instanceof Error ? error.message : 'File existence check failed',
+        { filePath }
+      ));
+    }
   }
 } 
