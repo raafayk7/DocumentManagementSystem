@@ -2,6 +2,7 @@ import { db } from '../../db/index.js';
 import { users } from '../../db/schema.js';
 import { IUserRepository, UserFilterQuery } from './user.repository.interface.js';
 import { RegisterDto } from '../dto/register.dto.js';
+import { User } from '../../domain/entities/User.js';
 import { eq, and } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,9 +12,7 @@ import { sql } from 'drizzle-orm';
 
 @injectable()
 export class DrizzleUserRepository implements IUserRepository {
-  async save(data: RegisterDto): Promise<{
-    id: string; email: string; role: string; createdAt: Date; updatedAt: Date;
-  }> {
+  async save(data: RegisterDto): Promise<User> {
     const existing = await db.select().from(users).where(eq(users.email, data.email)).execute();
     if (existing.length > 0) {
       const err = new Error('Email already in use');
@@ -32,13 +31,37 @@ export class DrizzleUserRepository implements IUserRepository {
     if (newUsers.length === 0) {
       throw new Error('Failed to create user');
     }
-    const { id, email, role, createdAt, updatedAt } = newUsers[0];
-    return { id, email, role, createdAt, updatedAt };
+    const userData = newUsers[0];
+    return User.fromRepository({
+      ...userData,
+      role: userData.role as 'user' | 'admin'
+    });
   }
 
-  async find(query?: UserFilterQuery, pagination?: PaginationInput): Promise<PaginationOutput<{
-    id: string; email: string; role: string; createdAt: Date; updatedAt: Date;
-  }>> {
+  async saveUser(user: User): Promise<User> {
+    const userData = user.toRepository();
+    const updatedUsers = await db.update(users)
+      .set({
+        email: userData.email,
+        passwordHash: userData.passwordHash,
+        role: userData.role,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userData.id))
+      .returning()
+      .execute();
+    
+    if (updatedUsers.length === 0) {
+      throw new Error('Failed to update user');
+    }
+    
+    return User.fromRepository({
+      ...updatedUsers[0],
+      role: updatedUsers[0].role as 'user' | 'admin'
+    });
+  }
+
+  async find(query?: UserFilterQuery, pagination?: PaginationInput): Promise<PaginationOutput<User>> {
     const conditions = [];
     
     if (query?.email) {
@@ -80,14 +103,16 @@ export class DrizzleUserRepository implements IUserRepository {
     const paginationMetadata = calculatePaginationMetadata(page, limit, total);
 
     return {
-      data: results,
+      data: results.map(user => User.fromRepository({
+        ...user,
+        role: user.role as 'user' | 'admin',
+        passwordHash: '' // Public data doesn't include password hash
+      })),
       pagination: paginationMetadata
     };
   }
 
-  async findOne(query: UserFilterQuery): Promise<{
-    id: string; email: string; passwordHash: string; role: string; createdAt: Date; updatedAt: Date;
-  } | null> {
+  async findOne(query: UserFilterQuery): Promise<User | null> {
     const conditions = [];
     
     if (query?.email) {
@@ -109,12 +134,13 @@ export class DrizzleUserRepository implements IUserRepository {
       return null;
     }
 
-    return results[0];
+    return User.fromRepository({
+      ...results[0],
+      role: results[0].role as 'user' | 'admin'
+    });
   }
 
-  async findById(id: string): Promise<{
-    id: string; email: string; role: string; createdAt: Date; updatedAt: Date;
-  } | null> {
+  async findById(id: string): Promise<User | null> {
     const results = await db.select({
       id: users.id,
       email: users.email,
@@ -130,7 +156,11 @@ export class DrizzleUserRepository implements IUserRepository {
       return null;
     }
 
-    return results[0];
+    return User.fromRepository({
+      ...results[0],
+      role: results[0].role as 'user' | 'admin',
+      passwordHash: '' // Public data doesn't include password hash
+    });
   }
 
   async exists(query: UserFilterQuery): Promise<boolean> {

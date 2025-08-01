@@ -1,5 +1,6 @@
 import { CreateDocumentDto, UpdateDocumentDto, DocumentDto } from '../dto/documents.dto.js';
 import { PaginationInput, PaginationOutput } from '../../common/dto/pagination.dto.js';
+import { Document } from '../../domain/entities/Document.js';
 
 export interface DocumentFilterQuery {
   name?: string;
@@ -11,12 +12,27 @@ export interface DocumentFilterQuery {
 }
 
 export interface IDocumentRepository {
-  save(data: CreateDocumentDto): Promise<DocumentDto>;
-  find(query?: DocumentFilterQuery, pagination?: PaginationInput): Promise<PaginationOutput<DocumentDto>>;
-  findOne(query: DocumentFilterQuery): Promise<DocumentDto | null>;
-  findById(id: string): Promise<DocumentDto | null>;
-  update(id: string, data: UpdateDocumentDto): Promise<DocumentDto | null>;
+  // Save a new document (from DTO)
+  save(data: CreateDocumentDto): Promise<Document>;
+  
+  // Find documents with pagination
+  find(query?: DocumentFilterQuery, pagination?: PaginationInput): Promise<PaginationOutput<Document>>;
+  
+  // Find one document
+  findOne(query: DocumentFilterQuery): Promise<Document | null>;
+  
+  // Find document by ID
+  findById(id: string): Promise<Document | null>;
+  
+  // Update document
+  update(id: string, data: UpdateDocumentDto): Promise<Document | null>;
+  
+  // Delete document
   delete(id: string): Promise<boolean>;
+  
+  // Check if document exists
   exists(query: DocumentFilterQuery): Promise<boolean>;
+  
+  // Count documents
   count(query?: DocumentFilterQuery): Promise<number>;
 } 

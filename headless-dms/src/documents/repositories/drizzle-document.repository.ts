@@ -8,10 +8,17 @@ import { arrayOverlaps } from 'drizzle-orm';
 import fs from 'fs';
 import { injectable } from 'tsyringe';
 import { PaginationInput, PaginationOutput, calculatePaginationMetadata } from '../../common/dto/pagination.dto.js';
+import { Document } from '../../domain/entities/Document.js';
 
 @injectable()
 export class DrizzleDocumentRepository implements IDocumentRepository {
-  async save(data: CreateDocumentDto): Promise<DocumentDto> {
+  async save(data: CreateDocumentDto): Promise<Document> {
+    const existing = await db.select().from(documents).where(eq(documents.name, data.name)).execute();
+    if (existing.length > 0) {
+      const err = new Error('Document already exists');
+      (err as any).statusCode = 409;
+      throw err;
+    }
     const newDocuments = await db.insert(documents).values({
       id: uuidv4(),
       name: data.name,
@@ -26,10 +33,15 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
     if (newDocuments.length === 0) {
       throw new Error('Failed to create document');
     }
-    return DocumentSchema.parse(newDocuments[0]);
+    const documentData = newDocuments[0];
+    return Document.fromRepository({
+      ...documentData,
+      tags: documentData.tags as string[],
+      metadata: documentData.metadata as Record<string, string>,
+    });
   }
 
-  async find(query?: DocumentFilterQuery, pagination?: PaginationInput): Promise<PaginationOutput<DocumentDto>> {
+  async find(query?: DocumentFilterQuery, pagination?: PaginationInput): Promise<PaginationOutput<Document>> {
     const conditions = [];
     
     if (query?.name) {
@@ -70,7 +82,17 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
     const offset = (page - 1) * limit;
 
     // Get paginated results
-    const results = await db.select()
+    const results = await db.select({
+      id: documents.id,
+      name: documents.name,
+      filePath: documents.filePath,
+      mimeType: documents.mimeType,
+      size: documents.size,
+      tags: documents.tags,
+      metadata: documents.metadata,
+      createdAt: documents.createdAt,
+      updatedAt: documents.updatedAt,
+    })
       .from(documents)
       .where(whereClause)
       .limit(limit)
@@ -82,12 +104,16 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
     const paginationMetadata = calculatePaginationMetadata(page, limit, total);
 
     return {
-      data: documentsList,
+      data: results.map(document => Document.fromRepository({
+        ...document,
+        tags: document.tags as string[],
+        metadata: document.metadata as Record<string, string>,
+      })),
       pagination: paginationMetadata
     };
   }
 
-  async findOne(query: DocumentFilterQuery): Promise<DocumentDto | null> {
+  async findOne(query: DocumentFilterQuery): Promise<Document | null> {
     const conditions = [];
     
     if (query?.name) {
@@ -124,10 +150,14 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       return null;
     }
 
-    return DocumentSchema.parse(results[0]);
+    return Document.fromRepository({
+      ...results[0],
+      tags: results[0].tags as string[],
+      metadata: results[0].metadata as Record<string, string>,
+    });
   }
 
-  async findById(id: string): Promise<DocumentDto | null> {
+  async findById(id: string): Promise<Document | null> {
     const results = await db.select()
       .from(documents)
       .where(eq(documents.id, id))
@@ -137,10 +167,14 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       return null;
     }
 
-    return DocumentSchema.parse(results[0]);
+    return Document.fromRepository({
+      ...results[0],
+      tags: results[0].tags as string[],
+      metadata: results[0].metadata as Record<string, string>,
+    });
   }
 
-  async update(id: string, data: UpdateDocumentDto): Promise<DocumentDto | null> {
+  async update(id: string, data: UpdateDocumentDto): Promise<Document | null> {
     const updateData: any = {};
     
     if (data.name !== undefined) updateData.name = data.name;
@@ -158,7 +192,11 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       return null;
     }
 
-    return DocumentSchema.parse(results[0]);
+    return Document.fromRepository({
+      ...results[0],
+      tags: results[0].tags as string[],
+      metadata: results[0].metadata as Record<string, string>,
+    });
   }
 
   async delete(id: string): Promise<boolean> {

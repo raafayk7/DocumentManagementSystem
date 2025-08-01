@@ -109,13 +109,6 @@ export default async function authRoutes(app: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       
-      // // Create a fresh AuthService instance to bypass caching issues
-      // const freshAuthService = new (await import('./auth.service.js')).AuthService(
-      //   container.resolve('IUserRepository'),
-      //   container.resolve('ILogger')
-      // );
-      
-      // const result = await freshAuthService.removeUser(id);
       const result = await authService.removeUser(id);
       
       matchRes(result, {
@@ -132,6 +125,102 @@ export default async function authRoutes(app: FastifyInstance) {
     } catch (err: any) {
       logger.error('User deletion failed', { error: err.message, statusCode: err.statusCode || 404, userId: (request.params as any).id });
       reply.code(err.statusCode || 404).send({ error: err.message });
+    }
+  });
+
+  // GET /auth/users/:id - Admin only (protected route)
+  app.get('/auth/users/:id', { 
+    preHandler: [authenticateJWT, requireRole('admin')]  
+  }, async (request, reply) => {
+    logger.logRequest(request);
+    
+    try {
+      const { id } = request.params as { id: string };
+      
+      const result = await authService.getUserById(id);
+      
+      matchRes(result, {
+        Ok: (user) => {
+          logger.logResponse(reply, { statusCode: 200, userId: id });
+          reply.send(user);
+        },
+        Err: (error) => {
+          logger.error('User retrieval failed', { error: error.message, operation: error.operation, userId: id });
+          const statusCode = error.operation.includes('getUserById') && error.message.includes('not found') ? 404 : 500;
+          reply.code(statusCode).send({ error: error.message });
+        }
+      });
+    } catch (err: any) {
+      logger.error('User retrieval failed', { error: err.message, statusCode: err.statusCode || 404, userId: (request.params as any).id });
+      reply.code(err.statusCode || 404).send({ error: err.message });
+    }
+  });
+
+  // PATCH /auth/users/:id/password - Admin only (protected route)
+  app.patch('/auth/users/:id/password', { 
+    preHandler: [authenticateJWT, requireRole('admin')]  
+  }, async (request, reply) => {
+    logger.logRequest(request);
+    
+    try {
+      const { id } = request.params as { id: string };
+      const { newPassword } = request.body as { newPassword: string };
+      
+      if (!newPassword) {
+        reply.code(400).send({ error: 'New password is required' });
+        return;
+      }
+      
+      const result = await authService.changeUserPassword(id, newPassword);
+      
+      matchRes(result, {
+        Ok: (user) => {
+          logger.logResponse(reply, { statusCode: 200, userId: id });
+          reply.send({ message: 'Password changed successfully', user });
+        },
+        Err: (error) => {
+          logger.error('Password change failed', { error: error.message, operation: error.operation, userId: id });
+          const statusCode = error.operation.includes('changeUserPassword') && error.message.includes('not found') ? 404 : 400;
+          reply.code(statusCode).send({ error: error.message });
+        }
+      });
+    } catch (err: any) {
+      logger.error('Password change failed', { error: err.message, statusCode: err.statusCode || 400, userId: (request.params as any).id });
+      reply.code(err.statusCode || 400).send({ error: err.message });
+    }
+  });
+
+  // PATCH /auth/users/:id/role - Admin only (protected route)
+  app.patch('/auth/users/:id/role', { 
+    preHandler: [authenticateJWT, requireRole('admin')]  
+  }, async (request, reply) => {
+    logger.logRequest(request);
+    
+    try {
+      const { id } = request.params as { id: string };
+      const { newRole } = request.body as { newRole: 'user' | 'admin' };
+      
+      if (!newRole || (newRole !== 'user' && newRole !== 'admin')) {
+        reply.code(400).send({ error: 'Valid role (user or admin) is required' });
+        return;
+      }
+      
+      const result = await authService.changeUserRole(id, newRole);
+      
+      matchRes(result, {
+        Ok: (user) => {
+          logger.logResponse(reply, { statusCode: 200, userId: id, newRole });
+          reply.send({ message: 'Role changed successfully', user });
+        },
+        Err: (error) => {
+          logger.error('Role change failed', { error: error.message, operation: error.operation, userId: id, newRole });
+          const statusCode = error.operation.includes('changeUserRole') && error.message.includes('not found') ? 404 : 400;
+          reply.code(statusCode).send({ error: error.message });
+        }
+      });
+    } catch (err: any) {
+      logger.error('Role change failed', { error: err.message, statusCode: err.statusCode || 400, userId: (request.params as any).id });
+      reply.code(err.statusCode || 400).send({ error: err.message });
     }
   });
 }
