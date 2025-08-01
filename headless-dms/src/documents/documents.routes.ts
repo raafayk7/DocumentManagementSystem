@@ -9,6 +9,7 @@ import { container } from '../common/container.js';
 import { ILogger } from '../common/services/logger.service.interface.js';
 import { PaginationInputSchema } from '../common/dto/pagination.dto.js';
 import { matchRes } from '@carbonteq/fp';
+import { Document } from '../domain/entities/Document.js';
 
 // Get service instances from DI container
 const documentService = container.resolve(DocumentService);
@@ -50,14 +51,15 @@ export default async function documentsRoutes(app: FastifyInstance) {
       // Parse pagination parameters
       const pagination = zodValidate(PaginationInputSchema, { page, limit, sort, order });
       
-      // Parse filter parameters
+      // Parse filter parameters using entity's parsing logic
       let parsedMetadata: Record<string, string> | undefined;
       if (metadata) {
-        try {
-          parsedMetadata = typeof metadata === 'string' ? JSON.parse(metadata) : metadata;
-        } catch (error) {
-          logger.warn('Invalid metadata format', { metadata, error: error instanceof Error ? error.message : String(error) });
+        const metadataResult = Document.parseMetadata(metadata);
+        if (metadataResult.isErr()) {
+          logger.warn('Invalid metadata format', { metadata, error: metadataResult.unwrapErr() });
           parsedMetadata = undefined;
+        } else {
+          parsedMetadata = metadataResult.unwrap();
         }
       }
       

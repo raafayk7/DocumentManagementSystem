@@ -13,29 +13,8 @@ import { sql } from 'drizzle-orm';
 @injectable()
 export class DrizzleUserRepository implements IUserRepository {
   async save(data: RegisterDto): Promise<User> {
-    const existing = await db.select().from(users).where(eq(users.email, data.email)).execute();
-    if (existing.length > 0) {
-      const err = new Error('Email already in use');
-      (err as any).statusCode = 409;
-      throw err;
-    }
-    const passwordHash = await bcrypt.hash(data.password, 10);
-    const newUsers = await db.insert(users).values({
-      id: uuidv4(),
-      email: data.email,
-      passwordHash,
-      role: data.role,
-    })
-    .returning()
-    .execute();
-    if (newUsers.length === 0) {
-      throw new Error('Failed to create user');
-    }
-    const userData = newUsers[0];
-    return User.fromRepository({
-      ...userData,
-      role: userData.role as 'user' | 'admin'
-    });
+    // This method is deprecated - use saveUser with entity instead
+    throw new Error('Use saveUser method with User entity instead');
   }
 
   async saveUser(user: User): Promise<User> {

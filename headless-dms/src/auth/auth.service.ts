@@ -32,6 +32,17 @@ export class AuthService {
     this.logger.info('User registration attempt', { email: registerDto.email, role: registerDto.role });
     
     try {
+      // Check email uniqueness (business rule)
+      const emailExists = await this.userRepository.exists({ email: registerDto.email });
+      if (emailExists) {
+        this.logger.warn('User registration failed - email already exists', { email: registerDto.email });
+        return Result.Err(new AuthError(
+          'AuthService.register.emailExists',
+          'Email already in use',
+          { email: registerDto.email }
+        ));
+      }
+
       // Use User entity factory to create and validate user
       const userResult = await User.create(registerDto.email, registerDto.password, registerDto.role);
       if (userResult.isErr()) {
