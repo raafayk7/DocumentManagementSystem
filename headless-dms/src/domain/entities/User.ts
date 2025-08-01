@@ -1,4 +1,5 @@
 import { Result } from '@carbonteq/fp';
+import * as bcrypt from 'bcrypt';
 
 export interface UserProps {
   id: string;
@@ -35,7 +36,7 @@ export class User {
   get updatedAt(): Date { return this._updatedAt; }
 
   // Factory method for creating new users
-  static create(email: string, password: string, role: 'user' | 'admin'): Result<User, string> {
+  static async create(email: string, password: string, role: 'user' | 'admin'): Promise<Result<User, string>> {
     // Basic validation
     if (!User.validateEmail(email)) {
       return Result.Err('Invalid email format');
@@ -50,7 +51,7 @@ export class User {
     }
 
     // Hash password
-    const passwordHash = User.hashPassword(password);
+    const passwordHash = await User.hashPassword(password);
 
     const userProps: UserProps = {
       id: crypto.randomUUID(),
@@ -83,19 +84,18 @@ export class User {
     return role === 'user' || role === 'admin';
   }
 
-  // Password hashing (simplified - in real app, use bcrypt)
-  static hashPassword(password: string): string {
-    // This is a placeholder - in real implementation, use bcrypt
-    return `hashed_${password}`;
+  // Password hashing using bcrypt
+  static async hashPassword(password: string): Promise<string> {
+    return await bcrypt.hash(password, 10);
   }
 
   // State-changing operations
-  changePassword(newPassword: string): Result<User, string> {
+  async changePassword(newPassword: string): Promise<Result<User, string>> {
     if (!User.validatePassword(newPassword)) {
       return Result.Err('Password must be at least 8 characters');
     }
 
-    const newPasswordHash = User.hashPassword(newPassword);
+    const newPasswordHash = await User.hashPassword(newPassword);
     const updatedProps: UserProps = {
       ...this.toRepository(),
       passwordHash: newPasswordHash,
@@ -134,9 +134,8 @@ export class User {
   }
 
   // Business rule: Password verification
-  verifyPassword(password: string): boolean {
-    // In real implementation, use bcrypt.compare
-    return this._passwordHash === User.hashPassword(password);
+  async verifyPassword(password: string): Promise<boolean> {
+    return await bcrypt.compare(password, this._passwordHash);
   }
 
   // Business rule: Role-based permissions

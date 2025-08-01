@@ -40,25 +40,51 @@ export class DrizzleUserRepository implements IUserRepository {
 
   async saveUser(user: User): Promise<User> {
     const userData = user.toRepository();
-    const updatedUsers = await db.update(users)
-      .set({
+    
+    // Check if user exists to determine insert vs update
+    const existing = await db.select().from(users).where(eq(users.id, userData.id)).execute();
+    
+    if (existing.length === 0) {
+      // Create new user
+      const newUsers = await db.insert(users).values({
+        id: userData.id,
         email: userData.email,
         passwordHash: userData.passwordHash,
         role: userData.role,
-        updatedAt: new Date()
       })
-      .where(eq(users.id, userData.id))
       .returning()
       .execute();
-    
-    if (updatedUsers.length === 0) {
-      throw new Error('Failed to update user');
+      
+      if (newUsers.length === 0) {
+        throw new Error('Failed to create user');
+      }
+      
+      return User.fromRepository({
+        ...newUsers[0],
+        role: newUsers[0].role as 'user' | 'admin'
+      });
+    } else {
+      // Update existing user
+      const updatedUsers = await db.update(users)
+        .set({
+          email: userData.email,
+          passwordHash: userData.passwordHash,
+          role: userData.role,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, userData.id))
+        .returning()
+        .execute();
+      
+      if (updatedUsers.length === 0) {
+        throw new Error('Failed to update user');
+      }
+      
+      return User.fromRepository({
+        ...updatedUsers[0],
+        role: updatedUsers[0].role as 'user' | 'admin'
+      });
     }
-    
-    return User.fromRepository({
-      ...updatedUsers[0],
-      role: updatedUsers[0].role as 'user' | 'admin'
-    });
   }
 
   async find(query?: UserFilterQuery, pagination?: PaginationInput): Promise<PaginationOutput<User>> {

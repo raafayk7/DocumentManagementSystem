@@ -3,7 +3,7 @@ import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { User } from '../domain/entities/User.js';
 import * as bcrypt from 'bcrypt';
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { injectable, inject } from 'tsyringe';
 import { ILogger } from '../common/services/logger.service.interface.js';
 import { PaginationInput, PaginationOutput } from '../common/dto/pagination.dto.js';
@@ -33,7 +33,7 @@ export class AuthService {
     
     try {
       // Use User entity factory to create and validate user
-      const userResult = User.create(registerDto.email, registerDto.password, registerDto.role);
+      const userResult = await User.create(registerDto.email, registerDto.password, registerDto.role);
       if (userResult.isErr()) {
         this.logger.warn('User creation failed - validation error', { 
           email: registerDto.email, 
@@ -48,8 +48,8 @@ export class AuthService {
 
       const user = userResult.unwrap();
       
-      // Save to repository
-      const savedUser = await this.userRepository.save(registerDto);
+      // Save the validated entity to repository
+      const savedUser = await this.userRepository.saveUser(user);
       this.logger.info('User registered successfully', { userId: savedUser.id, email: savedUser.email });
       return Result.Ok(savedUser);
     } catch (error) {
@@ -78,7 +78,7 @@ export class AuthService {
       }
   
       // Use User entity's password verification
-      const isMatch = user.verifyPassword(loginDto.password);
+      const isMatch = await user.verifyPassword(loginDto.password);
       if (!isMatch) {
         this.logger.warn('Login failed - invalid password', { email: loginDto.email });
         return Result.Err(new AuthError(
@@ -107,7 +107,10 @@ export class AuthService {
     }
   }
 
-  async findAllUsers(query?: { email?: string; role?: string }, pagination?: PaginationInput): Promise<Result<PaginationOutput<User>, AuthError>> {
+  async findAllUsers(query?: {
+    email?: string;
+    role?: string;
+  }, pagination?: PaginationInput): Promise<Result<PaginationOutput<User>, AuthError>> {
     this.logger.debug('Finding users', { query, pagination });
     
     try {
@@ -170,7 +173,7 @@ export class AuthService {
       }
 
       // Use User entity's state-changing operation
-      const updatedUser = user.changePassword(newPassword);
+      const updatedUser = await user.changePassword(newPassword);
       if (updatedUser.isErr()) {
         this.logger.warn('Password change failed - validation error', { 
           userId, 

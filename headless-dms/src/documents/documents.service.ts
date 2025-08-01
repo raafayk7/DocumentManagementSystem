@@ -9,6 +9,7 @@ import { ILogger } from '../common/services/logger.service.interface.js';
 import { PaginationInput, PaginationOutput } from '../common/dto/pagination.dto.js';
 import { Result } from '@carbonteq/fp';
 import { DocumentError } from '../common/errors/application.errors.js';
+import { Document } from '../domain/entities/Document.js';
 dotenv.config();
 
 @injectable()
@@ -21,13 +22,29 @@ export class DocumentService {
     this.logger = this.logger.child({ service: 'DocumentService' });
   }
 
-  async createDocument(data: CreateDocumentDto): Promise<Result<DocumentDto, DocumentError>> {
+  async createDocument(data: CreateDocumentDto): Promise<Result<Document, DocumentError>> {
     this.logger.info('Creating document', { name: data.name, size: data.size });
     
     try {
-      const document = await this.documentRepository.save(data);
-      this.logger.info('Document created successfully', { documentId: document.id, name: document.name });
-      return Result.Ok(document);
+      const documentResult = Document.create(data.name, data.filePath, data.mimeType, data.size, data.tags, data.metadata);
+      if (documentResult.isErr()) {
+        this.logger.warn('Document creation failed - validation error', { 
+          name: data.name, 
+          error: documentResult.unwrapErr() 
+        });
+        return Result.Err(new DocumentError(
+          'DocumentService.createDocument.validation',
+          documentResult.unwrapErr(),
+          { name: data.name, size: data.size }
+        ));
+      }
+
+      const document = documentResult.unwrap();
+      
+      // Save to repository
+      const savedDocument = await this.documentRepository.save(document);
+      this.logger.info('Document created successfully', { documentId: savedDocument.id, name: savedDocument.name });
+      return Result.Ok(savedDocument);
     } catch (error) {
       this.logger.logError(error as Error, { name: data.name });
       return Result.Err(new DocumentError(
@@ -45,7 +62,7 @@ export class DocumentService {
     to?: string;
     tags?: string | string[];
     metadata?: Record<string, string>;
-  }, pagination?: PaginationInput): Promise<Result<PaginationOutput<DocumentDto>, DocumentError>> {
+  }, pagination?: PaginationInput): Promise<Result<PaginationOutput<Document>, DocumentError>> {
     this.logger.debug('Finding documents', { query, pagination });
     
     try {
@@ -67,7 +84,7 @@ export class DocumentService {
     }
   }
 
-  async findOneDocument(id: string): Promise<Result<DocumentDto, DocumentError>> {
+  async findOneDocument(id: string): Promise<Result<Document, DocumentError>> {
     this.logger.debug('Finding document by ID', { documentId: id });
     
     try {
@@ -92,7 +109,7 @@ export class DocumentService {
     }
   }
 
-  async updateDocument(id: string, data: UpdateDocumentDto): Promise<Result<DocumentDto, DocumentError>> {
+  async updateDocument(id: string, data: UpdateDocumentDto): Promise<Result<Document, DocumentError>> {
     this.logger.info('Updating document', { documentId: id, updates: data });
     
     try {
