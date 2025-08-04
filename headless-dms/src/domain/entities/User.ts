@@ -77,11 +77,13 @@ export class User {
   }
 
   static validatePassword(password: string): boolean {
-    return password.length >= 8;
+    // Check if password is present and has minimum length
+    return Boolean(password) && password.length >= 8;
   }
 
   static validateRole(role: string): role is 'user' | 'admin' {
-    return role === 'user' || role === 'admin';
+    // Check if role is present and has valid value
+    return Boolean(role) && (role === 'user' || role === 'admin');
   }
 
   // Password hashing using bcrypt

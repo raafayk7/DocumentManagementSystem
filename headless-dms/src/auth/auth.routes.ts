@@ -166,11 +166,6 @@ export default async function authRoutes(app: FastifyInstance) {
       const { id } = request.params as { id: string };
       const { newPassword } = request.body as { newPassword: string };
       
-      if (!newPassword) {
-        reply.code(400).send({ error: 'New password is required' });
-        return;
-      }
-      
       const result = await authService.changeUserPassword(id, newPassword);
       
       matchRes(result, {
@@ -199,11 +194,6 @@ export default async function authRoutes(app: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       const { newRole } = request.body as { newRole: 'user' | 'admin' };
-      
-      if (!newRole || (newRole !== 'user' && newRole !== 'admin')) {
-        reply.code(400).send({ error: 'Valid role (user or admin) is required' });
-        return;
-      }
       
       const result = await authService.changeUserRole(id, newRole);
       

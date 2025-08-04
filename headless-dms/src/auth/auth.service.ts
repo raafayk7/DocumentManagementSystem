@@ -9,6 +9,7 @@ import { ILogger } from '../common/services/logger.service.interface.js';
 import { PaginationInput, PaginationOutput } from '../common/dto/pagination.dto.js';
 import { Result } from '@carbonteq/fp';
 import { AuthError } from '../common/errors/application.errors.js';
+import { UserValidator,EmailValidator} from '../domain/validators/index.js';
 
 interface LoginResult {
   access_token: string;
@@ -23,7 +24,8 @@ interface LoginResult {
 export class AuthService {
   constructor(
     @inject('IUserRepository') private userRepository: IUserRepository,
-    @inject('ILogger') private logger: ILogger
+    @inject('ILogger') private logger: ILogger,
+    @inject('EmailValidator') private emailValidator: EmailValidator
   ) {
     this.logger = this.logger.child({ service: 'AuthService' });
   }
@@ -32,19 +34,56 @@ export class AuthService {
     this.logger.info('User registration attempt', { email: registerDto.email, role: registerDto.role });
     
     try {
-      // Use User entity factory to create and validate user
-      const userResult = await User.create(registerDto.email, registerDto.password, registerDto.role);
-      if (userResult.isErr()) {
-        this.logger.warn('User creation failed - validation error', { 
+      // Check email uniqueness (business rule)
+      const emailValidation = this.emailValidator.validate(registerDto.email);
+      if (emailValidation.isErr()) {
+        this.logger.warn('User registration failed - email validation error', { email: registerDto.email });
+        return Result.Err(new AuthError(
+          'AuthService.register.emailValidation',
+          emailValidation.unwrapErr(),
+          { email: registerDto.email }
+        ));
+      }
+      // Check email uniqueness using repository exists method
+      const emailExists = await this.userRepository.exists({ email: registerDto.email });
+      if (emailExists) {
+        this.logger.warn('User registration failed - email already exists', { email: registerDto.email });
+        return Result.Err(new AuthError(
+          'AuthService.register.emailExists',
+          'Email already in use',
+          { email: registerDto.email }
+        ));
+      }
+
+      // Validate password and role with validators
+      const passwordValidation = UserValidator.validatePassword(registerDto.password);
+      if (passwordValidation.isErr()) {
+        this.logger.warn('User creation failed - password validation error', { 
           email: registerDto.email, 
-          error: userResult.unwrapErr() 
+          error: passwordValidation.unwrapErr() 
         });
         return Result.Err(new AuthError(
-          'AuthService.register.validation',
-          userResult.unwrapErr(),
+          'AuthService.register.passwordValidation',
+          passwordValidation.unwrapErr(),
+          { email: registerDto.email }
+        ));
+      }
+
+      const roleValidation = UserValidator.validateRole(registerDto.role);
+      if (roleValidation.isErr()) {
+        this.logger.warn('User creation failed - role validation error', { 
+          email: registerDto.email, 
+          error: roleValidation.unwrapErr() 
+        });
+        return Result.Err(new AuthError(
+          'AuthService.register.roleValidation',
+          roleValidation.unwrapErr(),
           { email: registerDto.email, role: registerDto.role }
         ));
       }
+
+      // Use User entity factory to create user
+      const userResult = await User.create(registerDto.email, registerDto.password, registerDto.role);
 
       const user = userResult.unwrap();
       

@@ -10,6 +10,7 @@ import { PaginationInput, PaginationOutput } from '../common/dto/pagination.dto.
 import { Result } from '@carbonteq/fp';
 import { DocumentError } from '../common/errors/application.errors.js';
 import { Document } from '../domain/entities/Document.js';
+import { DocumentValidator} from '../domain/validators/index.js';
 dotenv.config();
 
 @injectable()
@@ -26,6 +27,57 @@ export class DocumentService {
     this.logger.info('Creating document', { name: data.name, size: data.size });
     
     try {
+      // Validate with DocumentValidator
+      const nameValidation = DocumentValidator.validateName(data.name);
+      if (nameValidation.isErr()) {
+        this.logger.warn('Document creation failed - name validation error', { 
+          name: data.name, 
+          error: nameValidation.unwrapErr() 
+        });
+        return Result.Err(new DocumentError(
+          'DocumentService.createDocument.nameValidation',
+          nameValidation.unwrapErr(),
+          { name: data.name }
+        ));
+      }
+
+      const fileSizeValidation = DocumentValidator.validateFileSize(data.size);
+      if (fileSizeValidation.isErr()) {
+        this.logger.warn('Document creation failed - file size validation error', { 
+          name: data.name, 
+          error: fileSizeValidation.unwrapErr() 
+        });
+        return Result.Err(new DocumentError(
+          'DocumentService.createDocument.fileSizeValidation',
+          fileSizeValidation.unwrapErr(),
+          { name: data.name, size: data.size }
+        ));
+      }
+
+      const fileTypeValidation = DocumentValidator.validateFileType(data.mimeType);
+      if (fileTypeValidation.isErr()) {
+        this.logger.warn('Document creation failed - file type validation error', { 
+          name: data.name, 
+          error: fileTypeValidation.unwrapErr() 
+        });
+        return Result.Err(new DocumentError(
+          'DocumentService.createDocument.fileTypeValidation',
+          fileTypeValidation.unwrapErr(),
+          { name: data.name, mimeType: data.mimeType }
+        ));
+      }
+
+      // Check document name uniqueness (business rule)
+      const nameExists = await this.documentRepository.exists({ name: data.name });
+      if (nameExists) {
+        this.logger.warn('Document creation failed - name already exists', { name: data.name });
+        return Result.Err(new DocumentError(
+          'DocumentService.createDocument.nameExists',
+          'Document name already exists',
+          { name: data.name }
+        ));
+      }
+
       const documentResult = Document.create(data.name, data.filePath, data.mimeType, data.size, data.tags, data.metadata);
       if (documentResult.isErr()) {
         this.logger.warn('Document creation failed - validation error', { 
@@ -113,8 +165,36 @@ export class DocumentService {
     this.logger.info('Updating document', { documentId: id, updates: data });
     
     try {
-    const updated = await this.documentRepository.update(id, data);
-    if (!updated) {
+      // Validate with DocumentValidator if name is being updated
+      if (data.name) {
+        const nameValidation = DocumentValidator.validateName(data.name);
+        if (nameValidation.isErr()) {
+          this.logger.warn('Document update failed - name validation error', { 
+            documentId: id, 
+            name: data.name, 
+            error: nameValidation.unwrapErr() 
+          });
+          return Result.Err(new DocumentError(
+            'DocumentService.updateDocument.nameValidation',
+            nameValidation.unwrapErr(),
+            { documentId: id, name: data.name }
+          ));
+        }
+
+        // Check name uniqueness if name is being updated
+        const existingDoc = await this.documentRepository.findOne({ name: data.name });
+        if (existingDoc && existingDoc.id !== id) {
+          this.logger.warn('Document update failed - name already exists', { documentId: id, name: data.name });
+          return Result.Err(new DocumentError(
+            'DocumentService.updateDocument.nameExists',
+            'Document name already exists',
+            { documentId: id, name: data.name }
+          ));
+        }
+      }
+
+      const updated = await this.documentRepository.update(id, data);
+      if (!updated) {
         this.logger.warn('Document not found for update', { documentId: id });
         return Result.Err(new DocumentError(
           'DocumentService.updateDocument',
@@ -182,32 +262,27 @@ export class DocumentService {
         mimeType: fileInfo.mimeType 
       });
 
-      // Parse tags and metadata if present
-      let tags: string[] = [];
-      if (fields.tags) {
-        try {
-          const parsed = JSON.parse(fields.tags);
-          if (Array.isArray(parsed)) {
-            tags = parsed.map(String);
-          } else if (typeof parsed === 'string') {
-            tags = [parsed];
-          } else {
-            tags = [];
-          }
-        } catch {
-          // fallback: comma-separated string
-          tags = fields.tags.split(',').map((t: string) => t.trim());
-        }
+      // Parse tags using entity's parsing logic
+      const tagsResult = Document.parseTags(fields.tags);
+      if (tagsResult.isErr()) {
+        return Result.Err(new DocumentError(
+          'DocumentService.uploadDocument.parseTags',
+          tagsResult.unwrapErr(),
+          { fileName: fileInfo.name }
+        ));
       }
+      const tags = tagsResult.unwrap();
       
-      let metadata: Record<string, string> = {};
-      if (fields.metadata) {
-        try {
-          metadata = JSON.parse(fields.metadata);
-        } catch {
-          metadata = {};
-        }
+      // Parse metadata using entity's parsing logic
+      const metadataResult = Document.parseMetadata(fields.metadata);
+      if (metadataResult.isErr()) {
+        return Result.Err(new DocumentError(
+          'DocumentService.uploadDocument.parseMetadata',
+          metadataResult.unwrapErr(),
+          { fileName: fileInfo.name }
+        ));
       }
+      const metadata = metadataResult.unwrap();
 
       this.logger.debug('Parsed upload data', { tags, metadata });
 
