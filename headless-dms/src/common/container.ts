@@ -13,6 +13,8 @@ import { ConsoleLogger } from './services/console-logger.service.js';
 import { FileLogger } from './services/file-logger.service.js';
 import { IValidator } from '../domain/validators/common/IValidator.js';
 import {EmailValidator, PasswordValidator, UserValidator, DocumentValidator ,JsonValidator} from '../domain/validators/index.js';
+import { IAuthStrategy } from '../auth/interfaces/IAuthStrategy.js';
+import { JwtAuthStrategy, LocalAuthStrategy } from '../auth/strategies/index.js';
 
 // Register repositories
 container.registerSingleton<IDocumentRepository>('IDocumentRepository', DrizzleDocumentRepository);
@@ -23,6 +25,14 @@ container.registerSingleton<IFileService>('IFileService', LocalFileService);
 container.registerSingleton<ILogger>('ILogger', ConsoleLogger);
 // Uncomment to use FileLogger instead:
 // container.registerSingleton<ILogger>('ILogger', FileLogger);
+
+// Register authentication strategies
+// Use JWT strategy for production, Local strategy for testing
+if (process.env.NODE_ENV === 'test') {
+  container.registerSingleton<IAuthStrategy>('IAuthStrategy', LocalAuthStrategy);
+} else {
+  container.registerSingleton<IAuthStrategy>('IAuthStrategy', JwtAuthStrategy);
+}
 
 // Register services
 container.registerSingleton(DocumentService);
