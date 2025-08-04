@@ -1,7 +1,6 @@
 import { db } from '../../db/index.js';
 import { documents } from '../../db/schema.js';
 import { IDocumentRepository, DocumentFilterQuery } from './documents.repository.interface.js';
-import { CreateDocumentDto, UpdateDocumentDto, DocumentDto, DocumentSchema, DocumentsListSchema } from '../dto/documents.dto.js';
 import { v4 as uuidv4 } from 'uuid';
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { arrayOverlaps } from 'drizzle-orm';
@@ -12,32 +11,30 @@ import { Document } from '../../domain/entities/Document.js';
 
 @injectable()
 export class DrizzleDocumentRepository implements IDocumentRepository {
-  async save(data: CreateDocumentDto): Promise<Document> {
-    const existing = await db.select().from(documents).where(eq(documents.name, data.name)).execute();
-    if (existing.length > 0) {
-      const err = new Error('Document already exists');
-      (err as any).statusCode = 409;
-      throw err;
-    }
+  async save(document: Document): Promise<Document> {
+    const documentData = document.toRepository();
+    
     const newDocuments = await db.insert(documents).values({
-      id: uuidv4(),
-      name: data.name,
-      filePath: data.filePath,
-      mimeType: data.mimeType,
-      size: data.size,
-      tags: data.tags ?? [],
-      metadata: data.metadata ?? {},
+      id: documentData.id,
+      name: documentData.name,
+      filePath: documentData.filePath,
+      mimeType: documentData.mimeType,
+      size: documentData.size,
+      tags: documentData.tags,
+      metadata: documentData.metadata,
     })
     .returning()
     .execute();
+    
     if (newDocuments.length === 0) {
       throw new Error('Failed to create document');
     }
-    const documentData = newDocuments[0];
+    
+    const savedData = newDocuments[0];
     return Document.fromRepository({
-      ...documentData,
-      tags: documentData.tags as string[],
-      metadata: documentData.metadata as Record<string, string>,
+      ...savedData,
+      tags: savedData.tags as string[],
+      metadata: savedData.metadata as Record<string, string>,
     });
   }
 
@@ -100,16 +97,15 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       .orderBy(documents.createdAt)
       .execute();
 
-    const documentsList = DocumentsListSchema.parse(results);
-    const paginationMetadata = calculatePaginationMetadata(page, limit, total);
+    const documentsList = results.map(doc => Document.fromRepository({
+      ...doc,
+      tags: doc.tags as string[],
+      metadata: doc.metadata as Record<string, string>,
+    }));
 
     return {
-      data: results.map(document => Document.fromRepository({
-        ...document,
-        tags: document.tags as string[],
-        metadata: document.metadata as Record<string, string>,
-      })),
-      pagination: paginationMetadata
+      data: documentsList,
+      pagination: calculatePaginationMetadata(total, page, limit)
     };
   }
 
@@ -117,7 +113,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
     const conditions = [];
     
     if (query?.name) {
-      conditions.push(sql`${documents.name} ILIKE ${`%${query.name}%`}`);
+      conditions.push(eq(documents.name, query.name));
     }
     if (query?.mimeType) {
       conditions.push(eq(documents.mimeType, query.mimeType));
@@ -139,80 +135,192 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    
-    const results = await db.select()
+
+    const result = await db.select({
+      id: documents.id,
+      name: documents.name,
+      filePath: documents.filePath,
+      mimeType: documents.mimeType,
+      size: documents.size,
+      tags: documents.tags,
+      metadata: documents.metadata,
+      createdAt: documents.createdAt,
+      updatedAt: documents.updatedAt,
+    })
       .from(documents)
       .where(whereClause)
       .limit(1)
       .execute();
 
-    if (results.length === 0) {
+    if (result.length === 0) {
       return null;
     }
 
+    const doc = result[0];
     return Document.fromRepository({
-      ...results[0],
-      tags: results[0].tags as string[],
-      metadata: results[0].metadata as Record<string, string>,
+      ...doc,
+      tags: doc.tags as string[],
+      metadata: doc.metadata as Record<string, string>,
     });
   }
 
   async findById(id: string): Promise<Document | null> {
-    const results = await db.select()
+    const result = await db.select({
+      id: documents.id,
+      name: documents.name,
+      filePath: documents.filePath,
+      mimeType: documents.mimeType,
+      size: documents.size,
+      tags: documents.tags,
+      metadata: documents.metadata,
+      createdAt: documents.createdAt,
+      updatedAt: documents.updatedAt,
+    })
       .from(documents)
       .where(eq(documents.id, id))
       .execute();
 
-    if (results.length === 0) {
+    if (result.length === 0) {
       return null;
     }
 
+    const doc = result[0];
     return Document.fromRepository({
-      ...results[0],
-      tags: results[0].tags as string[],
-      metadata: results[0].metadata as Record<string, string>,
+      ...doc,
+      tags: doc.tags as string[],
+      metadata: doc.metadata as Record<string, string>,
     });
   }
 
-  async update(id: string, data: UpdateDocumentDto): Promise<Document | null> {
-    const updateData: any = {};
-    
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.tags !== undefined) updateData.tags = data.tags;
-    if (data.metadata !== undefined) updateData.metadata = data.metadata;
-    updateData.updatedAt = new Date();
-
-    const results = await db.update(documents)
-      .set(updateData)
-      .where(eq(documents.id, id))
-      .returning()
+  async findByName(name: string): Promise<Document | null> {
+    const result = await db.select({
+      id: documents.id,
+      name: documents.name,
+      filePath: documents.filePath,
+      mimeType: documents.mimeType,
+      size: documents.size,
+      tags: documents.tags,
+      metadata: documents.metadata,
+      createdAt: documents.createdAt,
+      updatedAt: documents.updatedAt,
+    })
+      .from(documents)
+      .where(eq(documents.name, name))
       .execute();
 
-    if (results.length === 0) {
+    if (result.length === 0) {
       return null;
     }
 
+    const doc = result[0];
     return Document.fromRepository({
-      ...results[0],
-      tags: results[0].tags as string[],
-      metadata: results[0].metadata as Record<string, string>,
+      ...doc,
+      tags: doc.tags as string[],
+      metadata: doc.metadata as Record<string, string>,
+    });
+  }
+
+  async findByTags(tags: string[]): Promise<Document[]> {
+    const result = await db.select({
+      id: documents.id,
+      name: documents.name,
+      filePath: documents.filePath,
+      mimeType: documents.mimeType,
+      size: documents.size,
+      tags: documents.tags,
+      metadata: documents.metadata,
+      createdAt: documents.createdAt,
+      updatedAt: documents.updatedAt,
+    })
+      .from(documents)
+      .where(arrayOverlaps(documents.tags, tags))
+      .execute();
+
+    return result.map(doc => Document.fromRepository({
+      ...doc,
+      tags: doc.tags as string[],
+      metadata: doc.metadata as Record<string, string>,
+    }));
+  }
+
+  async findByMimeType(mimeType: string): Promise<Document[]> {
+    const result = await db.select({
+      id: documents.id,
+      name: documents.name,
+      filePath: documents.filePath,
+      mimeType: documents.mimeType,
+      size: documents.size,
+      tags: documents.tags,
+      metadata: documents.metadata,
+      createdAt: documents.createdAt,
+      updatedAt: documents.updatedAt,
+    })
+      .from(documents)
+      .where(eq(documents.mimeType, mimeType))
+      .execute();
+
+    return result.map(doc => Document.fromRepository({
+      ...doc,
+      tags: doc.tags as string[],
+      metadata: doc.metadata as Record<string, string>,
+    }));
+  }
+
+  async update(document: Document): Promise<Document> {
+    const documentData = document.toRepository();
+    
+    const updatedDocuments = await db.update(documents)
+      .set({
+        name: documentData.name,
+        filePath: documentData.filePath,
+        mimeType: documentData.mimeType,
+        size: documentData.size,
+        tags: documentData.tags,
+        metadata: documentData.metadata,
+        updatedAt: new Date()
+      })
+      .where(eq(documents.id, documentData.id))
+      .returning()
+      .execute();
+
+    if (updatedDocuments.length === 0) {
+      throw new Error('Failed to update document');
+    }
+
+    const updatedData = updatedDocuments[0];
+    return Document.fromRepository({
+      ...updatedData,
+      tags: updatedData.tags as string[],
+      metadata: updatedData.metadata as Record<string, string>,
     });
   }
 
   async delete(id: string): Promise<boolean> {
-    const results = await db.delete(documents)
-      .where(eq(documents.id, id))
-      .returning()
-      .execute();
+    // First get the document to delete the file
+    const document = await this.findById(id);
+    if (!document) {
+      return false;
+    }
 
-    return results.length > 0;
+    // Delete the file from filesystem
+    try {
+      if (fs.existsSync(document.filePath)) {
+        fs.unlinkSync(document.filePath);
+      }
+    } catch (error) {
+      console.error('Failed to delete file:', error);
+    }
+
+    // Delete from database
+    const result = await db.delete(documents).where(eq(documents.id, id)).execute();
+    return (result.rowCount ?? 0) > 0;
   }
 
   async exists(query: DocumentFilterQuery): Promise<boolean> {
     const conditions = [];
     
     if (query?.name) {
-      conditions.push(sql`${documents.name} ILIKE ${`%${query.name}%`}`);
+      conditions.push(eq(documents.name, query.name));
     }
     if (query?.mimeType) {
       conditions.push(eq(documents.mimeType, query.mimeType));
@@ -234,13 +342,13 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    
-    const results = await db.select({ count: sql<number>`count(*)` })
+
+    const result = await db.select({ count: sql<number>`count(*)` })
       .from(documents)
       .where(whereClause)
       .execute();
 
-    return (results[0]?.count || 0) > 0;
+    return (result[0]?.count || 0) > 0;
   }
 
   async count(query?: DocumentFilterQuery): Promise<number> {
@@ -269,12 +377,12 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    
-    const results = await db.select({ count: sql<number>`count(*)` })
+
+    const result = await db.select({ count: sql<number>`count(*)` })
       .from(documents)
       .where(whereClause)
       .execute();
 
-    return results[0]?.count || 0;
+    return result[0]?.count || 0;
   }
 } 

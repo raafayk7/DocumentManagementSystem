@@ -1,10 +1,8 @@
 import { db } from '../../db/index.js';
 import { users } from '../../db/schema.js';
 import { IUserRepository, UserFilterQuery } from './user.repository.interface.js';
-import { RegisterDto } from '../dto/register.dto.js';
 import { User } from '../../domain/entities/User.js';
 import { eq, and } from 'drizzle-orm';
-import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { injectable } from 'tsyringe';
 import { PaginationInput, PaginationOutput, calculatePaginationMetadata } from '../../common/dto/pagination.dto.js';
@@ -12,32 +10,6 @@ import { sql } from 'drizzle-orm';
 
 @injectable()
 export class DrizzleUserRepository implements IUserRepository {
-  async save(data: RegisterDto): Promise<User> {
-    const existing = await db.select().from(users).where(eq(users.email, data.email)).execute();
-    if (existing.length > 0) {
-      const err = new Error('Email already in use');
-      (err as any).statusCode = 409;
-      throw err;
-    }
-    const passwordHash = await bcrypt.hash(data.password, 10);
-    const newUsers = await db.insert(users).values({
-      id: uuidv4(),
-      email: data.email,
-      passwordHash,
-      role: data.role,
-    })
-    .returning()
-    .execute();
-    if (newUsers.length === 0) {
-      throw new Error('Failed to create user');
-    }
-    const userData = newUsers[0];
-    return User.fromRepository({
-      ...userData,
-      role: userData.role as 'user' | 'admin'
-    });
-  }
-
   async saveUser(user: User): Promise<User> {
     const userData = user.toRepository();
     
@@ -115,26 +87,26 @@ export class DrizzleUserRepository implements IUserRepository {
     const results = await db.select({
       id: users.id,
       email: users.email,
+      passwordHash: users.passwordHash,
       role: users.role,
       createdAt: users.createdAt,
-      updatedAt: users.updatedAt
+      updatedAt: users.updatedAt,
     })
-    .from(users)
-    .where(whereClause)
-    .limit(limit)
-    .offset(offset)
-    .orderBy(users.createdAt)
-    .execute();
+      .from(users)
+      .where(whereClause)
+      .limit(limit)
+      .offset(offset)
+      .orderBy(users.createdAt)
+      .execute();
 
-    const paginationMetadata = calculatePaginationMetadata(page, limit, total);
+    const usersList = results.map(user => User.fromRepository({
+      ...user,
+      role: user.role as 'user' | 'admin'
+    }));
 
     return {
-      data: results.map(user => User.fromRepository({
-        ...user,
-        role: user.role as 'user' | 'admin',
-        passwordHash: '' // Public data doesn't include password hash
-      })),
-      pagination: paginationMetadata
+      data: usersList,
+      pagination: calculatePaginationMetadata(total, page, limit)
     };
   }
 
@@ -149,44 +121,96 @@ export class DrizzleUserRepository implements IUserRepository {
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    
-    const results = await db.select()
+
+    const result = await db.select({
+      id: users.id,
+      email: users.email,
+      passwordHash: users.passwordHash,
+      role: users.role,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
       .from(users)
       .where(whereClause)
       .limit(1)
       .execute();
 
-    if (results.length === 0) {
+    if (result.length === 0) {
       return null;
     }
 
+    const user = result[0];
     return User.fromRepository({
-      ...results[0],
-      role: results[0].role as 'user' | 'admin'
+      ...user,
+      role: user.role as 'user' | 'admin'
     });
   }
 
   async findById(id: string): Promise<User | null> {
-    const results = await db.select({
+    const result = await db.select({
       id: users.id,
       email: users.email,
+      passwordHash: users.passwordHash,
       role: users.role,
       createdAt: users.createdAt,
-      updatedAt: users.updatedAt
+      updatedAt: users.updatedAt,
     })
-    .from(users)
-    .where(eq(users.id, id))
-    .execute();
+      .from(users)
+      .where(eq(users.id, id))
+      .execute();
 
-    if (results.length === 0) {
+    if (result.length === 0) {
       return null;
     }
 
+    const user = result[0];
     return User.fromRepository({
-      ...results[0],
-      role: results[0].role as 'user' | 'admin',
-      passwordHash: '' // Public data doesn't include password hash
+      ...user,
+      role: user.role as 'user' | 'admin'
     });
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    const result = await db.select({
+      id: users.id,
+      email: users.email,
+      passwordHash: users.passwordHash,
+      role: users.role,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
+      .from(users)
+      .where(eq(users.email, email))
+      .execute();
+
+    if (result.length === 0) {
+      return null;
+    }
+
+    const user = result[0];
+    return User.fromRepository({
+      ...user,
+      role: user.role as 'user' | 'admin'
+    });
+  }
+
+  async findByRole(role: 'user' | 'admin'): Promise<User[]> {
+    const result = await db.select({
+      id: users.id,
+      email: users.email,
+      passwordHash: users.passwordHash,
+      role: users.role,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
+      .from(users)
+      .where(eq(users.role, role))
+      .execute();
+
+    return result.map(user => User.fromRepository({
+      ...user,
+      role: user.role as 'user' | 'admin'
+    }));
   }
 
   async exists(query: UserFilterQuery): Promise<boolean> {
@@ -200,13 +224,13 @@ export class DrizzleUserRepository implements IUserRepository {
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    
-    const results = await db.select({ count: sql<number>`count(*)` })
+
+    const result = await db.select({ count: sql<number>`count(*)` })
       .from(users)
       .where(whereClause)
       .execute();
 
-    return (results[0]?.count || 0) > 0;
+    return (result[0]?.count || 0) > 0;
   }
 
   async count(query?: UserFilterQuery): Promise<number> {
@@ -220,21 +244,17 @@ export class DrizzleUserRepository implements IUserRepository {
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    
-    const results = await db.select({ count: sql<number>`count(*)` })
+
+    const result = await db.select({ count: sql<number>`count(*)` })
       .from(users)
       .where(whereClause)
       .execute();
 
-    return results[0]?.count || 0;
+    return result[0]?.count || 0;
   }
 
   async delete(id: string): Promise<boolean> {
-    const results = await db.delete(users)
-      .where(eq(users.id, id))
-      .returning()
-      .execute();
-
-    return results.length > 0;
+    const result = await db.delete(users).where(eq(users.id, id)).execute();
+    return (result.rowCount ?? 0) > 0;
   }
 } 
