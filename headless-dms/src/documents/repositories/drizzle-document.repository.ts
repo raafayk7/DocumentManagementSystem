@@ -288,6 +288,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
     }
 
     const updatedData = updatedDocuments[0];
+    
     return Document.fromRepository({
       ...updatedData,
       tags: updatedData.tags as string[],

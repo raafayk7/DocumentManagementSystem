@@ -28,8 +28,12 @@ export const DocumentSchema = z.object({
 
 export type DocumentDto = z.infer<typeof DocumentSchema>;
 
-// Optional: Schema for updating a document (partial update)
-export const UpdateDocumentSchema = CreateDocumentSchema.partial();
+// Schema for updating a document (only fields that can be updated)
+export const UpdateDocumentSchema = z.object({
+  name: z.string().min(1, 'Document name cannot be empty').optional(),
+  tags: z.array(z.string()).optional(),
+  metadata: z.record(z.string(), z.string()).optional(),
+});
 export type UpdateDocumentDto = z.infer<typeof UpdateDocumentSchema>;
 
 // For a list of documents

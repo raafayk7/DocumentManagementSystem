@@ -72,7 +72,7 @@ export class AuthService {
       const roleValidation = UserValidator.validateRole(registerDto.role);
       if (roleValidation.isErr()) {
         this.logger.warn('User creation failed - role validation error', { 
-          email: registerDto.email, 
+    email: registerDto.email,
           error: roleValidation.unwrapErr() 
         });
         return Result.Err(new AuthError(
@@ -105,7 +105,7 @@ export class AuthService {
     this.logger.info('User login attempt', { email: loginDto.email });
     
     try {
-      // Find user by email
+    // Find user by email
       const user = await this.userRepository.findOne({ email: loginDto.email });
       if (!user) {
         this.logger.warn('Login failed - user not found', { email: loginDto.email });
@@ -118,23 +118,23 @@ export class AuthService {
   
       // Use User entity's password verification
       const isMatch = await user.verifyPassword(loginDto.password);
-      if (!isMatch) {
+    if (!isMatch) {
         this.logger.warn('Login failed - invalid password', { email: loginDto.email });
         return Result.Err(new AuthError(
           'AuthService.login.validatePassword',
           'Invalid password',
           { email: loginDto.email }
         ));
-      }
+    }
   
-      // Generate JWT
-      const payload = { sub: user.id, email: user.email, role: user.role };
-      const access_token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '1h' });
+    // Generate JWT
+    const payload = { sub: user.id, email: user.email, role: user.role };
+    const access_token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '1h' });
   
       this.logger.info('User logged in successfully', { userId: user.id, email: user.email });
       return Result.Ok({
-        access_token,
-        user: { id: user.id, email: user.email, role: user.role }
+      access_token,
+      user: { id: user.id, email: user.email, role: user.role }
       });
     } catch (error) {
       this.logger.logError(error as Error, { email: loginDto.email });
@@ -282,7 +282,7 @@ export class AuthService {
   }
 
   async getUserById(userId: string): Promise<Result<User, AuthError>> {
-    this.logger.debug('Getting user by ID', { userId });
+    this.logger.info('Getting user by ID', { userId });
     
     try {
       const user = await this.userRepository.findById(userId);
@@ -294,7 +294,7 @@ export class AuthService {
           { userId }
         ));
       }
-
+      this.logger.info('User found', { userId, email: user.email });
       return Result.Ok(user);
     } catch (error) {
       this.logger.logError(error as Error, { userId });
@@ -305,4 +305,83 @@ export class AuthService {
       ));
     }
   }
-}
+
+  // New domain-specific methods
+  async findUserByEmail(email: string): Promise<Result<User, AuthError>> {
+    this.logger.info('Finding user by email', { email });
+    
+    try {
+      const user = await this.userRepository.findByEmail(email);
+      if (!user) {
+        this.logger.warn('User not found by email', { email });
+        return Result.Err(new AuthError(
+          'AuthService.findUserByEmail',
+          'User not found',
+          { email }
+        ));
+      }
+      this.logger.info('User found by email', { email, userId: user.id });
+      return Result.Ok(user);
+    } catch (error) {
+      this.logger.logError(error as Error, { email });
+      return Result.Err(new AuthError(
+        'AuthService.findUserByEmail',
+        error instanceof Error ? error.message : 'Failed to find user by email',
+        { email }
+      ));
+    }
+  }
+
+  async findUsersByRole(role: 'user' | 'admin'): Promise<Result<User[], AuthError>> {
+    this.logger.info('Finding users by role', { role });
+    
+    try {
+      const users = await this.userRepository.findByRole(role);
+      this.logger.info('Users found by role', { role, count: users.length });
+      return Result.Ok(users);
+    } catch (error) {
+      this.logger.logError(error as Error, { role });
+      return Result.Err(new AuthError(
+        'AuthService.findUsersByRole',
+        error instanceof Error ? error.message : 'Failed to find users by role',
+        { role }
+      ));
+    }
+  }
+
+  async validateUserCredentials(email: string, password: string): Promise<Result<User, AuthError>> {
+    this.logger.info('Validating user credentials', { email });
+    
+    try {
+      const user = await this.userRepository.findByEmail(email);
+      if (!user) {
+        this.logger.warn('User not found for credential validation', { email });
+        return Result.Err(new AuthError(
+          'AuthService.validateUserCredentials',
+          'Invalid credentials',
+          { email }
+        ));
+      }
+
+      const isValidPassword = await user.verifyPassword(password);
+      if (!isValidPassword) {
+        this.logger.warn('Invalid password for user', { email });
+        return Result.Err(new AuthError(
+          'AuthService.validateUserCredentials',
+          'Invalid credentials',
+          { email }
+        ));
+      }
+
+      this.logger.info('User credentials validated successfully', { email, userId: user.id });
+      return Result.Ok(user);
+    } catch (error) {
+      this.logger.logError(error as Error, { email });
+      return Result.Err(new AuthError(
+        'AuthService.validateUserCredentials',
+        error instanceof Error ? error.message : 'Failed to validate user credentials',
+        { email }
+      ));
+    }
+  }
+  }

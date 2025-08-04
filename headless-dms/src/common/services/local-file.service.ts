@@ -44,8 +44,8 @@ export class LocalFileService implements IFileService {
           await part.file.pipe(writeStream);
           file = {
             path: uploadPath,
-            filename: part.filename,
-            mimetype: part.mimetype,
+            name: part.filename,
+            mimeType: part.mimetype,
             size: 0, // We'll get the size after writing
           };
           await new Promise<void>((resolve) => writeStream.on('finish', resolve));

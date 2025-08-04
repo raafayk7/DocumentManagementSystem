@@ -115,16 +115,11 @@ export class DocumentService {
     tags?: string | string[];
     metadata?: Record<string, string>;
   }, pagination?: PaginationInput): Promise<Result<PaginationOutput<Document>, DocumentError>> {
-    this.logger.debug('Finding documents', { query, pagination });
+    this.logger.info('Finding all documents', { query, pagination });
     
     try {
       const result = await this.documentRepository.find(query, pagination);
-      this.logger.info('Documents found', { 
-        count: result.data.length, 
-        total: result.pagination.total,
-        page: result.pagination.page,
-        totalPages: result.pagination.totalPages
-      });
+      this.logger.info('Documents found', { count: result.data.length, total: result.pagination.total });
       return Result.Ok(result);
     } catch (error) {
       this.logger.logError(error as Error, { query, pagination });
@@ -137,11 +132,11 @@ export class DocumentService {
   }
 
   async findOneDocument(id: string): Promise<Result<Document, DocumentError>> {
-    this.logger.debug('Finding document by ID', { documentId: id });
+    this.logger.info('Finding document by ID', { documentId: id });
     
     try {
-    const document = await this.documentRepository.findById(id);
-    if (!document) {
+      const document = await this.documentRepository.findById(id);
+      if (!document) {
         this.logger.warn('Document not found', { documentId: id });
         return Result.Err(new DocumentError(
           'DocumentService.findOneDocument',
@@ -149,7 +144,7 @@ export class DocumentService {
           { documentId: id }
         ));
       }
-      this.logger.debug('Document found', { documentId: id, name: document.name });
+      this.logger.info('Document found', { documentId: id, name: document.name });
       return Result.Ok(document);
     } catch (error) {
       this.logger.logError(error as Error, { documentId: id });
@@ -161,55 +156,309 @@ export class DocumentService {
     }
   }
 
-  async updateDocument(id: string, data: UpdateDocumentDto): Promise<Result<Document, DocumentError>> {
-    this.logger.info('Updating document', { documentId: id, updates: data });
+  // New entity-focused methods
+  async findDocumentByName(name: string): Promise<Result<Document, DocumentError>> {
+    this.logger.info('Finding document by name', { name });
     
     try {
-      // Validate with DocumentValidator if name is being updated
-      if (data.name) {
-        const nameValidation = DocumentValidator.validateName(data.name);
-        if (nameValidation.isErr()) {
-          this.logger.warn('Document update failed - name validation error', { 
-            documentId: id, 
-            name: data.name, 
-            error: nameValidation.unwrapErr() 
-          });
-          return Result.Err(new DocumentError(
-            'DocumentService.updateDocument.nameValidation',
-            nameValidation.unwrapErr(),
-            { documentId: id, name: data.name }
-          ));
-        }
-
-        // Check name uniqueness if name is being updated
-        const existingDoc = await this.documentRepository.findOne({ name: data.name });
-        if (existingDoc && existingDoc.id !== id) {
-          this.logger.warn('Document update failed - name already exists', { documentId: id, name: data.name });
-          return Result.Err(new DocumentError(
-            'DocumentService.updateDocument.nameExists',
-            'Document name already exists',
-            { documentId: id, name: data.name }
-          ));
-        }
-      }
-
-      const updated = await this.documentRepository.update(id, data);
-      if (!updated) {
-        this.logger.warn('Document not found for update', { documentId: id });
+      const document = await this.documentRepository.findByName(name);
+      if (!document) {
+        this.logger.warn('Document not found by name', { name });
         return Result.Err(new DocumentError(
-          'DocumentService.updateDocument',
+          'DocumentService.findDocumentByName',
           'Document not found',
-          { documentId: id, updates: data }
+          { name }
         ));
       }
-      this.logger.info('Document updated successfully', { documentId: id });
-      return Result.Ok(updated);
+      this.logger.info('Document found by name', { name, documentId: document.id });
+      return Result.Ok(document);
     } catch (error) {
-      this.logger.logError(error as Error, { documentId: id });
+      this.logger.logError(error as Error, { name });
       return Result.Err(new DocumentError(
-        'DocumentService.updateDocument',
-        error instanceof Error ? error.message : 'Failed to update document',
-        { documentId: id, updates: data }
+        'DocumentService.findDocumentByName',
+        error instanceof Error ? error.message : 'Failed to find document by name',
+        { name }
+      ));
+    }
+  }
+
+  async findDocumentsByTags(tags: string[]): Promise<Result<Document[], DocumentError>> {
+    this.logger.info('Finding documents by tags', { tags });
+    
+    try {
+      const documents = await this.documentRepository.findByTags(tags);
+      this.logger.info('Documents found by tags', { tags, count: documents.length });
+      return Result.Ok(documents);
+    } catch (error) {
+      this.logger.logError(error as Error, { tags });
+      return Result.Err(new DocumentError(
+        'DocumentService.findDocumentsByTags',
+        error instanceof Error ? error.message : 'Failed to find documents by tags',
+        { tags }
+      ));
+    }
+  }
+
+  async findDocumentsByMimeType(mimeType: string): Promise<Result<Document[], DocumentError>> {
+    this.logger.info('Finding documents by MIME type', { mimeType });
+    
+    try {
+      const documents = await this.documentRepository.findByMimeType(mimeType);
+      this.logger.info('Documents found by MIME type', { mimeType, count: documents.length });
+      return Result.Ok(documents);
+    } catch (error) {
+      this.logger.logError(error as Error, { mimeType });
+      return Result.Err(new DocumentError(
+        'DocumentService.findDocumentsByMimeType',
+        error instanceof Error ? error.message : 'Failed to find documents by MIME type',
+        { mimeType }
+      ));
+    }
+  }
+
+  // Entity state-changing methods
+  async updateDocumentName(id: string, newName: string): Promise<Result<Document, DocumentError>> {
+    this.logger.info('Updating document name', { documentId: id, newName });
+    
+    try {
+      // Get current document
+      const document = await this.documentRepository.findById(id);
+      if (!document) {
+        this.logger.warn('Document not found for name update', { documentId: id });
+        return Result.Err(new DocumentError(
+          'DocumentService.updateDocumentName',
+          'Document not found',
+          { documentId: id }
+        ));
+      }
+
+      // Validate new name
+      const nameValidation = DocumentValidator.validateName(newName);
+      if (nameValidation.isErr()) {
+        this.logger.warn('Document name update failed - validation error', { 
+          documentId: id, 
+          newName, 
+          error: nameValidation.unwrapErr() 
+        });
+        return Result.Err(new DocumentError(
+          'DocumentService.updateDocumentName.nameValidation',
+          nameValidation.unwrapErr(),
+          { documentId: id, newName }
+        ));
+      }
+
+      // Check name uniqueness
+      const existingDoc = await this.documentRepository.findByName(newName);
+      if (existingDoc && existingDoc.id !== id) {
+        this.logger.warn('Document name update failed - name already exists', { documentId: id, newName });
+        return Result.Err(new DocumentError(
+          'DocumentService.updateDocumentName.nameExists',
+          'Document name already exists',
+          { documentId: id, newName }
+        ));
+      }
+
+      // Use entity method to update name
+      const updatedDocument = document.updateName(newName);
+      if (updatedDocument.isErr()) {
+        this.logger.warn('Document name update failed - entity validation error', { 
+          documentId: id, 
+          newName, 
+          error: updatedDocument.unwrapErr() 
+        });
+        return Result.Err(new DocumentError(
+          'DocumentService.updateDocumentName.entityValidation',
+          updatedDocument.unwrapErr(),
+          { documentId: id, newName }
+        ));
+      }
+
+      // Save updated entity
+      const savedDocument = await this.documentRepository.update(updatedDocument.unwrap());
+      this.logger.info('Document name updated successfully', { documentId: id, newName });
+      return Result.Ok(savedDocument);
+    } catch (error) {
+      this.logger.logError(error as Error, { documentId: id, newName });
+      return Result.Err(new DocumentError(
+        'DocumentService.updateDocumentName',
+        error instanceof Error ? error.message : 'Failed to update document name',
+        { documentId: id, newName }
+      ));
+    }
+  }
+
+  async addTagsToDocument(id: string, newTags: string[]): Promise<Result<Document, DocumentError>> {
+    this.logger.info('Adding tags to document', { documentId: id, newTags });
+    
+    try {
+      // Get current document
+      const document = await this.documentRepository.findById(id);
+      if (!document) {
+        this.logger.warn('Document not found for tag addition', { documentId: id });
+        return Result.Err(new DocumentError(
+          'DocumentService.addTagsToDocument',
+          'Document not found',
+          { documentId: id }
+        ));
+      }
+
+      // Use entity method to add tags
+      const updatedDocument = document.addTags(newTags);
+      if (updatedDocument.isErr()) {
+        this.logger.warn('Document tag addition failed - entity validation error', { 
+          documentId: id, 
+          newTags, 
+          error: updatedDocument.unwrapErr() 
+        });
+        return Result.Err(new DocumentError(
+          'DocumentService.addTagsToDocument.entityValidation',
+          updatedDocument.unwrapErr(),
+          { documentId: id, newTags }
+        ));
+      }
+
+      // Save updated entity
+      const savedDocument = await this.documentRepository.update(updatedDocument.unwrap());
+      this.logger.info('Tags added to document successfully', { documentId: id, newTags });
+      return Result.Ok(savedDocument);
+    } catch (error) {
+      this.logger.logError(error as Error, { documentId: id, newTags });
+      return Result.Err(new DocumentError(
+        'DocumentService.addTagsToDocument',
+        error instanceof Error ? error.message : 'Failed to add tags to document',
+        { documentId: id, newTags }
+      ));
+    }
+  }
+
+  async removeTagsFromDocument(id: string, tagsToRemove: string[]): Promise<Result<Document, DocumentError>> {
+    this.logger.info('Removing tags from document', { documentId: id, tagsToRemove });
+    
+    try {
+      // Get current document
+      const document = await this.documentRepository.findById(id);
+      if (!document) {
+        this.logger.warn('Document not found for tag removal', { documentId: id });
+        return Result.Err(new DocumentError(
+          'DocumentService.removeTagsFromDocument',
+          'Document not found',
+          { documentId: id }
+        ));
+      }
+
+      // Use entity method to remove tags
+      const updatedDocument = document.removeTags(tagsToRemove);
+      if (updatedDocument.isErr()) {
+        this.logger.warn('Document tag removal failed - entity validation error', { 
+          documentId: id, 
+          tagsToRemove, 
+          error: updatedDocument.unwrapErr() 
+        });
+        return Result.Err(new DocumentError(
+          'DocumentService.removeTagsFromDocument.entityValidation',
+          updatedDocument.unwrapErr(),
+          { documentId: id, tagsToRemove }
+        ));
+      }
+
+      // Save updated entity
+      const savedDocument = await this.documentRepository.update(updatedDocument.unwrap());
+      this.logger.info('Tags removed from document successfully', { documentId: id, tagsToRemove });
+      return Result.Ok(savedDocument);
+    } catch (error) {
+      this.logger.logError(error as Error, { documentId: id, tagsToRemove });
+      return Result.Err(new DocumentError(
+        'DocumentService.removeTagsFromDocument',
+        error instanceof Error ? error.message : 'Failed to remove tags from document',
+        { documentId: id, tagsToRemove }
+      ));
+    }
+  }
+
+  async replaceTagsInDocument(id: string, newTags: string[]): Promise<Result<Document, DocumentError>> {
+    this.logger.info('Replacing tags in document', { documentId: id, newTags });
+    
+    try {
+      // Get current document
+    const document = await this.documentRepository.findById(id);
+    if (!document) {
+        this.logger.warn('Document not found for tag replacement', { documentId: id });
+        return Result.Err(new DocumentError(
+          'DocumentService.replaceTagsInDocument',
+          'Document not found',
+          { documentId: id }
+        ));
+      }
+
+      // Use entity method to replace tags
+      const updatedDocument = document.replaceTags(newTags);
+      if (updatedDocument.isErr()) {
+        this.logger.warn('Document tag replacement failed - entity validation error', { 
+          documentId: id, 
+          newTags, 
+          error: updatedDocument.unwrapErr() 
+        });
+        return Result.Err(new DocumentError(
+          'DocumentService.replaceTagsInDocument.entityValidation',
+          updatedDocument.unwrapErr(),
+          { documentId: id, newTags }
+        ));
+      }
+
+      // Save updated entity
+      const savedDocument = await this.documentRepository.update(updatedDocument.unwrap());
+      this.logger.info('Tags replaced in document successfully', { documentId: id, newTags });
+      return Result.Ok(savedDocument);
+    } catch (error) {
+      this.logger.logError(error as Error, { documentId: id, newTags });
+      return Result.Err(new DocumentError(
+        'DocumentService.replaceTagsInDocument',
+        error instanceof Error ? error.message : 'Failed to replace tags in document',
+        { documentId: id, newTags }
+      ));
+    }
+  }
+
+  async updateDocumentMetadata(id: string, newMetadata: Record<string, string>): Promise<Result<Document, DocumentError>> {
+    this.logger.info('Updating document metadata', { documentId: id, newMetadata });
+    
+    try {
+      // Get current document
+      const document = await this.documentRepository.findById(id);
+      if (!document) {
+        this.logger.warn('Document not found for metadata update', { documentId: id });
+        return Result.Err(new DocumentError(
+          'DocumentService.updateDocumentMetadata',
+          'Document not found',
+          { documentId: id }
+        ));
+      }
+
+      // Use entity method to update metadata
+      const updatedDocument = document.updateMetadata(newMetadata);
+      if (updatedDocument.isErr()) {
+        this.logger.warn('Document metadata update failed - entity validation error', { 
+          documentId: id, 
+          newMetadata, 
+          error: updatedDocument.unwrapErr() 
+        });
+        return Result.Err(new DocumentError(
+          'DocumentService.updateDocumentMetadata.entityValidation',
+          updatedDocument.unwrapErr(),
+          { documentId: id, newMetadata }
+        ));
+      }
+
+      // Save updated entity
+      const savedDocument = await this.documentRepository.update(updatedDocument.unwrap());
+      this.logger.info('Document metadata updated successfully', { documentId: id });
+      return Result.Ok(savedDocument);
+    } catch (error) {
+      this.logger.logError(error as Error, { documentId: id, newMetadata });
+      return Result.Err(new DocumentError(
+        'DocumentService.updateDocumentMetadata',
+        error instanceof Error ? error.message : 'Failed to update document metadata',
+        { documentId: id, newMetadata }
       ));
     }
   }
@@ -262,93 +511,127 @@ export class DocumentService {
         mimeType: fileInfo.mimeType 
       });
 
-      // Parse tags using entity's parsing logic
+      // Parse tags and metadata using entity methods
       const tagsResult = Document.parseTags(fields.tags);
       if (tagsResult.isErr()) {
+        this.logger.warn('Document upload failed - tags parsing error', { 
+          error: tagsResult.unwrapErr() 
+        });
         return Result.Err(new DocumentError(
-          'DocumentService.uploadDocument.parseTags',
+          'DocumentService.uploadDocument.tagsParsing',
           tagsResult.unwrapErr(),
           { fileName: fileInfo.name }
         ));
       }
-      const tags = tagsResult.unwrap();
-      
-      // Parse metadata using entity's parsing logic
+
       const metadataResult = Document.parseMetadata(fields.metadata);
       if (metadataResult.isErr()) {
+        this.logger.warn('Document upload failed - metadata parsing error', { 
+          error: metadataResult.unwrapErr() 
+        });
         return Result.Err(new DocumentError(
-          'DocumentService.uploadDocument.parseMetadata',
+          'DocumentService.uploadDocument.metadataParsing',
           metadataResult.unwrapErr(),
           { fileName: fileInfo.name }
         ));
       }
-      const metadata = metadataResult.unwrap();
 
-      this.logger.debug('Parsed upload data', { tags, metadata });
+      // Create document using entity factory
+      const documentResult = Document.fromUpload(
+        fields.name || fileInfo.name, // Use file name as fallback
+        fileInfo.path,
+        fileInfo.mimeType,
+        fileInfo.size.toString(),
+        tagsResult.unwrap(),
+        metadataResult.unwrap()
+      );
 
-      // Save file info and metadata to DB
-      const doc = await this.createDocument({
-        name: fields.name || fileInfo.name,
-        filePath: fileInfo.path,
-        mimeType: fields.mimeType || fileInfo.mimeType,
-        size: fields.size || fileInfo.size,
-        tags, // always an array
-        metadata: metadata
-      });
-
-      if (doc.isErr()) {
+      if (documentResult.isErr()) {
+        this.logger.warn('Document upload failed - entity creation error', { 
+          fileName: fileInfo.name, 
+          error: documentResult.unwrapErr() 
+        });
         return Result.Err(new DocumentError(
-          'DocumentService.uploadDocument.createDocument',
-          doc.unwrapErr().message,
-          { fileName: fileInfo.name, fileSize: fileInfo.size }
+          'DocumentService.uploadDocument.entityCreation',
+          documentResult.unwrapErr(),
+          { fileName: fileInfo.name }
         ));
       }
 
-      this.logger.info('Document upload completed successfully', { 
-        documentId: doc.unwrap().id, 
-        name: doc.unwrap().name,
-        size: doc.unwrap().size 
-      });
+      const document = documentResult.unwrap();
 
-      return doc;
-    } catch (error) {
-      this.logger.logError(error as Error, { 
-        fileName: (request as any).filename 
+      // Check name uniqueness
+      const nameExists = await this.documentRepository.exists({ name: document.name });
+      if (nameExists) {
+        this.logger.warn('Document upload failed - name already exists', { name: document.name });
+        return Result.Err(new DocumentError(
+          'DocumentService.uploadDocument.nameExists',
+          'Document name already exists',
+          { name: document.name }
+        ));
+      }
+
+      // Save to repository
+      const savedDocument = await this.documentRepository.save(document);
+      
+      // Convert to DTO for response
+      const documentDto: DocumentDto = {
+        id: savedDocument.id,
+        name: savedDocument.name,
+        filePath: savedDocument.filePath,
+        mimeType: savedDocument.mimeType,
+        size: savedDocument.size,
+        tags: savedDocument.tags,
+        metadata: savedDocument.metadata,
+        createdAt: savedDocument.createdAt,
+        updatedAt: savedDocument.updatedAt
+      };
+
+      this.logger.info('Document uploaded successfully', { 
+        documentId: savedDocument.id, 
+        name: savedDocument.name 
       });
+      return Result.Ok(documentDto);
+    } catch (error) {
+      this.logger.logError(error as Error, { operation: 'upload' });
       return Result.Err(new DocumentError(
         'DocumentService.uploadDocument',
-        error instanceof Error ? error.message : 'Upload failed',
-        { fileName: (request as any).filename }
+        error instanceof Error ? error.message : 'Failed to upload document',
+        { operation: 'upload' }
       ));
     }
   }
 
   async downloadDocument(id: string, reply: FastifyReply): Promise<Result<void, DocumentError>> {
-    this.logger.info('Document download started', { documentId: id });
+    this.logger.info('Downloading document', { documentId: id });
     
     try {
-      const docResult = await this.findOneDocument(id);
-      if (docResult.isErr()) {
-        return Result.Err(docResult.unwrapErr());
-      }
-
-      const doc = docResult.unwrap();
-      const streamResult = await this.fileService.streamFile(doc.filePath, reply);
-      if (streamResult.isErr()) {
+      const document = await this.documentRepository.findById(id);
+      if (!document) {
+        this.logger.warn('Document not found for download', { documentId: id });
         return Result.Err(new DocumentError(
-          'DocumentService.downloadDocument.streamFile',
-          streamResult.unwrapErr().message,
-          { documentId: id, filePath: doc.filePath }
+          'DocumentService.downloadDocument',
+          'Document not found',
+          { documentId: id }
         ));
       }
 
-      this.logger.info('Document download completed', { documentId: id });
+      const downloadResult = await this.fileService.streamFile(document.filePath, reply);
+      if (downloadResult.isErr()) {
+        return Result.Err(new DocumentError(
+          'DocumentService.downloadDocument.streamFile',
+          downloadResult.unwrapErr().message,
+          { documentId: id }
+        ));
+      }
+
+      this.logger.info('Document downloaded successfully', { documentId: id });
       return Result.Ok(undefined);
     } catch (error) {
       this.logger.logError(error as Error, { documentId: id });
       return Result.Err(new DocumentError(
         'DocumentService.downloadDocument',
-        error instanceof Error ? error.message : 'Download failed',
+        error instanceof Error ? error.message : 'Failed to download document',
         { documentId: id }
       ));
     }
@@ -358,21 +641,26 @@ export class DocumentService {
     this.logger.info('Generating download link', { documentId: id });
     
     try {
-    // Check if document exists
-      const docResult = await this.findOneDocument(id);
-      if (docResult.isErr()) {
-        return Result.Err(docResult.unwrapErr());
+      const document = await this.documentRepository.findById(id);
+      if (!document) {
+        this.logger.warn('Document not found for download link generation', { documentId: id });
+        return Result.Err(new DocumentError(
+          'DocumentService.generateDownloadLink',
+          'Document not found',
+          { documentId: id }
+        ));
       }
 
-    const token = jwt.sign(
-      { documentId: id },
-      process.env.DOWNLOAD_JWT_SECRET!,
-      { expiresIn: '5m' }
-    );
-    
-    const url = `/documents/download-link?token=${encodeURIComponent(token)}`;
-      this.logger.info('Download link generated', { documentId: id, expiresIn: '5m' });
-      return Result.Ok(url);
+      const payload = {
+        documentId: document.id,
+        exp: Math.floor(Date.now() / 1000) + (5 * 60) // 5 minutes
+      };
+
+      const token = jwt.sign(payload, process.env.DOWNLOAD_JWT_SECRET!);
+      const downloadUrl = `/documents/download?token=${token}`;
+
+      this.logger.info('Download link generated successfully', { documentId: id });
+      return Result.Ok(downloadUrl);
     } catch (error) {
       this.logger.logError(error as Error, { documentId: id });
       return Result.Err(new DocumentError(
@@ -384,24 +672,39 @@ export class DocumentService {
   }
 
   async downloadDocumentByToken(token: string, reply: FastifyReply): Promise<Result<void, DocumentError>> {
-    this.logger.info('Download by token started');
+    this.logger.info('Downloading document by token');
     
     try {
-    const payload = jwt.verify(token, process.env.DOWNLOAD_JWT_SECRET!) as { documentId: string };
-      this.logger.debug('Token verified', { documentId: payload.documentId });
-      
-      const downloadResult = await this.downloadDocument(payload.documentId, reply);
-      if (downloadResult.isErr()) {
-        return Result.Err(downloadResult.unwrapErr());
+      const payload = jwt.verify(token, process.env.DOWNLOAD_JWT_SECRET!) as any;
+      const documentId = payload.documentId;
+
+      const document = await this.documentRepository.findById(documentId);
+      if (!document) {
+        this.logger.warn('Document not found for token download', { documentId });
+        return Result.Err(new DocumentError(
+          'DocumentService.downloadDocumentByToken',
+          'Document not found',
+          { documentId }
+        ));
       }
-      
+
+      const downloadResult = await this.fileService.streamFile(document.filePath, reply);
+      if (downloadResult.isErr()) {
+        return Result.Err(new DocumentError(
+          'DocumentService.downloadDocumentByToken.streamFile',
+          downloadResult.unwrapErr().message,
+          { documentId }
+        ));
+      }
+
+      this.logger.info('Document downloaded by token successfully', { documentId });
       return Result.Ok(undefined);
     } catch (error) {
-      this.logger.logError(error as Error, { token: token.substring(0, 10) + '...' });
+      this.logger.logError(error as Error, { token });
       return Result.Err(new DocumentError(
         'DocumentService.downloadDocumentByToken',
-        error instanceof Error ? error.message : 'Token verification failed',
-        { token: token.substring(0, 10) + '...' }
+        error instanceof Error ? error.message : 'Failed to download document by token',
+        { token }
       ));
     }
   }

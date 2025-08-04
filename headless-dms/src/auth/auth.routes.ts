@@ -25,7 +25,7 @@ export default async function authRoutes(app: FastifyInstance) {
       matchRes(result, {
         Ok: (user) => {
           logger.logResponse(reply, { statusCode: 201, userId: user.id });
-          reply.code(201).send(user);
+      reply.code(201).send(user);
         },
         Err: (error) => {
           logger.error('User registration failed', { error: error.message, operation: error.operation });

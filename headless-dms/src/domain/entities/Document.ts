@@ -267,6 +267,21 @@ export class Document {
     return Result.Ok(new Document(updatedProps));
   }
 
+  replaceTags(newTags: string[]): Result<Document, string> {
+    const cleanTags = Document.validateAndCleanTags(newTags);
+    if (cleanTags.isErr()) {
+      return Result.Err(cleanTags.unwrapErr());
+    }
+
+    const updatedProps: DocumentProps = {
+      ...this.toRepository(),
+      tags: cleanTags.unwrap(),
+      updatedAt: new Date()
+    };
+
+    return Result.Ok(new Document(updatedProps));
+  }
+
   updateMetadata(newMetadata: Record<string, string>): Result<Document, string> {
     const cleanMetadata = Document.validateMetadata(newMetadata);
     if (cleanMetadata.isErr()) {

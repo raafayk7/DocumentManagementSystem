@@ -8,8 +8,9 @@ import { DocumentService } from './documents.service.js';
 import { container } from '../common/container.js';
 import { ILogger } from '../common/services/logger.service.interface.js';
 import { PaginationInputSchema } from '../common/dto/pagination.dto.js';
-import { matchRes } from '@carbonteq/fp';
+import { matchRes, Result } from '@carbonteq/fp';
 import { Document } from '../domain/entities/Document.js';
+import { DocumentError } from '../common/errors/application.errors.js';
 
 // Get service instances from DI container
 const documentService = container.resolve(DocumentService);
@@ -25,16 +26,15 @@ export default async function documentsRoutes(app: FastifyInstance) {
       const data = zodValidate(CreateDocumentSchema, request.body);
       const result = await documentService.createDocument(data);
       
-      matchRes(result, {
-        Ok: (document) => {
-          logger.logResponse(reply, { statusCode: 201 });
-          reply.code(201).send(document);
-        },
-        Err: (error) => {
-          logger.error('Document creation failed', { error: error.message, operation: error.operation });
-          reply.code(400).send({ error: error.message });
-        }
-      });
+      if (result.isOk()) {
+        const document = result.unwrap();
+        logger.logResponse(reply, { statusCode: 201 });
+        reply.code(201).send(document);
+      } else {
+        const error = result.unwrapErr();
+        logger.error('Document creation failed', { error: error.message, operation: error.operation });
+        reply.code(400).send({ error: error.message });
+      }
     } catch (err: any) {
       logger.error('Document creation failed', { error: err.message, statusCode: err.statusCode || 400 });
       reply.code(err.statusCode || 400).send({ error: err.message });
@@ -113,14 +113,50 @@ export default async function documentsRoutes(app: FastifyInstance) {
     }
   });
 
-  // PATCH /documents/:id
+  // PATCH /documents/:id - Updated to use entity-specific methods
   app.patch('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
     logger.logRequest(request);
     
     try {
       const { id } = request.params as { id: string };
       const updateDto = zodValidate(UpdateDocumentSchema, request.body);
-      const result = await documentService.updateDocument(id, updateDto);
+      
+      let result;
+      
+      // Handle multiple field updates
+      let currentDocument = await documentService.findOneDocument(id);
+      if (currentDocument.isErr()) {
+        return reply.code(404).send({ error: 'Document not found' });
+      }
+      
+      let document = currentDocument.unwrap();
+      
+      // Apply updates in order of priority
+      if (updateDto.name !== undefined) {
+        const nameResult = await documentService.updateDocumentName(id, updateDto.name);
+        if (nameResult.isErr()) {
+          return reply.code(400).send({ error: nameResult.unwrapErr().message });
+        }
+        document = nameResult.unwrap();
+      }
+      
+      if (updateDto.tags !== undefined) {
+        const tagsResult = await documentService.replaceTagsInDocument(id, updateDto.tags);
+        if (tagsResult.isErr()) {
+          return reply.code(400).send({ error: tagsResult.unwrapErr().message });
+        }
+        document = tagsResult.unwrap();
+      }
+      
+      if (updateDto.metadata !== undefined) {
+        const metadataResult = await documentService.updateDocumentMetadata(id, updateDto.metadata);
+        if (metadataResult.isErr()) {
+          return reply.code(400).send({ error: metadataResult.unwrapErr().message });
+        }
+        document = metadataResult.unwrap();
+      }
+      
+      result = Result.Ok(document);
       
       matchRes(result, {
         Ok: (updated) => {
@@ -129,7 +165,7 @@ export default async function documentsRoutes(app: FastifyInstance) {
         },
         Err: (error) => {
           logger.error('Document update failed', { error: error.message, operation: error.operation, documentId: id });
-          const statusCode = error.operation.includes('updateDocument') && error.message.includes('not found') ? 404 : 400;
+          const statusCode = error.operation.includes('updateDocumentName') && error.message.includes('not found') ? 404 : 400;
           reply.code(statusCode).send({ error: error.message });
         }
       });
@@ -172,9 +208,9 @@ export default async function documentsRoutes(app: FastifyInstance) {
       const result = await documentService.uploadDocument(request);
       
       matchRes(result, {
-        Ok: (doc) => {
-          logger.logResponse(reply, { statusCode: 201, documentId: doc.id });
-          reply.code(201).send(doc);
+        Ok: (docDto) => {
+          logger.logResponse(reply, { statusCode: 201, documentId: docDto.id });
+          reply.code(201).send(docDto);
         },
         Err: (error) => {
           logger.error('Document upload failed', { error: error.message, operation: error.operation });
@@ -198,11 +234,11 @@ export default async function documentsRoutes(app: FastifyInstance) {
       matchRes(result, {
         Ok: () => {
           logger.logResponse(reply, { statusCode: 200, documentId: id });
-          // Response is already sent by streamFile
+          // Response is already sent by the service
         },
         Err: (error) => {
           logger.error('Document download failed', { error: error.message, operation: error.operation, documentId: id });
-          const statusCode = error.operation.includes('findOneDocument') && error.message.includes('not found') ? 404 : 500;
+          const statusCode = error.operation.includes('downloadDocument') && error.message.includes('not found') ? 404 : 500;
           reply.code(statusCode).send({ error: error.message });
         }
       });
@@ -212,8 +248,8 @@ export default async function documentsRoutes(app: FastifyInstance) {
     }
   });
 
-  // POST /documents/:id/generate-download-link
-  app.post('/:id/generate-download-link', async (request, reply) => {
+  // GET /documents/:id/download-link
+  app.get('/:id/download-link', async (request, reply) => {
     logger.logRequest(request);
     
     try {
@@ -221,45 +257,47 @@ export default async function documentsRoutes(app: FastifyInstance) {
       const result = await documentService.generateDownloadLink(id);
       
       matchRes(result, {
-        Ok: (url) => {
+        Ok: (downloadUrl) => {
           logger.logResponse(reply, { statusCode: 200, documentId: id });
-          reply.send({ url });
+          reply.send({ downloadUrl });
         },
         Err: (error) => {
           logger.error('Download link generation failed', { error: error.message, operation: error.operation, documentId: id });
-          const statusCode = error.operation.includes('findOneDocument') && error.message.includes('not found') ? 404 : 400;
+          const statusCode = error.operation.includes('generateDownloadLink') && error.message.includes('not found') ? 404 : 500;
           reply.code(statusCode).send({ error: error.message });
         }
       });
     } catch (err: any) {
-      logger.error('Download link generation failed', { error: err.message, statusCode: err.statusCode || 400, documentId: (request.params as any).id });
-      reply.code(err.statusCode || 400).send({ error: err.message });
+      logger.error('Download link generation failed', { error: err.message, statusCode: err.statusCode || 404, documentId: (request.params as any).id });
+      reply.code(err.statusCode || 404).send({ error: err.message });
     }
   });
 
-  // GET /documents/download-link
-  app.get('/download-link', async (request, reply) => {
+  // GET /documents/download?token=...
+  app.get('/download', async (request, reply) => {
     logger.logRequest(request);
     
     try {
       const { token } = request.query as { token: string };
+      if (!token) {
+        return reply.code(400).send({ error: 'Token is required' });
+      }
+      
       const result = await documentService.downloadDocumentByToken(token, reply);
       
       matchRes(result, {
         Ok: () => {
           logger.logResponse(reply, { statusCode: 200 });
-          // Response is already sent by streamFile
+          // Response is already sent by the service
         },
         Err: (error) => {
           logger.error('Token-based download failed', { error: error.message, operation: error.operation });
-          const statusCode = error.operation.includes('downloadDocumentByToken') && error.message.includes('verification') ? 403 : 500;
-          reply.code(statusCode).send({ error: error.message });
+          reply.code(400).send({ error: error.message });
         }
       });
     } catch (err: any) {
-      logger.error('Token-based download failed', { error: err.message, statusCode: 403 });
-      console.error('JWT verification error:', err);
-      reply.code(403).send({ error: 'Invalid or expired download link' });
+      logger.error('Token-based download failed', { error: err.message, statusCode: err.statusCode || 400 });
+      reply.code(err.statusCode || 400).send({ error: err.message });
     }
   });
 }
