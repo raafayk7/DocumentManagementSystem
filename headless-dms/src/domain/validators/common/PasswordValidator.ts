@@ -1,5 +1,5 @@
 import { Result } from '@carbonteq/fp';
-import { IValidator } from './IValidator.js';
+import type { IValidator } from './IValidator.js';
 
 export class PasswordValidator implements IValidator<string> {
   /**

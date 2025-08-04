@@ -10,6 +10,7 @@ import { PaginationInput, PaginationOutput } from '../common/dto/pagination.dto.
 import { Result } from '@carbonteq/fp';
 import { DocumentError } from '../common/errors/application.errors.js';
 import { Document } from '../domain/entities/Document.js';
+import { DocumentValidator} from '../domain/validators/index.js';
 dotenv.config();
 
 @injectable()
@@ -26,6 +27,46 @@ export class DocumentService {
     this.logger.info('Creating document', { name: data.name, size: data.size });
     
     try {
+      // Validate with DocumentValidator
+      const nameValidation = DocumentValidator.validateName(data.name);
+      if (nameValidation.isErr()) {
+        this.logger.warn('Document creation failed - name validation error', { 
+          name: data.name, 
+          error: nameValidation.unwrapErr() 
+        });
+        return Result.Err(new DocumentError(
+          'DocumentService.createDocument.nameValidation',
+          nameValidation.unwrapErr(),
+          { name: data.name }
+        ));
+      }
+
+      const fileSizeValidation = DocumentValidator.validateFileSize(data.size);
+      if (fileSizeValidation.isErr()) {
+        this.logger.warn('Document creation failed - file size validation error', { 
+          name: data.name, 
+          error: fileSizeValidation.unwrapErr() 
+        });
+        return Result.Err(new DocumentError(
+          'DocumentService.createDocument.fileSizeValidation',
+          fileSizeValidation.unwrapErr(),
+          { name: data.name, size: data.size }
+        ));
+      }
+
+      const fileTypeValidation = DocumentValidator.validateFileType(data.mimeType);
+      if (fileTypeValidation.isErr()) {
+        this.logger.warn('Document creation failed - file type validation error', { 
+          name: data.name, 
+          error: fileTypeValidation.unwrapErr() 
+        });
+        return Result.Err(new DocumentError(
+          'DocumentService.createDocument.fileTypeValidation',
+          fileTypeValidation.unwrapErr(),
+          { name: data.name, mimeType: data.mimeType }
+        ));
+      }
+
       // Check document name uniqueness (business rule)
       const nameExists = await this.documentRepository.exists({ name: data.name });
       if (nameExists) {
@@ -124,8 +165,23 @@ export class DocumentService {
     this.logger.info('Updating document', { documentId: id, updates: data });
     
     try {
-      // Check name uniqueness if name is being updated
+      // Validate with DocumentValidator if name is being updated
       if (data.name) {
+        const nameValidation = DocumentValidator.validateName(data.name);
+        if (nameValidation.isErr()) {
+          this.logger.warn('Document update failed - name validation error', { 
+            documentId: id, 
+            name: data.name, 
+            error: nameValidation.unwrapErr() 
+          });
+          return Result.Err(new DocumentError(
+            'DocumentService.updateDocument.nameValidation',
+            nameValidation.unwrapErr(),
+            { documentId: id, name: data.name }
+          ));
+        }
+
+        // Check name uniqueness if name is being updated
         const existingDoc = await this.documentRepository.findOne({ name: data.name });
         if (existingDoc && existingDoc.id !== id) {
           this.logger.warn('Document update failed - name already exists', { documentId: id, name: data.name });
