@@ -7,7 +7,6 @@ import { DrizzleUserRepository } from '../auth/repositories/drizzle-user.reposit
 import { IFileService } from './services/file.service.interface.js';
 import { LocalFileService } from './services/local-file.service.js';
 import { DocumentService } from '../documents/documents.service.js';
-import { AuthService } from '../auth/auth.service.js';
 import { ILogger } from './services/logger.service.interface.js';
 import { ConsoleLogger } from './services/console-logger.service.js';
 import { FileLogger } from './services/file-logger.service.js';
@@ -15,6 +14,8 @@ import { IValidator } from '../domain/validators/common/IValidator.js';
 import {EmailValidator, PasswordValidator, UserValidator, DocumentValidator ,JsonValidator} from '../domain/validators/index.js';
 import { IAuthStrategy } from '../auth/interfaces/IAuthStrategy.js';
 import { JwtAuthStrategy, LocalAuthStrategy } from '../auth/strategies/index.js';
+import { IAuthHandler } from '../auth/interfaces/IAuthHandler.js';
+import { AuthHandler } from '../auth/services/AuthHandler.js';
 
 // Register repositories
 container.registerSingleton<IDocumentRepository>('IDocumentRepository', DrizzleDocumentRepository);
@@ -34,9 +35,11 @@ if (process.env.NODE_ENV === 'test') {
   container.registerSingleton<IAuthStrategy>('IAuthStrategy', JwtAuthStrategy);
 }
 
+// Register authentication handler
+container.registerSingleton<IAuthHandler>('IAuthHandler', AuthHandler);
+
 // Register services
 container.registerSingleton(DocumentService);
-container.registerSingleton(AuthService);
 
 // Register validators
 container.registerSingleton('EmailValidator', EmailValidator);

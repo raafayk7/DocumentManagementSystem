@@ -1,7 +1,7 @@
 // src/app.ts
 import 'reflect-metadata';
 import Fastify from 'fastify';
-import authRoutes from './auth/auth.routes.js';
+import authRoutes from './auth/routes/auth.routes.js';
 import documentsRoutes from './documents/documents.routes.js';
 import fastifyMultipart from '@fastify/multipart';
 
@@ -18,6 +18,7 @@ app.register(fastifyMultipart, {
 });
 
 app.register(documentsRoutes, { prefix: '/documents' });
+app.register(authRoutes, { prefix: '/auth' });
 
 
 // Start server
@@ -34,5 +35,4 @@ const start = async () => {
   }
 };
 
-app.register(authRoutes);
 start();

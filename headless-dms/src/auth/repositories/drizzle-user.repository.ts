@@ -106,7 +106,7 @@ export class DrizzleUserRepository implements IUserRepository {
 
     return {
       data: usersList,
-      pagination: calculatePaginationMetadata(total, page, limit)
+      pagination: calculatePaginationMetadata(page, limit, total)
     };
   }
 

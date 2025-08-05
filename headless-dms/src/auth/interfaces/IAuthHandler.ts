@@ -62,6 +62,11 @@ export interface IAuthHandler {
   changeUserPassword(userId: string, newPassword: string): Promise<Result<User, AuthError>>;
 
   /**
+   * Change user role (admin operation)
+   */
+  changeUserRole(userId: string, newRole: 'user' | 'admin'): Promise<Result<User, AuthError>>;
+
+  /**
    * Get current authentication strategy name
    */
   getStrategyName(): string;

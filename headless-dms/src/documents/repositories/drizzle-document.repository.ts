@@ -105,7 +105,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
 
     return {
       data: documentsList,
-      pagination: calculatePaginationMetadata(total, page, limit)
+      pagination: calculatePaginationMetadata(page, limit, total)
     };
   }
 

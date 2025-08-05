@@ -1,15 +1,15 @@
-import { IUserRepository } from './repositories/user.repository.interface.js';
-import { RegisterDto } from './dto/register.dto.js';
-import { LoginDto } from './dto/login.dto.js';
-import { User } from '../domain/entities/User.js';
+import { IUserRepository } from '../repositories/user.repository.interface.js';
+import { RegisterDto } from '../dto/register.dto.js';
+import { LoginDto } from '../dto/login.dto.js';
+import { User } from '../../domain/entities/User.js';
 import * as bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { injectable, inject } from 'tsyringe';
-import { ILogger } from '../common/services/logger.service.interface.js';
-import { PaginationInput, PaginationOutput } from '../common/dto/pagination.dto.js';
+import { ILogger } from '../../common/services/logger.service.interface.js';
+import { PaginationInput, PaginationOutput } from '../../common/dto/pagination.dto.js';
 import { Result } from '@carbonteq/fp';
-import { AuthError } from '../common/errors/application.errors.js';
-import { UserValidator,EmailValidator} from '../domain/validators/index.js';
+import { AuthError } from '../../common/errors/application.errors.js';
+import { UserValidator,EmailValidator} from '../../domain/validators/index.js';
 
 interface LoginResult {
   access_token: string;
