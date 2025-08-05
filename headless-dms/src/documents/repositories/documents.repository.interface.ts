@@ -14,6 +14,9 @@ export interface IDocumentRepository {
   // Save a document entity
   save(document: Document): Promise<Document>;
   
+  // Atomic save with name uniqueness check (thread-safe)
+  saveWithNameCheck(document: Document): Promise<Document>;
+  
   // Find documents with pagination
   find(query?: DocumentFilterQuery, pagination?: PaginationInput): Promise<PaginationOutput<Document>>;
   

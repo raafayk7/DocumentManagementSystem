@@ -67,17 +67,7 @@ export class DocumentService {
         ));
       }
 
-      // Check document name uniqueness (business rule)
-      const nameExists = await this.documentRepository.exists({ name: data.name });
-      if (nameExists) {
-        this.logger.warn('Document creation failed - name already exists', { name: data.name });
-        return Result.Err(new DocumentError(
-          'DocumentService.createDocument.nameExists',
-          'Document name already exists',
-          { name: data.name }
-        ));
-      }
-
+      // Atomic operation: Check name uniqueness and create document in transaction
       const documentResult = Document.create(data.name, data.filePath, data.mimeType, data.size, data.tags, data.metadata);
       if (documentResult.isErr()) {
         this.logger.warn('Document creation failed - validation error', { 
@@ -93,8 +83,8 @@ export class DocumentService {
 
       const document = documentResult.unwrap();
       
-      // Save to repository
-      const savedDocument = await this.documentRepository.save(document);
+      // Atomic save with name uniqueness check (thread-safe)
+      const savedDocument = await this.documentRepository.saveWithNameCheck(document);
       this.logger.info('Document created successfully', { documentId: savedDocument.id, name: savedDocument.name });
       return Result.Ok(savedDocument);
     } catch (error) {
@@ -560,19 +550,8 @@ export class DocumentService {
 
       const document = documentResult.unwrap();
 
-      // Check name uniqueness
-      const nameExists = await this.documentRepository.exists({ name: document.name });
-      if (nameExists) {
-        this.logger.warn('Document upload failed - name already exists', { name: document.name });
-        return Result.Err(new DocumentError(
-          'DocumentService.uploadDocument.nameExists',
-          'Document name already exists',
-          { name: document.name }
-        ));
-      }
-
-      // Save to repository
-      const savedDocument = await this.documentRepository.save(document);
+      // Atomic save with name uniqueness check (thread-safe)
+      const savedDocument = await this.documentRepository.saveWithNameCheck(document);
       
       // Convert to DTO for response
       const documentDto: DocumentDto = {

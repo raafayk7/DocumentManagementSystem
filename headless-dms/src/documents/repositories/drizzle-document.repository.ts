@@ -38,6 +38,47 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
     });
   }
 
+  async saveWithNameCheck(document: Document): Promise<Document> {
+    const documentData = document.toRepository();
+    
+    // Use database transaction for atomic operation (thread-safe)
+    return await db.transaction(async (tx) => {
+      // Check name uniqueness within transaction
+      const existingDoc = await tx.select({ id: documents.id })
+        .from(documents)
+        .where(eq(documents.name, documentData.name))
+        .execute();
+      
+      if (existingDoc.length > 0) {
+        throw new Error('Document name already exists');
+      }
+      
+      // Insert document within same transaction
+      const newDocuments = await tx.insert(documents).values({
+        id: documentData.id,
+        name: documentData.name,
+        filePath: documentData.filePath,
+        mimeType: documentData.mimeType,
+        size: documentData.size,
+        tags: documentData.tags,
+        metadata: documentData.metadata,
+      })
+      .returning()
+      .execute();
+      
+      if (newDocuments.length === 0) {
+        throw new Error('Failed to create document');
+      }
+      
+      const savedData = newDocuments[0];
+      return Document.fromRepository({
+        ...savedData,
+        tags: savedData.tags as string[],
+        metadata: savedData.metadata as Record<string, string>,
+      });
+    });
+  }
+
   async find(query?: DocumentFilterQuery, pagination?: PaginationInput): Promise<PaginationOutput<Document>> {
     const conditions = [];
     
