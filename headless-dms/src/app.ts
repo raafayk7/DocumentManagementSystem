@@ -5,6 +5,10 @@ import authRoutes from './auth/routes/auth.routes.js';
 import documentsRoutes from './documents/documents.routes.js';
 import fastifyMultipart from '@fastify/multipart';
 
+// Environment configuration
+const PORT = parseInt(process.env.PORT || '3000', 10);
+const HOST = process.env.HOST || '0.0.0.0';
+
 // Shutdown state management
 let isShuttingDown = false;
 let shutdownStartTime: number | null = null;
@@ -16,12 +20,36 @@ app.get('/ping', async (request, reply) => {
   return { pong: 'it works!' };
 });
 
+// Enhanced health check endpoint
+app.get('/health', async (request, reply) => {
+  if (isShuttingDown) {
+    return reply.status(503).send({ 
+      status: 'shutting_down',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  return { 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
+  };
+});
+
 app.register(fastifyMultipart, {
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB, adjust as needed
 });
 
 app.register(documentsRoutes, { prefix: '/documents' });
 app.register(authRoutes, { prefix: '/auth' });
+
+// Add test endpoint to bypass signal handling
+app.post('/test/shutdown', async (request, reply) => {
+  app.log.info('Test shutdown triggered via endpoint');
+  gracefulShutdown('TEST_ENDPOINT');
+  return { message: 'Shutdown initiated' };
+});
 
 // Graceful shutdown function
 const gracefulShutdown = async (signal: string) => {
@@ -35,19 +63,24 @@ const gracefulShutdown = async (signal: string) => {
   
   app.log.info(`Shutdown initiated (${signal})`);
   
-  try {
-    // Stop accepting new requests
-    app.log.info('Stopping HTTP server (graceful shutdown)');
-    await app.close();
-    
-    const shutdownDuration = Date.now() - (shutdownStartTime || 0);
-    app.log.info(`Shutdown completed successfully (${shutdownDuration}ms)`);
-    
-    process.exit(0);
-  } catch (error) {
-    app.log.error('Error during shutdown', error);
-    process.exit(1);
-  }
+  // Use setTimeout instead of await
+  app.log.info('Development mode: Adding 10 second delay for testing');
+  
+  setTimeout(async () => {
+    try {
+      // Stop accepting new requests
+      app.log.info('Stopping HTTP server (graceful shutdown)');
+      await app.close();
+      
+      const shutdownDuration = Date.now() - (shutdownStartTime || 0);
+      app.log.info(`Shutdown completed successfully (${shutdownDuration}ms)`);
+      
+      process.exit(0);
+    } catch (error) {
+      app.log.error('Error during shutdown', error);
+      process.exit(1);
+    }
+  }, 10000);
 };
 
 // Signal handlers
@@ -96,8 +129,8 @@ if (process.platform === 'win32') {
 // Start server
 const start = async () => {
   try {
-    await app.listen({ port: 3000, host: '0.0.0.0' });
-    app.log.info('Server listening on http://localhost:3000');
+    await app.listen({ port: PORT, host: HOST });
+    app.log.info(`Server listening on http://${HOST}:${PORT}`);
     app.ready(() => {
       console.log(app.printRoutes());
     });
