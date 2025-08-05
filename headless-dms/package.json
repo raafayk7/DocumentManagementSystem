@@ -16,13 +16,13 @@
     "@carbonteq/fp": "^0.8.2",
     "@fastify/multipart": "^9.0.3",
     "bcrypt": "^6.0.0",
-    "dotenv": "^17.2.0",
+    "dotenv": "^17.2.1",
     "drizzle-orm": "^0.44.3",
     "fastify": "^5.4.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.16.3",
     "uuid": "^11.1.0",
-    "zod": "^4.0.5"
+    "zod": "^4.0.14"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
