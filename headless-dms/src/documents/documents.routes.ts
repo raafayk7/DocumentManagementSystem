@@ -25,15 +25,17 @@ export default async function documentsRoutes(app: FastifyInstance) {
       const data = zodValidate(CreateDocumentSchema, request.body);
       const result = await documentService.createDocument(data);
       
-      if (result.isOk()) {
-        const document = result.unwrap();
-        logger.logResponse(reply, { statusCode: 201 });
-        reply.code(201).send(document);
-      } else {
-        const error = result.unwrapErr();
-        logger.error('Document creation failed', { error: error.message, operation: error.operation });
-        reply.code(400).send({ error: error.message });
-      }
+      matchRes(result, {
+        Ok: (document) => {
+          logger.logResponse(reply, { statusCode: 201 });
+          reply.code(201).send(document);
+        },
+        Err: (error) => {
+          const docError = error as DocumentError;
+          logger.error('Document creation failed', { error: docError.message, operation: docError.operation });
+          reply.code(400).send({ error: docError.message });
+        }
+      });
     } catch (err: any) {
       logger.error('Document creation failed', { error: err.message, statusCode: err.statusCode || 400 });
       reply.code(err.statusCode || 400).send({ error: err.message });
