@@ -6,6 +6,14 @@ export interface UserValidationContext {
   operation?: 'create' | 'update' | 'role_change';
 }
 
+export interface User {
+  id: string;
+  email: string;
+  role: 'user' | 'admin';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export class UserValidator {
   // Domain-specific business rules
 
@@ -106,6 +114,115 @@ export class UserValidator {
   ): Result<boolean, string> {
     if (requiredRole === 'admin' && userRole !== 'admin') {
       return Result.Err(`Admin role required for operation: ${operation}`);
+    }
+    
+    return Result.Ok(true);
+  }
+
+  // Invariant checking methods
+
+  /**
+   * Invariant: User must have valid email format
+   * Domain: Data integrity - email must be properly formatted
+   */
+  static validateUserEmailInvariant(user: User): Result<User, string> {
+    if (!user.email || !user.email.includes('@')) {
+      return Result.Err('User must have a valid email address');
+    }
+    
+    return Result.Ok(user);
+  }
+
+  /**
+   * Invariant: User must have valid role
+   * Domain: Data integrity - role must be valid enum value
+   */
+  static validateUserRoleInvariant(user: User): Result<User, string> {
+    if (user.role !== 'user' && user.role !== 'admin') {
+      return Result.Err('User must have a valid role (user or admin)');
+    }
+    
+    return Result.Ok(user);
+  }
+
+  /**
+   * Invariant: User must have valid timestamps
+   * Domain: Data integrity - timestamps must be valid dates
+   */
+  static validateUserTimestampsInvariant(user: User): Result<User, string> {
+    if (!(user.createdAt instanceof Date) || isNaN(user.createdAt.getTime())) {
+      return Result.Err('User must have a valid creation timestamp');
+    }
+    
+    if (!(user.updatedAt instanceof Date) || isNaN(user.updatedAt.getTime())) {
+      return Result.Err('User must have a valid update timestamp');
+    }
+    
+    if (user.updatedAt < user.createdAt) {
+      return Result.Err('User update timestamp cannot be before creation timestamp');
+    }
+    
+    return Result.Ok(user);
+  }
+
+  /**
+   * Invariant: User must have valid ID
+   * Domain: Data integrity - ID must be non-empty string
+   */
+  static validateUserIdInvariant(user: User): Result<User, string> {
+    if (!user.id || typeof user.id !== 'string' || user.id.trim() === '') {
+      return Result.Err('User must have a valid ID');
+    }
+    
+    return Result.Ok(user);
+  }
+
+  /**
+   * Comprehensive user invariant checking
+   * Domain: Data integrity - all user invariants must be satisfied
+   */
+  static validateUserInvariants(user: User): Result<User, string> {
+    // Check all invariants in sequence
+    const idResult = this.validateUserIdInvariant(user);
+    if (idResult.isErr()) return idResult;
+    
+    const emailResult = this.validateUserEmailInvariant(user);
+    if (emailResult.isErr()) return emailResult;
+    
+    const roleResult = this.validateUserRoleInvariant(user);
+    if (roleResult.isErr()) return roleResult;
+    
+    const timestampsResult = this.validateUserTimestampsInvariant(user);
+    if (timestampsResult.isErr()) return timestampsResult;
+    
+    return Result.Ok(user);
+  }
+
+  /**
+   * Business Rule: User cannot be deleted if they own documents
+   * Domain: Data integrity - prevent orphaned documents
+   */
+  static validateUserDeletionInvariant(
+    user: User, 
+    userDocumentCount: number
+  ): Result<boolean, string> {
+    if (userDocumentCount > 0) {
+      return Result.Err(`Cannot delete user with ${userDocumentCount} documents. Please transfer or delete documents first.`);
+    }
+    
+    return Result.Ok(true);
+  }
+
+  /**
+   * Business Rule: User cannot change role if they have admin privileges and are the only admin
+   * Domain: Security - prevent system from having no admins
+   */
+  static validateAdminRoleChangeInvariant(
+    user: User,
+    isOnlyAdmin: boolean
+  ): Result<boolean, string> {
+    if (user.role === 'admin' && isOnlyAdmin) {
+      return Result.Err('Cannot change role of the only admin user. Please create another admin first.');
     }
     
     return Result.Ok(true);

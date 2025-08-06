@@ -5,7 +5,7 @@ import { ILogger } from '../../common/services/logger.service.interface.js';
 import { authenticateJWT, requireRole } from '../middleware/index.js';
 import { LoginSchema, LoginDto } from '../dto/login.dto.js';
 import { RegisterSchema, RegisterDto } from '../dto/register.dto.js';
-import { zodValidate } from '../../pipes/zod-validation.pipe.js';
+import { zodValidate } from '../../validation/technical/simple.validator.js';
 import { matchRes, Result } from '@carbonteq/fp';
 import { IUserRepository } from '../repositories/user.repository.interface.js';
 import { PaginationInputSchema } from '../../common/dto/pagination.dto.js';

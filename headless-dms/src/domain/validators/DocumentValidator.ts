@@ -7,6 +7,19 @@ export interface DocumentValidationContext {
   userRole?: 'user' | 'admin';
 }
 
+export interface Document {
+  id: string;
+  name: string;
+  userId: string;
+  filePath: string;
+  mimeType: string;
+  size: number;
+  tags: string[];
+  metadata: Record<string, string>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export class DocumentValidator {
   // Domain-specific business rules
 
@@ -178,5 +191,201 @@ export class DocumentValidator {
     }
     
     return Result.Ok(filePath.trim());
+  }
+
+  // Invariant checking methods
+
+  /**
+   * Invariant: Document must have valid ID
+   * Domain: Data integrity - ID must be non-empty string
+   */
+  static validateDocumentIdInvariant(document: Document): Result<Document, string> {
+    if (!document.id || typeof document.id !== 'string' || document.id.trim() === '') {
+      return Result.Err('Document must have a valid ID');
+    }
+    
+    return Result.Ok(document);
+  }
+
+  /**
+   * Invariant: Document must have valid name
+   * Domain: Data integrity - name must be non-empty string
+   */
+  static validateDocumentNameInvariant(document: Document): Result<Document, string> {
+    if (!document.name || typeof document.name !== 'string' || document.name.trim() === '') {
+      return Result.Err('Document must have a valid name');
+    }
+    
+    return Result.Ok(document);
+  }
+
+  /**
+   * Invariant: Document must have valid user ID
+   * Domain: Data integrity - user ID must be non-empty string
+   */
+  static validateDocumentUserIdInvariant(document: Document): Result<Document, string> {
+    if (!document.userId || typeof document.userId !== 'string' || document.userId.trim() === '') {
+      return Result.Err('Document must have a valid user ID');
+    }
+    
+    return Result.Ok(document);
+  }
+
+  /**
+   * Invariant: Document must have valid file path
+   * Domain: Data integrity - file path must be non-empty string
+   */
+  static validateDocumentFilePathInvariant(document: Document): Result<Document, string> {
+    if (!document.filePath || typeof document.filePath !== 'string' || document.filePath.trim() === '') {
+      return Result.Err('Document must have a valid file path');
+    }
+    
+    return Result.Ok(document);
+  }
+
+  /**
+   * Invariant: Document must have valid MIME type
+   * Domain: Data integrity - MIME type must be non-empty string
+   */
+  static validateDocumentMimeTypeInvariant(document: Document): Result<Document, string> {
+    if (!document.mimeType || typeof document.mimeType !== 'string' || document.mimeType.trim() === '') {
+      return Result.Err('Document must have a valid MIME type');
+    }
+    
+    return Result.Ok(document);
+  }
+
+  /**
+   * Invariant: Document must have valid file size
+   * Domain: Data integrity - file size must be positive number
+   */
+  static validateDocumentSizeInvariant(document: Document): Result<Document, string> {
+    if (typeof document.size !== 'number' || document.size <= 0) {
+      return Result.Err('Document must have a valid positive file size');
+    }
+    
+    return Result.Ok(document);
+  }
+
+  /**
+   * Invariant: Document must have valid tags array
+   * Domain: Data integrity - tags must be array of strings
+   */
+  static validateDocumentTagsInvariant(document: Document): Result<Document, string> {
+    if (!Array.isArray(document.tags)) {
+      return Result.Err('Document tags must be an array');
+    }
+    
+    for (const tag of document.tags) {
+      if (typeof tag !== 'string') {
+        return Result.Err('Document tags must be strings');
+      }
+    }
+    
+    return Result.Ok(document);
+  }
+
+  /**
+   * Invariant: Document must have valid metadata object
+   * Domain: Data integrity - metadata must be object with string values
+   */
+  static validateDocumentMetadataInvariant(document: Document): Result<Document, string> {
+    if (typeof document.metadata !== 'object' || document.metadata === null) {
+      return Result.Err('Document metadata must be an object');
+    }
+    
+    for (const [key, value] of Object.entries(document.metadata)) {
+      if (typeof key !== 'string' || typeof value !== 'string') {
+        return Result.Err('Document metadata must have string keys and values');
+      }
+    }
+    
+    return Result.Ok(document);
+  }
+
+  /**
+   * Invariant: Document must have valid timestamps
+   * Domain: Data integrity - timestamps must be valid dates
+   */
+  static validateDocumentTimestampsInvariant(document: Document): Result<Document, string> {
+    if (!(document.createdAt instanceof Date) || isNaN(document.createdAt.getTime())) {
+      return Result.Err('Document must have a valid creation timestamp');
+    }
+    
+    if (!(document.updatedAt instanceof Date) || isNaN(document.updatedAt.getTime())) {
+      return Result.Err('Document must have a valid update timestamp');
+    }
+    
+    if (document.updatedAt < document.createdAt) {
+      return Result.Err('Document update timestamp cannot be before creation timestamp');
+    }
+    
+    return Result.Ok(document);
+  }
+
+  /**
+   * Comprehensive document invariant checking
+   * Domain: Data integrity - all document invariants must be satisfied
+   */
+  static validateDocumentInvariants(document: Document): Result<Document, string> {
+    // Check all invariants in sequence
+    const idResult = this.validateDocumentIdInvariant(document);
+    if (idResult.isErr()) return idResult;
+    
+    const nameResult = this.validateDocumentNameInvariant(document);
+    if (nameResult.isErr()) return nameResult;
+    
+    const userIdResult = this.validateDocumentUserIdInvariant(document);
+    if (userIdResult.isErr()) return userIdResult;
+    
+    const filePathResult = this.validateDocumentFilePathInvariant(document);
+    if (filePathResult.isErr()) return filePathResult;
+    
+    const mimeTypeResult = this.validateDocumentMimeTypeInvariant(document);
+    if (mimeTypeResult.isErr()) return mimeTypeResult;
+    
+    const sizeResult = this.validateDocumentSizeInvariant(document);
+    if (sizeResult.isErr()) return sizeResult;
+    
+    const tagsResult = this.validateDocumentTagsInvariant(document);
+    if (tagsResult.isErr()) return tagsResult;
+    
+    const metadataResult = this.validateDocumentMetadataInvariant(document);
+    if (metadataResult.isErr()) return metadataResult;
+    
+    const timestampsResult = this.validateDocumentTimestampsInvariant(document);
+    if (timestampsResult.isErr()) return timestampsResult;
+    
+    return Result.Ok(document);
+  }
+
+  /**
+   * Business Rule: Document cannot be accessed if file doesn't exist
+   * Domain: Data integrity - ensure file exists before access
+   */
+  static validateDocumentFileExistsInvariant(
+    document: Document,
+    fileExists: boolean
+  ): Result<boolean, string> {
+    if (!fileExists) {
+      return Result.Err('Document file no longer exists on disk');
+    }
+    
+    return Result.Ok(true);
+  }
+
+  /**
+   * Business Rule: Document cannot be modified if it's being accessed
+   * Domain: Concurrency control - prevent modification during access
+   */
+  static validateDocumentAccessInvariant(
+    document: Document,
+    isBeingAccessed: boolean
+  ): Result<boolean, string> {
+    if (isBeingAccessed) {
+      return Result.Err('Document is currently being accessed and cannot be modified');
+    }
+    
+    return Result.Ok(true);
   }
 }
