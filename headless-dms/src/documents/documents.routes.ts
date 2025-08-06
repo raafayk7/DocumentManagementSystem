@@ -18,29 +18,31 @@ const logger = container.resolve<ILogger>('ILogger').child({ component: 'Documen
 export default async function documentsRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authenticateJWT);
 
-  app.post('/', { preHandler: requireRole('admin') }, async (request, reply) => {
-    logger.logRequest(request);
+  // Note: This method has been deprected; we will only use the upload method
+  // POST /documents
+  // app.post('/', { preHandler: requireRole('admin') }, async (request, reply) => {
+  //   logger.logRequest(request);
     
-    try {
-      const data = zodValidate(CreateDocumentSchema, request.body);
-      const result = await documentService.createDocument(data);
+  //   try {
+  //     const data = zodValidate(CreateDocumentSchema, request.body);
+  //     const result = await documentService.createDocument(data);
       
-      matchRes(result, {
-        Ok: (document) => {
-          logger.logResponse(reply, { statusCode: 201 });
-          reply.code(201).send(document);
-        },
-        Err: (error) => {
-          const docError = error as DocumentError;
-          logger.error('Document creation failed', { error: docError.message, operation: docError.operation });
-          reply.code(400).send({ error: docError.message });
-        }
-      });
-    } catch (err: any) {
-      logger.error('Document creation failed', { error: err.message, statusCode: err.statusCode || 400 });
-      reply.code(err.statusCode || 400).send({ error: err.message });
-    }
-  });
+  //     matchRes(result, {
+  //       Ok: (document) => {
+  //         logger.logResponse(reply, { statusCode: 201 });
+  //         reply.code(201).send(document);
+  //       },
+  //       Err: (error) => {
+  //         const docError = error as DocumentError;
+  //         logger.error('Document creation failed', { error: docError.message, operation: docError.operation });
+  //         reply.code(400).send({ error: docError.message });
+  //       }
+  //     });
+  //   } catch (err: any) {
+  //     logger.error('Document creation failed', { error: err.message, statusCode: err.statusCode || 400 });
+  //     reply.code(err.statusCode || 400).send({ error: err.message });
+  //   }
+  // });
 
   // GET /documents
   app.get('/', async (request, reply) => {
@@ -224,30 +226,31 @@ export default async function documentsRoutes(app: FastifyInstance) {
     }
   });
 
+  // Note: This method has been deprected; we will only use the download-link method
   // GET /documents/:id/download
-  app.get('/:id/download', async (request, reply) => {
-    logger.logRequest(request);
+  // app.get('/:id/download', async (request, reply) => {
+  //   logger.logRequest(request);
     
-    try {
-      const { id } = request.params as { id: string };
-      const result = await documentService.downloadDocument(id, reply);
+  //   try {
+  //     const { id } = request.params as { id: string };
+  //     const result = await documentService.downloadDocument(id, reply);
       
-      matchRes(result, {
-        Ok: () => {
-          logger.logResponse(reply, { statusCode: 200, documentId: id });
-          // Response is already sent by the service
-        },
-        Err: (error) => {
-          logger.error('Document download failed', { error: error.message, operation: error.operation, documentId: id });
-          const statusCode = error.operation.includes('downloadDocument') && error.message.includes('not found') ? 404 : 500;
-          reply.code(statusCode).send({ error: error.message });
-        }
-      });
-    } catch (err: any) {
-      logger.error('Document download failed', { error: err.message, statusCode: err.statusCode || 404, documentId: (request.params as any).id });
-      reply.code(err.statusCode || 404).send({ error: err.message });
-    }
-  });
+  //     matchRes(result, {
+  //       Ok: () => {
+  //         logger.logResponse(reply, { statusCode: 200, documentId: id });
+  //         // Response is already sent by the service
+  //       },
+  //       Err: (error) => {
+  //         logger.error('Document download failed', { error: error.message, operation: error.operation, documentId: id });
+  //         const statusCode = error.operation.includes('downloadDocument') && error.message.includes('not found') ? 404 : 500;
+  //         reply.code(statusCode).send({ error: error.message });
+  //       }
+  //     });
+  //   } catch (err: any) {
+  //     logger.error('Document download failed', { error: err.message, statusCode: err.statusCode || 404, documentId: (request.params as any).id });
+  //     reply.code(err.statusCode || 404).send({ error: err.message });
+  //   }
+  // });
 
   // GET /documents/:id/download-link
   app.get('/:id/download-link', async (request, reply) => {

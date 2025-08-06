@@ -10,7 +10,7 @@ import { DocumentService } from '../documents/documents.service.js';
 import { ILogger } from '../common/services/logger.service.interface.js';
 import { ConsoleLogger } from '../common/services/console-logger.service.js';
 import { FileLogger } from '../common/services/file-logger.service.js';
-import {UserValidator, DocumentValidator} from '../domain/validators/index.js';
+import {UserValidator, DocumentValidator, EmailValidator} from '../domain/validators/index.js';
 import { IAuthStrategy } from '../auth/interfaces/IAuthStrategy.js';
 import { JwtAuthStrategy, LocalAuthStrategy } from '../auth/strategies/index.js';
 import { IAuthHandler } from '../auth/interfaces/IAuthHandler.js';
@@ -43,5 +43,6 @@ container.registerSingleton(DocumentService);
 // Register validators
 container.registerSingleton('UserValidator', UserValidator);
 container.registerSingleton('DocumentValidator', DocumentValidator);
+container.registerSingleton('EmailValidator', EmailValidator);
 
 export { container }; 
