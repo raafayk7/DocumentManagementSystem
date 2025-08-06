@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { CreateDocumentSchema } from './dto/documents.dto.js';
-import { zodValidate } from '../pipes/zod-validation.pipe.js';
+import { zodValidate } from '../validation/technical/simple.validator.js';
 import { UpdateDocumentSchema } from './dto/documents.dto.js';
 import { authenticateJWT, requireRole } from '../auth/middleware/index.js';
 import { DocumentService } from './documents.service.js';
