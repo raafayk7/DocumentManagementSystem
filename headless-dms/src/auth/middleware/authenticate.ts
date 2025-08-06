@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { container } from '../../common/container.js';
+import { container } from '../../di/container.js';
 import { IAuthHandler } from '../interfaces/IAuthHandler.js';
 import { DecodedToken } from '../interfaces/IAuthHandler.js';
 

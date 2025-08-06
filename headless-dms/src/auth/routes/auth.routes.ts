@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { container } from '../../common/container.js';
+import { container } from '../../di/container.js';
 import { IAuthHandler } from '../interfaces/IAuthHandler.js';
 import { ILogger } from '../../common/services/logger.service.interface.js';
 import { authenticateJWT, requireRole } from '../middleware/index.js';

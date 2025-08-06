@@ -4,6 +4,21 @@ import { setupServer } from './server.js';
 import { initializeDatabase } from './database.js';
 import { parseCliArgs, validateModeConfig, StartupMode } from '../commander/cli.js';
 
+// Global error handlers (essential for concurrency)
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit in development, but log the error
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Always exit on uncaught exceptions
+  process.exit(1);
+});
+
 export interface BootstrapOptions {
   validateConfig?: boolean;
   initializeDatabase?: boolean;

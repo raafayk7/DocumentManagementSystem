@@ -4,7 +4,7 @@ import { zodValidate } from '../pipes/zod-validation.pipe.js';
 import { UpdateDocumentSchema } from './dto/documents.dto.js';
 import { authenticateJWT, requireRole } from '../auth/middleware/index.js';
 import { DocumentService } from './documents.service.js';
-import { container } from '../common/container.js';
+import { container } from '../di/container.js';
 import { ILogger } from '../common/services/logger.service.interface.js';
 import { PaginationInputSchema } from '../common/dto/pagination.dto.js';
 import { matchRes, Result } from '@carbonteq/fp';

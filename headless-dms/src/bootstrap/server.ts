@@ -1,45 +1,10 @@
-// src/bootstrap/server.ts
-import Fastify from 'fastify';
+// src/bootstrap/server.ts - Server bootstrap (delegates to HTTP layer)
 import { AppConfig } from './config.js';
-import { registerMiddleware } from './middleware.js';
-import { registerRoutes } from './routes.js';
-import { setupSignalHandlers } from './signals.js';
+import { setupHTTPServer } from '../http/server.js';
 
-export async function setupServer(config: AppConfig): Promise<Fastify.FastifyInstance> {
-  console.log('Setting up HTTP server...');
-
-  // Create Fastify instance
-  const server = Fastify({ 
-    logger: true,
-    trustProxy: true,
-  });
-
-  try {
-    // Register middleware
-    await registerMiddleware(server);
-
-    // Register routes
-    await registerRoutes(server);
-
-    // Setup signal handlers
-    setupSignalHandlers(server);
-
-    // Start server
-    await server.listen({ 
-      port: config.PORT, 
-      host: config.HOST 
-    });
-
-    console.log(`Server listening on http://${config.HOST}:${config.PORT}`);
-    
-    // Log routes
-    server.ready(() => {
-      console.log(server.printRoutes());
-    });
-
-    return server;
-  } catch (error) {
-    console.error('Failed to setup server:', error);
-    throw error;
-  }
+export async function setupServer(config: AppConfig): Promise<any> {
+  console.log('Setting up server...');
+  
+  // Delegate to HTTP layer
+  return await setupHTTPServer(config);
 } 

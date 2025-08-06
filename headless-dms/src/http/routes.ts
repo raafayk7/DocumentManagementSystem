@@ -1,10 +1,10 @@
-// src/bootstrap/routes.ts
+// src/http/routes.ts - HTTP route registration
 import Fastify from 'fastify';
 import authRoutes from '../auth/routes/auth.routes.js';
 import documentsRoutes from '../documents/documents.routes.js';
 
 export async function registerRoutes(server: Fastify.FastifyInstance): Promise<void> {
-  console.log('Registering routes...');
+  console.log('Registering HTTP routes...');
 
   // Health check routes
   server.get('/ping', async (request, reply) => {
@@ -24,5 +24,5 @@ export async function registerRoutes(server: Fastify.FastifyInstance): Promise<v
   await server.register(documentsRoutes, { prefix: '/documents' });
   await server.register(authRoutes, { prefix: '/auth' });
 
-  console.log('Routes registered successfully');
+  console.log('HTTP routes registered successfully');
 } 

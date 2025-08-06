@@ -4,12 +4,12 @@ import { IDocumentRepository } from '../documents/repositories/documents.reposit
 import { DrizzleDocumentRepository } from '../documents/repositories/drizzle-document.repository.js';
 import { IUserRepository } from '../auth/repositories/user.repository.interface.js';
 import { DrizzleUserRepository } from '../auth/repositories/drizzle-user.repository.js';
-import { IFileService } from './services/file.service.interface.js';
-import { LocalFileService } from './services/local-file.service.js';
+import { IFileService } from '../common/services/file.service.interface.js';
+import { LocalFileService } from '../common/services/local-file.service.js';
 import { DocumentService } from '../documents/documents.service.js';
-import { ILogger } from './services/logger.service.interface.js';
-import { ConsoleLogger } from './services/console-logger.service.js';
-import { FileLogger } from './services/file-logger.service.js';
+import { ILogger } from '../common/services/logger.service.interface.js';
+import { ConsoleLogger } from '../common/services/console-logger.service.js';
+import { FileLogger } from '../common/services/file-logger.service.js';
 import { IValidator } from '../domain/validators/common/IValidator.js';
 import {EmailValidator, PasswordValidator, UserValidator, DocumentValidator ,JsonValidator} from '../domain/validators/index.js';
 import { IAuthStrategy } from '../auth/interfaces/IAuthStrategy.js';
