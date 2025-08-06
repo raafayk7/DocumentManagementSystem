@@ -16,6 +16,7 @@
     "@carbonteq/fp": "^0.8.2",
     "@fastify/multipart": "^9.0.3",
     "bcrypt": "^6.0.0",
+    "commander": "^14.0.0",
     "dotenv": "^17.2.1",
     "drizzle-orm": "^0.44.3",
     "fastify": "^5.4.0",

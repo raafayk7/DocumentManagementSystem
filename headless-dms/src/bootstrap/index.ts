@@ -2,17 +2,20 @@
 import { loadConfig, validateDatabaseConfig, validateServerConfig, validateJWTConfig, AppConfig } from './config.js';
 import { setupServer } from './server.js';
 import { initializeDatabase } from './database.js';
+import { parseCliArgs, validateModeConfig, StartupMode } from '../commander/cli.js';
 
 export interface BootstrapOptions {
   validateConfig?: boolean;
   initializeDatabase?: boolean;
   setupServer?: boolean;
+  mode?: StartupMode;
 }
 
 export interface BootstrapResult {
   config: AppConfig;
   server?: any; // Fastify server instance
   database?: any; // Database connection
+  cliArgs?: any; // CLI arguments
 }
 
 // Main bootstrap orchestrator
@@ -21,14 +24,28 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<Bootstr
     validateConfig = true,
     initializeDatabase: shouldInitDb = true,
     setupServer: shouldSetupServer = true,
+    mode,
   } = options;
 
   console.log('Starting application bootstrap...');
 
   try {
-    // 1. Load and validate configuration
+    // 1. Parse CLI arguments
+    console.log('Parsing CLI arguments...');
+    const cliArgs = parseCliArgs();
+    const startupMode = mode || cliArgs.mode;
+
+    // 2. Load and validate configuration
     console.log('Loading configuration...');
     const config = loadConfig();
+    
+    // Override config with CLI arguments
+    if (cliArgs.port) {
+      config.PORT = cliArgs.port;
+    }
+    if (cliArgs.host) {
+      config.HOST = cliArgs.host;
+    }
     
     if (validateConfig) {
       console.log('Validating configuration...');
@@ -37,23 +54,26 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<Bootstr
       if (shouldInitDb) {
         validateDatabaseConfig(config);
       }
+      
+      // Validate mode-specific configuration
+      validateModeConfig(startupMode, config);
     }
 
-    const result: BootstrapResult = { config };
+    const result: BootstrapResult = { config, cliArgs };
 
-    // 2. Initialize database (if enabled)
+    // 3. Initialize database (if enabled)
     if (shouldInitDb) {
       console.log('Initializing database...');
       result.database = await initializeDatabase(config);
     }
 
-    // 3. Setup HTTP server (if enabled)
+    // 4. Setup HTTP server (if enabled)
     if (shouldSetupServer) {
       console.log('Setting up HTTP server...');
       result.server = await setupServer(config);
     }
 
-    console.log('Bootstrap completed successfully');
+    console.log(`Bootstrap completed successfully in ${startupMode} mode`);
     return result;
 
   } catch (error) {

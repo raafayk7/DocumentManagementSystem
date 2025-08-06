@@ -17,11 +17,8 @@ const gracefulShutdown = async (server: Fastify.FastifyInstance, signal: string)
   
   server.log.info(`Shutdown initiated (${signal})`);
   
-  // Add delay for testing in development mode
-  if (process.env.NODE_ENV === 'development') {
-    server.log.info('Development mode: Adding 10 second delay for testing');
-    await new Promise(resolve => setTimeout(resolve, 10000));
-  }
+  // Note: Delay removed due to Windows signal handling differences
+  // The core graceful shutdown functionality works correctly
   
   try {
     // Stop accepting new requests
@@ -42,21 +39,21 @@ export function setupSignalHandlers(server: Fastify.FastifyInstance): void {
   console.log('Setting up signal handlers...');
 
   // Signal handlers
-  process.on('SIGTERM', () => {
+  process.on('SIGTERM', async () => {
     console.log('SIGTERM received!');
-    gracefulShutdown(server, 'SIGTERM');
+    await gracefulShutdown(server, 'SIGTERM');
   });
 
-  process.on('SIGINT', () => {
+  process.on('SIGINT', async () => {
     console.log('SIGINT received!');
-    gracefulShutdown(server, 'SIGINT');
+    await gracefulShutdown(server, 'SIGINT');
   });
 
   // Windows-specific shutdown handling
   if (process.platform === 'win32') {
-    process.on('SIGBREAK', () => {
+    process.on('SIGBREAK', async () => {
       console.log('SIGBREAK received (Windows Ctrl+Break)');
-      gracefulShutdown(server, 'SIGBREAK');
+      await gracefulShutdown(server, 'SIGBREAK');
     });
   }
 

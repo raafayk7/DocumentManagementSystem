@@ -17,12 +17,12 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 
-// Start the application using bootstrap
+// Start the application using bootstrap with CLI support
 const start = async () => {
   try {
     console.log('Starting application...');
     
-    // Bootstrap the application
+    // Bootstrap the application (CLI args will be parsed automatically)
     const result = await bootstrap({
       validateConfig: true,
       initializeDatabase: true,
@@ -32,6 +32,7 @@ const start = async () => {
     console.log('Application started successfully');
     console.log('Platform:', process.platform);
     console.log('Node version:', process.version);
+    console.log('Startup mode:', result.cliArgs?.mode || 'dev');
     
   } catch (error) {
     console.error('Failed to start application:', error);
