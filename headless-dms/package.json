@@ -7,7 +7,11 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/app.js",
-    "start:dev": "tsx --watch src/app.ts"
+    "start:dev": "tsx --watch src/app.ts",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
+    "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
+    "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
+    "test:verbose": "node --experimental-vm-modules node_modules/.bin/jest --verbose"
   },
   "keywords": [],
   "author": "",
@@ -26,10 +30,13 @@
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
+    "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/uuid": "^10.0.0",
     "drizzle-kit": "^0.31.4",
+    "jest": "^30.0.5",
     "reflect-metadata": "^0.2.2",
+    "ts-jest": "^29.4.1",
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.20.3",
     "tsyringe": "^4.10.0",
