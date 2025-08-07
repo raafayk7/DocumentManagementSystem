@@ -1,4 +1,4 @@
-import { ILogger, LogContext, LogLevel } from '../../application/interfaces/logger.service.interface.js';
+import { ILogger, LogContext, LogLevel } from '../../domain/interfaces/ILogger.js';
 import { injectable } from 'tsyringe';
 import fs from 'fs';
 import path from 'path';

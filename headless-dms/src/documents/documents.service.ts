@@ -1,7 +1,7 @@
 import { IDocumentRepository } from './repositories/documents.repository.interface.js';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentDto } from './dto/documents.dto.js';
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { IFileService } from '../application/interfaces/file.service.interface.js';
+import { IFileService } from '../application/interfaces/IFileService.js';
 import jwt from 'jsonwebtoken';
 import * as dotenv from 'dotenv';
 import { injectable, inject } from 'tsyringe';

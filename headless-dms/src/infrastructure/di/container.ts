@@ -4,10 +4,10 @@ import { IDocumentRepository } from '../../documents/repositories/documents.repo
 import { DrizzleDocumentRepository } from '../database/repositories/drizzle-document.repository.js';
 import { IUserRepository } from '../../auth/repositories/user.repository.interface.js';
 import { DrizzleUserRepository } from '../database/repositories/drizzle-user.repository.js';
-import { IFileService } from '../../application/interfaces/file.service.interface.js';
+import { IFileService } from '../../application/interfaces/IFileService.js';
 import { LocalFileService } from '../file-storage/local-file.service.js';
 import { DocumentService } from '../../documents/documents.service.js';
-import { ILogger } from '../../application/interfaces/logger.service.interface.js';
+import { ILogger } from '../../domain/interfaces/ILogger.js';
 import { ConsoleLogger } from '../logging/console-logger.service.js';
 import { FileLogger } from '../logging/file-logger.service.js';
 import {UserValidator, DocumentValidator, EmailValidator} from '../../domain/validators/index.js';

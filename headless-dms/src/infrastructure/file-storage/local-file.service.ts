@@ -1,4 +1,4 @@
-import { IFileService } from '../../application/interfaces/file.service.interface.js';
+import { IFileService } from '../../application/interfaces/IFileService.js';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { createReadStream } from 'fs';
 import { join } from 'path';
