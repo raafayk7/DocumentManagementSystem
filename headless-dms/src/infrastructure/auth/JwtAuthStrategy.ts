@@ -2,8 +2,8 @@ import { injectable, inject } from 'tsyringe';
 import { Result } from '@carbonteq/fp';
 import jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcrypt';
-import { IAuthStrategy } from '../interfaces/IAuthStrategy.js';
-import { IUserRepository } from '../repositories/user.repository.interface.js';
+import { IAuthStrategy } from '../../auth/interfaces/IAuthStrategy.js';
+import { IUserRepository } from '../../auth/repositories/user.repository.interface.js';
 import { ILogger } from '../../common/services/logger.service.interface.js';
 import { AuthError } from '../../common/errors/application.errors.js';
 import { User } from '../../domain/entities/User.js';
@@ -12,7 +12,7 @@ import {
   RegisterData, 
   DecodedToken, 
   AuthResult 
-} from '../interfaces/IAuthHandler.js';
+} from '../../auth/interfaces/IAuthHandler.js';
 import { UserValidator, EmailValidator } from '../../domain/validators/index.js';
 
 @injectable()
