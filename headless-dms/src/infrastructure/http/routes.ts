@@ -1,7 +1,7 @@
 // src/http/routes.ts - HTTP route registration
 import Fastify from 'fastify';
-import authRoutes from '../auth/routes/auth.routes.js';
-import documentsRoutes from '../documents/documents.routes.js';
+import authRoutes from './controllers/auth.routes.js';
+import documentsRoutes from './controllers/documents.routes.js';
 
 export async function registerRoutes(server: Fastify.FastifyInstance): Promise<void> {
   console.log('Registering HTTP routes...');

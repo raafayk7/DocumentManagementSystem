@@ -1,7 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { container } from '../../di/container.js';
-import { IAuthHandler } from '../interfaces/IAuthHandler.js';
-import { DecodedToken } from '../interfaces/IAuthHandler.js';
+import { IAuthHandler } from '../../../auth/interfaces/IAuthHandler.js';
+import { DecodedToken } from '../../../auth/interfaces/IAuthHandler.js';
 
 // Extend FastifyRequest to include user property
 declare module 'fastify' {

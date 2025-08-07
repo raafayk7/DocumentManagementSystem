@@ -1,15 +1,15 @@
 import { FastifyInstance } from 'fastify';
-import { CreateDocumentSchema } from './dto/documents.dto.js';
-import { zodValidate } from '../validation/technical/simple.validator.js';
-import { UpdateDocumentSchema } from './dto/documents.dto.js';
-import { authenticateJWT, requireRole } from '../auth/middleware/index.js';
-import { DocumentService } from './documents.service.js';
-import { container } from '../di/container.js';
-import { ILogger } from '../common/services/logger.service.interface.js';
-import { PaginationInputSchema } from '../common/dto/pagination.dto.js';
+import { CreateDocumentSchema } from '../../../documents/dto/documents.dto.js';
+import { zodValidate } from '../../../validation/technical/simple.validator.js';
+import { UpdateDocumentSchema } from '../../../documents/dto/documents.dto.js';
+import { authenticateJWT, requireRole } from '../middleware/index.js';
+import { DocumentService } from '../../../documents/documents.service.js';
+import { container } from '../../di/container.js';
+import { ILogger } from '../../../common/services/logger.service.interface.js';
+import { PaginationInputSchema } from '../../../common/dto/pagination.dto.js';
 import { matchRes, Result } from '@carbonteq/fp';
-import { Document } from '../domain/entities/Document.js';
-import { DocumentError } from '../common/errors/application.errors.js';
+import { Document } from '../../../domain/entities/Document.js';
+import { DocumentError } from '../../../common/errors/application.errors.js';
 
 // Get service instances from DI container
 const documentService = container.resolve(DocumentService);

@@ -1,13 +1,13 @@
-import { db } from '../../db/index.js';
-import { documents } from '../../db/schema.js';
-import { IDocumentRepository, DocumentFilterQuery } from './documents.repository.interface.js';
+import { db } from '../index.js';
+import { documents } from '../schema.js';
+import { IDocumentRepository, DocumentFilterQuery } from '../../../documents/repositories/documents.repository.interface.js';
 import { v4 as uuidv4 } from 'uuid';
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { arrayOverlaps } from 'drizzle-orm';
 import fs from 'fs';
 import { injectable } from 'tsyringe';
-import { PaginationInput, PaginationOutput, calculatePaginationMetadata } from '../../common/dto/pagination.dto.js';
-import { Document } from '../../domain/entities/Document.js';
+import { PaginationInput, PaginationOutput, calculatePaginationMetadata } from '../../../common/dto/pagination.dto.js';
+import { Document } from '../../../domain/entities/Document.js';
 
 @injectable()
 export class DrizzleDocumentRepository implements IDocumentRepository {

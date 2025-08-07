@@ -1,7 +1,7 @@
 // src/validation/middleware/validation.middleware.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { ValidationOrchestrator, ValidationContext } from '../pipeline/orchestrator.js';
-import { ErrorFormatter } from '../pipeline/error-formatter.js';
+import { ValidationOrchestrator, ValidationContext } from '../../../validation/pipeline/orchestrator.js';
+import { ErrorFormatter } from '../../../validation/pipeline/error-formatter.js';
 
 export interface ValidationMiddlewareOptions {
   technicalValidators?: ((input: any) => any)[];

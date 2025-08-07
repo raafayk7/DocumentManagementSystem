@@ -1,14 +1,14 @@
 import { FastifyInstance } from 'fastify';
 import { container } from '../../di/container.js';
-import { IAuthHandler } from '../interfaces/IAuthHandler.js';
-import { ILogger } from '../../common/services/logger.service.interface.js';
+import { IAuthHandler } from '../../../auth/interfaces/IAuthHandler.js';
+import { ILogger } from '../../../common/services/logger.service.interface.js';
 import { authenticateJWT, requireRole } from '../middleware/index.js';
-import { LoginSchema, LoginDto } from '../dto/login.dto.js';
-import { RegisterSchema, RegisterDto } from '../dto/register.dto.js';
-import { zodValidate } from '../../validation/technical/simple.validator.js';
+import { LoginSchema, LoginDto } from '../../../auth/dto/login.dto.js';
+import { RegisterSchema, RegisterDto } from '../../../auth/dto/register.dto.js';
+import { zodValidate } from '../../../validation/technical/simple.validator.js';
 import { matchRes, Result } from '@carbonteq/fp';
-import { IUserRepository } from '../repositories/user.repository.interface.js';
-import { PaginationInputSchema } from '../../common/dto/pagination.dto.js';
+import { IUserRepository } from '../../../auth/repositories/user.repository.interface.js';
+import { PaginationInputSchema } from '../../../common/dto/pagination.dto.js';
 
 // Get service instances from DI container
 const authHandler = container.resolve<IAuthHandler>('IAuthHandler');

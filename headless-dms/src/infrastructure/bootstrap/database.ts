@@ -1,6 +1,6 @@
 // src/bootstrap/database.ts
 import { AppConfig } from './config.js';
-import { db } from '../db/index.js';
+import { db } from '../database/index.js';
 
 export async function initializeDatabase(config: AppConfig): Promise<any> {
   console.log('Initializing database connection...');

@@ -1,20 +1,20 @@
 import 'reflect-metadata';
 import { container } from 'tsyringe';
-import { IDocumentRepository } from '../documents/repositories/documents.repository.interface.js';
-import { DrizzleDocumentRepository } from '../documents/repositories/drizzle-document.repository.js';
-import { IUserRepository } from '../auth/repositories/user.repository.interface.js';
-import { DrizzleUserRepository } from '../auth/repositories/drizzle-user.repository.js';
-import { IFileService } from '../common/services/file.service.interface.js';
-import { LocalFileService } from '../common/services/local-file.service.js';
-import { DocumentService } from '../documents/documents.service.js';
-import { ILogger } from '../common/services/logger.service.interface.js';
-import { ConsoleLogger } from '../common/services/console-logger.service.js';
-import { FileLogger } from '../common/services/file-logger.service.js';
-import {UserValidator, DocumentValidator, EmailValidator} from '../domain/validators/index.js';
-import { IAuthStrategy } from '../auth/interfaces/IAuthStrategy.js';
-import { JwtAuthStrategy, LocalAuthStrategy } from '../auth/strategies/index.js';
-import { IAuthHandler } from '../auth/interfaces/IAuthHandler.js';
-import { AuthHandler } from '../auth/services/AuthHandler.js';
+import { IDocumentRepository } from '../../documents/repositories/documents.repository.interface.js';
+import { DrizzleDocumentRepository } from '../database/repositories/drizzle-document.repository.js';
+import { IUserRepository } from '../../auth/repositories/user.repository.interface.js';
+import { DrizzleUserRepository } from '../database/repositories/drizzle-user.repository.js';
+import { IFileService } from '../../application/interfaces/file.service.interface.js';
+import { LocalFileService } from '../file-storage/local-file.service.js';
+import { DocumentService } from '../../documents/documents.service.js';
+import { ILogger } from '../../application/interfaces/logger.service.interface.js';
+import { ConsoleLogger } from '../logging/console-logger.service.js';
+import { FileLogger } from '../logging/file-logger.service.js';
+import {UserValidator, DocumentValidator, EmailValidator} from '../../domain/validators/index.js';
+import { IAuthStrategy } from '../../auth/interfaces/IAuthStrategy.js';
+import { JwtAuthStrategy, LocalAuthStrategy } from '../auth/index.js';
+import { IAuthHandler } from '../../auth/interfaces/IAuthHandler.js';
+import { AuthHandler } from '../auth/AuthHandler.js';
 
 // Register repositories
 container.registerSingleton<IDocumentRepository>('IDocumentRepository', DrizzleDocumentRepository);

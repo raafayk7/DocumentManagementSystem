@@ -2,7 +2,7 @@
 import { loadConfig, validateDatabaseConfig, validateServerConfig, validateJWTConfig, AppConfig } from './config.js';
 import { setupServer } from './server.js';
 import { initializeDatabase } from './database.js';
-import { parseCliArgs, validateModeConfig, StartupMode } from '../commander/cli.js';
+import { parseCliArgs, validateModeConfig, StartupMode } from '../../commander/cli.js';
 
 // Global error handlers (essential for concurrency)
 process.on('unhandledRejection', (reason, promise) => {
