@@ -1,8 +1,6 @@
 import { inject, injectable } from "tsyringe";
 import { Result } from "@carbonteq/fp";
-import { Document } from "../../../domain/entities/Document.js";
-import type { IDocumentRepository } from "../../../documents/repositories/documents.repository.interface.js";
-import type { IFileService } from "../../interfaces/IFileService.js";
+import { DocumentApplicationService } from "../../services/DocumentApplicationService.js";
 import type { ILogger } from "../../../infrastructure/interfaces/ILogger.js";
 import type { UploadDocumentRequest, UploadDocumentResponse } from "../../dto/document/index.js";
 import { ApplicationError } from "../../errors/ApplicationError.js";
@@ -10,8 +8,7 @@ import { ApplicationError } from "../../errors/ApplicationError.js";
 @injectable()
 export class UploadDocumentUseCase {
   constructor(
-    @inject("IDocumentRepository") private documentRepository: IDocumentRepository,
-    @inject("IFileService") private fileService: IFileService,
+    @inject("DocumentApplicationService") private documentApplicationService: DocumentApplicationService,
     @inject("ILogger") private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'UploadDocumentUseCase' });
@@ -21,35 +18,27 @@ export class UploadDocumentUseCase {
     this.logger.info('Document upload started', { filename: request.filename });
 
     try {
-      // 1. Create document using entity factory directly from request
-      const documentResult = Document.create(
-        request.name,
-        request.filename, // Use filename as filePath for now
+      // Delegate to DocumentApplicationService
+      const documentResult = await this.documentApplicationService.uploadDocument(
+        request.file,
+        request.filename,
         request.mimeType,
-        request.size.toString(),
-        request.tags || [],
-        request.metadata || {}
+        request.userId
       );
-
+      
       if (documentResult.isErr()) {
-        this.logger.warn('Document upload failed - entity creation error', { 
+        this.logger.warn('Document upload failed', { 
           filename: request.filename, 
-          error: documentResult.unwrapErr() 
+          error: documentResult.unwrapErr().message 
         });
         return Result.Err(new ApplicationError(
-          'UploadDocumentUseCase.entityCreation',
-          documentResult.unwrapErr(),
+          'UploadDocumentUseCase.uploadFailed',
+          documentResult.unwrapErr().message,
           { filename: request.filename }
         ));
       }
 
-      const document = documentResult.unwrap();
-
-      // 2. Save file using file service (this would need to be adapted for the custom DTO)
-      // For now, we'll assume the file is already saved and we just need to save the document
-      
-      // 3. Atomic save with name uniqueness check (thread-safe)
-      const savedDocument = await this.documentRepository.saveWithNameCheck(document);
+      const savedDocument = documentResult.unwrap();
       
       // 4. Convert to response DTO
       const response: UploadDocumentResponse = {

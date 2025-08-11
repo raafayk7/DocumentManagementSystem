@@ -9,6 +9,7 @@ export const UploadDocumentRequestSchema = z.object({
   size: z.number().positive('File size must be positive'),
   tags: z.array(z.string()).optional(),
   metadata: z.record(z.string(), z.string()).optional(),
+  userId: z.string().uuid('Invalid user ID'),
 });
 
 export type UploadDocumentRequest = z.infer<typeof UploadDocumentRequestSchema>;

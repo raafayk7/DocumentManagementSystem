@@ -1,6 +1,6 @@
 import { inject, injectable } from "tsyringe";
 import { Result } from "@carbonteq/fp";
-import type { IDocumentRepository } from "../../../documents/repositories/documents.repository.interface.js";
+import { DocumentApplicationService } from "../../services/DocumentApplicationService.js";
 import type { ILogger } from "../../../infrastructure/interfaces/ILogger.js";
 import type { GetDocumentsRequest, GetDocumentsResponse } from "../../dto/document/index.js";
 import { ApplicationError } from "../../errors/ApplicationError.js";
@@ -8,7 +8,7 @@ import { ApplicationError } from "../../errors/ApplicationError.js";
 @injectable()
 export class GetDocumentsUseCase {
   constructor(
-    @inject("IDocumentRepository") private documentRepository: IDocumentRepository,
+    @inject("DocumentApplicationService") private documentApplicationService: DocumentApplicationService,
     @inject("ILogger") private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'GetDocumentsUseCase' });
@@ -24,23 +24,18 @@ export class GetDocumentsUseCase {
     });
 
     try {
-      // 1. Build query parameters - convert search to name filter
-      const queryParams = request.search ? {
-        name: request.search,
-      } : undefined;
-
-      const paginationParams = {
-        page: request.page,
-        limit: request.limit,
-        sort: request.sortBy,
-        order: request.sortOrder,
-      };
-
-      // 2. Get paginated documents from repository
-      const result = await this.documentRepository.find(queryParams, paginationParams);
+      // Delegate to DocumentApplicationService
+      const documentsResult = await this.documentApplicationService.getDocuments();
       
-      // 3. Transform to response DTOs
-      const documents = result.data.map(document => ({
+      if (documentsResult.isErr()) {
+        this.logger.error('Failed to get documents', { error: documentsResult.unwrapErr().message });
+        return documentsResult;
+      }
+
+      const documents = documentsResult.unwrap();
+      
+      // Transform to response DTOs
+      const documentDtos = documents.map(document => ({
         id: document.id,
         name: document.name,
         filePath: document.filePath,
@@ -52,19 +47,19 @@ export class GetDocumentsUseCase {
         updatedAt: document.updatedAt,
       }));
 
-      // 4. Build response
+      // Build response (simplified pagination for now)
       const response: GetDocumentsResponse = {
-        document: documents,
+        document: documentDtos,
         pagination: {
-          page: result.pagination.page,
-          limit: result.pagination.limit,
-          total: result.pagination.total,
+          page: request.page,
+          limit: request.limit,
+          total: documents.length,
         },
       };
 
       this.logger.info("Documents retrieved successfully", { 
         count: documents.length, 
-        total: result.pagination.total,
+        total: documents.length,
         page: request.page 
       });
       return Result.Ok(response);

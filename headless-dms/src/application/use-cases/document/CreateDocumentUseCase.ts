@@ -1,8 +1,6 @@
 import { injectable, inject } from 'tsyringe';
 import { Result } from '@carbonteq/fp';
-import { Document } from '../../../domain/entities/Document.js';
-import { DocumentValidator } from '../../../domain/validators/DocumentValidator.js';
-import type { IDocumentRepository } from '../../../documents/repositories/documents.repository.interface.js';
+import { DocumentApplicationService } from '../../services/DocumentApplicationService.js';
 import type { ILogger } from '../../../infrastructure/interfaces/ILogger.js';
 import type { CreateDocumentRequest, DocumentResponse } from '../../dto/document/index.js';
 import { ApplicationError } from '../../errors/ApplicationError.js';
@@ -10,7 +8,7 @@ import { ApplicationError } from '../../errors/ApplicationError.js';
 @injectable()
 export class CreateDocumentUseCase {
   constructor(
-    @inject('IDocumentRepository') private documentRepository: IDocumentRepository,
+    @inject('DocumentApplicationService') private documentApplicationService: DocumentApplicationService,
     @inject('ILogger') private logger: ILogger
   ) {
     this.logger = this.logger.child({ useCase: 'CreateDocumentUseCase' });
@@ -20,73 +18,26 @@ export class CreateDocumentUseCase {
     this.logger.info('Creating document', { name: request.name, size: request.size });
 
     try {
-      // 1. Validate document name
-      const nameValidation = DocumentValidator.validateName(request.name);
-      if (nameValidation.isErr()) {
-        this.logger.warn('Document creation failed - name validation error', { 
-          name: request.name, 
-          error: nameValidation.unwrapErr() 
-        });
-        return Result.Err(new ApplicationError(
-          'CreateDocumentUseCase.nameValidation',
-          nameValidation.unwrapErr(),
-          { name: request.name }
-        ));
-      }
-
-      // 2. Validate file size
-      const fileSizeValidation = DocumentValidator.validateFileSize(request.size);
-      if (fileSizeValidation.isErr()) {
-        this.logger.warn('Document creation failed - file size validation error', { 
-          name: request.name, 
-          error: fileSizeValidation.unwrapErr() 
-        });
-        return Result.Err(new ApplicationError(
-          'CreateDocumentUseCase.fileSizeValidation',
-          fileSizeValidation.unwrapErr(),
-          { name: request.name, size: request.size }
-        ));
-      }
-
-      // 3. Validate file type
-      const fileTypeValidation = DocumentValidator.validateFileType(request.mimeType);
-      if (fileTypeValidation.isErr()) {
-        this.logger.warn('Document creation failed - file type validation error', { 
-          name: request.name, 
-          error: fileTypeValidation.unwrapErr() 
-        });
-        return Result.Err(new ApplicationError(
-          'CreateDocumentUseCase.fileTypeValidation',
-          fileTypeValidation.unwrapErr(),
-          { name: request.name, mimeType: request.mimeType }
-        ));
-      }
-
-      // 4. Create document entity (domain logic)
-      const documentResult = Document.create(
-        request.name, 
-        request.filePath, 
-        request.mimeType, 
-        request.size, 
-        request.tags, 
-        request.metadata
+      // Delegate to DocumentApplicationService
+      const documentResult = await this.documentApplicationService.createDocument(
+        request.name,
+        request.filePath,
+        request.mimeType,
+        request.size,
+        request.tags || [],
+        request.metadata || {},
+        request.userId
       );
+      
       if (documentResult.isErr()) {
-        this.logger.warn('Document creation failed - entity creation error', { 
+        this.logger.warn('Document creation failed', { 
           name: request.name, 
-          error: documentResult.unwrapErr() 
+          error: documentResult.unwrapErr().message 
         });
-        return Result.Err(new ApplicationError(
-          'CreateDocumentUseCase.entityCreation',
-          documentResult.unwrapErr(),
-          { name: request.name, size: request.size }
-        ));
+        return documentResult;
       }
 
-      const document = documentResult.unwrap();
-      
-      // 5. Save document to repository with name uniqueness check
-      const savedDocument = await this.documentRepository.saveWithNameCheck(document);
+      const savedDocument = documentResult.unwrap();
       
       // 6. Return response DTO
       const response: DocumentResponse = {

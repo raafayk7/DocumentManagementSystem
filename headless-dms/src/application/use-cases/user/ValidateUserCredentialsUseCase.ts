@@ -1,6 +1,6 @@
 import { inject, injectable } from "tsyringe";
 import { Result } from "@carbonteq/fp";
-import type { IUserRepository } from "../../../auth/repositories/user.repository.interface.js";
+import { AuthApplicationService } from "../../services/AuthApplicationService.js";
 import type { ILogger } from "../../../infrastructure/interfaces/ILogger.js";
 import type { ValidateUserCredentialsRequest, ValidateUserCredentialsResponse } from "../../dto/user/index.js";
 import { ApplicationError } from "../../errors/ApplicationError.js";
@@ -8,7 +8,7 @@ import { ApplicationError } from "../../errors/ApplicationError.js";
 @injectable()
 export class ValidateUserCredentialsUseCase {
   constructor(
-    @inject("IUserRepository") private userRepository: IUserRepository,
+    @inject("AuthApplicationService") private authApplicationService: AuthApplicationService,
     @inject("ILogger") private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'ValidateUserCredentialsUseCase' });
@@ -18,27 +18,40 @@ export class ValidateUserCredentialsUseCase {
     this.logger.info('Validating user credentials', { email: request.email });
 
     try {
-      // 1. Find user by email
-      const user = await this.userRepository.findByEmail(request.email);
-      if (!user) {
-        this.logger.warn('User not found for credential validation', { email: request.email });
+      // Delegate credential validation to AuthApplicationService
+      const isValidResult = await this.authApplicationService.validateUserCredentials(request.email, request.password);
+      
+      if (isValidResult.isErr()) {
+        this.logger.warn('Credential validation failed', { 
+          email: request.email, 
+          error: isValidResult.unwrapErr().message 
+        });
+        return isValidResult;
+      }
+
+      const isValid = isValidResult.unwrap();
+      
+      if (!isValid) {
+        this.logger.warn('Invalid credentials provided', { email: request.email });
         return Result.Err(new ApplicationError(
-          'ValidateUserCredentialsUseCase.userNotFound',
+          'ValidateUserCredentialsUseCase.invalidCredentials',
           'Invalid credentials',
           { email: request.email }
         ));
       }
 
-      // 2. Verify password using domain entity
-      const isValidPassword = await user.verifyPassword(request.password);
-      if (!isValidPassword) {
-        this.logger.warn('Invalid password for user', { email: request.email });
+      // Get user details for response
+      const userResult = await this.authApplicationService.authenticateUser(request.email, request.password);
+      if (userResult.isErr()) {
+        this.logger.error('Failed to get user after credential validation', { email: request.email });
         return Result.Err(new ApplicationError(
-          'ValidateUserCredentialsUseCase.invalidPassword',
-          'Invalid credentials',
+          'ValidateUserCredentialsUseCase.userRetrievalFailed',
+          'Failed to retrieve user details',
           { email: request.email }
         ));
       }
+
+      const user = userResult.unwrap();
 
       // 3. Return response DTO
       const response: ValidateUserCredentialsResponse = {

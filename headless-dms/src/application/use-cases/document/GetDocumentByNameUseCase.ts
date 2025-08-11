@@ -1,6 +1,6 @@
 import { inject, injectable } from "tsyringe";
 import { Result } from "@carbonteq/fp";
-import type { IDocumentRepository } from "../../../documents/repositories/documents.repository.interface.js";
+import { DocumentApplicationService } from "../../services/DocumentApplicationService.js";
 import type { ILogger } from "../../../infrastructure/interfaces/ILogger.js";
 import type { GetDocumentByNameRequest, GetDocumentByNameResponse } from "../../dto/document/index.js";
 import { ApplicationError } from "../../errors/ApplicationError.js";
@@ -8,7 +8,7 @@ import { ApplicationError } from "../../errors/ApplicationError.js";
 @injectable()
 export class GetDocumentByNameUseCase {
   constructor(
-    @inject("IDocumentRepository") private documentRepository: IDocumentRepository,
+    @inject("DocumentApplicationService") private documentApplicationService: DocumentApplicationService,
     @inject("ILogger") private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'GetDocumentByNameUseCase' });
@@ -18,16 +18,15 @@ export class GetDocumentByNameUseCase {
     this.logger.info('Getting document by name', { name: request.name });
 
     try {
-      // 1. Find document by name
-      const document = await this.documentRepository.findByName(request.name);
-      if (!document) {
+      // Delegate to DocumentApplicationService
+      const documentResult = await this.documentApplicationService.getDocumentByName(request.name);
+      
+      if (documentResult.isErr()) {
         this.logger.warn('Document not found by name', { name: request.name });
-        return Result.Err(new ApplicationError(
-          'GetDocumentByNameUseCase.documentNotFound',
-          'Document not found',
-          { name: request.name }
-        ));
+        return documentResult;
       }
+
+      const document = documentResult.unwrap();
 
       // 2. Transform to response DTO
       const response: GetDocumentByNameResponse = {

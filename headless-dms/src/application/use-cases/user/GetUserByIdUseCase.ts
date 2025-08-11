@@ -1,6 +1,6 @@
 import { inject, injectable } from "tsyringe";
 import { Result } from "@carbonteq/fp";
-import type { IUserRepository } from "../../../auth/repositories/user.repository.interface.js";
+import { UserApplicationService } from "../../services/UserApplicationService.js";
 import type { ILogger } from "../../../infrastructure/interfaces/ILogger.js";
 import type { GetUserByIdRequest, GetUserByIdResponse } from "../../dto/user/index.js";
 import { ApplicationError } from "../../errors/ApplicationError.js";
@@ -8,7 +8,7 @@ import { ApplicationError } from "../../errors/ApplicationError.js";
 @injectable()
 export class GetUserByIdUseCase {
   constructor(
-    @inject("IUserRepository") private userRepository: IUserRepository,
+    @inject("UserApplicationService") private userApplicationService: UserApplicationService,
     @inject("ILogger") private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'GetUserByIdUseCase' });
@@ -18,16 +18,15 @@ export class GetUserByIdUseCase {
     this.logger.info('Getting user by ID', { userId: request.userId });
 
     try {
-      // 1. Find user by ID
-      const user = await this.userRepository.findById(request.userId);
-      if (!user) {
+      // Delegate to UserApplicationService
+      const userResult = await this.userApplicationService.getUserById(request.userId);
+      
+      if (userResult.isErr()) {
         this.logger.warn('User not found by ID', { userId: request.userId });
-        return Result.Err(new ApplicationError(
-          'GetUserByIdUseCase.userNotFound',
-          'User not found',
-          { userId: request.userId }
-        ));
+        return userResult;
       }
+
+      const user = userResult.unwrap();
 
       // 2. Transform to response DTO
       const response: GetUserByIdResponse = {

@@ -1,6 +1,6 @@
 import { injectable, inject } from 'tsyringe';
 import { Result } from '@carbonteq/fp';
-import type { IUserRepository } from '../../../auth/repositories/user.repository.interface.js';
+import { AuthApplicationService } from '../../services/AuthApplicationService.js';
 import type { ILogger } from '../../../infrastructure/interfaces/ILogger.js';
 import type { AuthenticateUserRequest, AuthenticateUserResponse } from '../../dto/user/index.js';
 import { ApplicationError } from '../../errors/ApplicationError.js';
@@ -8,7 +8,7 @@ import { ApplicationError } from '../../errors/ApplicationError.js';
 @injectable()
 export class AuthenticateUserUseCase {
   constructor(
-    @inject('IUserRepository') private userRepository: IUserRepository,
+    @inject('AuthApplicationService') private authApplicationService: AuthApplicationService,
     @inject('ILogger') private logger: ILogger
   ) {
     this.logger = this.logger.child({ useCase: 'AuthenticateUserUseCase' });
@@ -18,27 +18,18 @@ export class AuthenticateUserUseCase {
     this.logger.info('User login attempt', { email: request.email });
     
     try {
-      // 1. Find user by email
-      const user = await this.userRepository.findOne({ email: request.email });
-      if (!user) {
-        this.logger.warn('Login failed - user not found', { email: request.email });
-        return Result.Err(new ApplicationError(
-          'AuthenticateUserUseCase.findUser',
-          'User not found',
-          { email: request.email }
-        ));
+      // Delegate authentication to AuthApplicationService
+      const userResult = await this.authApplicationService.authenticateUser(request.email, request.password);
+      
+      if (userResult.isErr()) {
+        this.logger.warn('Login failed', { 
+          email: request.email, 
+          error: userResult.unwrapErr().message 
+        });
+        return userResult;
       }
-  
-      // 2. Verify password using domain entity
-      const isMatch = await user.verifyPassword(request.password);
-      if (!isMatch) {
-        this.logger.warn('Login failed - invalid password', { email: request.email });
-        return Result.Err(new ApplicationError(
-          'AuthenticateUserUseCase.validatePassword',
-          'Invalid password',
-          { email: request.email }
-        ));
-      }
+
+      const user = userResult.unwrap();
   
       // 3. Generate authentication response (token generation will be handled by infrastructure)
       const authResponse: AuthenticateUserResponse = {

@@ -8,6 +8,7 @@ export const CreateDocumentRequestSchema = z.object({
   size: z.string().min(1, 'Size cannot be empty'),
   tags: z.array(z.string()).optional(),
   metadata: z.record(z.string(), z.string()).optional(),
+  userId: z.string().uuid('Invalid user ID'),
 });
 
 export type CreateDocumentRequest = z.infer<typeof CreateDocumentRequestSchema>;

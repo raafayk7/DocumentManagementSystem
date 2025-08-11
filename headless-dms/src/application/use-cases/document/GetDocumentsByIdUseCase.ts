@@ -1,6 +1,6 @@
 import { injectable, inject } from 'tsyringe';
 import { Result } from '@carbonteq/fp';
-import type { IDocumentRepository } from '../../../documents/repositories/documents.repository.interface.js';
+import { DocumentApplicationService } from '../../services/DocumentApplicationService.js';
 import type { ILogger } from '../../../infrastructure/interfaces/ILogger.js';
 import type { GetDocumentsByIdRequest, GetDocumentByIdResponse } from '../../dto/document/index.js';
 import { ApplicationError } from '../../errors/ApplicationError.js';
@@ -8,7 +8,7 @@ import { ApplicationError } from '../../errors/ApplicationError.js';
 @injectable()
 export class GetDocumentByIdUseCase {
   constructor(
-    @inject('IDocumentRepository') private documentRepository: IDocumentRepository,
+    @inject('DocumentApplicationService') private documentApplicationService: DocumentApplicationService,
     @inject('ILogger') private logger: ILogger
   ) {
     this.logger = this.logger.child({ useCase: 'GetDocumentByIdUseCase' });
@@ -18,16 +18,15 @@ export class GetDocumentByIdUseCase {
     this.logger.info('Getting document by ID', { documentId: request.documentId });
 
     try {
-      // 1. Find document by ID
-      const document = await this.documentRepository.findById(request.documentId);
-      if (!document) {
+      // Delegate to DocumentApplicationService
+      const documentResult = await this.documentApplicationService.getDocumentById(request.documentId);
+      
+      if (documentResult.isErr()) {
         this.logger.warn('Document not found', { documentId: request.documentId });
-        return Result.Err(new ApplicationError(
-          'GetDocumentByIdUseCase.documentNotFound',
-          'Document not found',
-          { documentId: request.documentId }
-        ));
+        return documentResult;
       }
+
+      const document = documentResult.unwrap();
 
       // 2. Transform to response DTO
       const response: GetDocumentByIdResponse = {

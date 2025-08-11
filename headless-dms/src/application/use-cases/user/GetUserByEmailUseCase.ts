@@ -1,6 +1,6 @@
 import { inject, injectable } from "tsyringe";
 import { Result } from "@carbonteq/fp";
-import type { IUserRepository } from "../../../auth/repositories/user.repository.interface.js";
+import { UserApplicationService } from "../../services/UserApplicationService.js";
 import type { ILogger } from "../../../infrastructure/interfaces/ILogger.js";
 import type { GetUserByEmailRequest, GetUserByEmailResponse } from "../../dto/user/index.js";
 import { ApplicationError } from "../../errors/ApplicationError.js";
@@ -8,7 +8,7 @@ import { ApplicationError } from "../../errors/ApplicationError.js";
 @injectable()
 export class GetUserByEmailUseCase {
   constructor(
-    @inject("IUserRepository") private userRepository: IUserRepository,
+    @inject("UserApplicationService") private userApplicationService: UserApplicationService,
     @inject("ILogger") private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'GetUserByEmailUseCase' });
@@ -18,16 +18,15 @@ export class GetUserByEmailUseCase {
     this.logger.info('Getting user by email', { email: request.email });
 
     try {
-      // 1. Find user by email
-      const user = await this.userRepository.findByEmail(request.email);
-      if (!user) {
+      // Delegate to UserApplicationService
+      const userResult = await this.userApplicationService.getUserByEmail(request.email);
+      
+      if (userResult.isErr()) {
         this.logger.warn('User not found by email', { email: request.email });
-        return Result.Err(new ApplicationError(
-          'GetUserByEmailUseCase.userNotFound',
-          'User not found',
-          { email: request.email }
-        ));
+        return userResult;
       }
+
+      const user = userResult.unwrap();
 
       // 2. Transform to response DTO
       const response: GetUserByEmailResponse = {

@@ -1,6 +1,6 @@
 import { inject, injectable } from "tsyringe";
 import { Result } from "@carbonteq/fp";
-import type { IUserRepository } from "../../../auth/repositories/user.repository.interface.js";
+import { UserApplicationService } from "../../services/UserApplicationService.js";
 import type { ILogger } from "../../../infrastructure/interfaces/ILogger.js";
 import type { GetUsersByRoleRequest, GetUsersByRoleResponse } from "../../dto/user/index.js";
 import { ApplicationError } from "../../errors/ApplicationError.js";
@@ -8,7 +8,7 @@ import { ApplicationError } from "../../errors/ApplicationError.js";
 @injectable()
 export class GetUsersByRoleUseCase {
   constructor(
-    @inject("IUserRepository") private userRepository: IUserRepository,
+    @inject("UserApplicationService") private userApplicationService: UserApplicationService,
     @inject("ILogger") private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'GetUsersByRoleUseCase' });
@@ -18,10 +18,20 @@ export class GetUsersByRoleUseCase {
     this.logger.info('Getting users by role', { role: request.role });
 
     try {
-      // 1. Get users by role from repository
-      const users = await this.userRepository.findByRole(request.role);
+      // Delegate to UserApplicationService
+      const usersResult = await this.userApplicationService.getUsersByRole(request.role);
+      
+      if (usersResult.isErr()) {
+        this.logger.error('Failed to get users by role', { 
+          role: request.role,
+          error: usersResult.unwrapErr().message 
+        });
+        return usersResult;
+      }
 
-      // 2. Transform to response DTOs
+      const users = usersResult.unwrap();
+
+      // Transform to response DTOs
       const userResponses = users.map(user => ({
         id: user.id,
         email: user.email,
@@ -30,7 +40,7 @@ export class GetUsersByRoleUseCase {
         updatedAt: user.updatedAt,
       }));
 
-      // 3. Build response
+      // Build response
       const response: GetUsersByRoleResponse = {
         users: userResponses,
         total: users.length,

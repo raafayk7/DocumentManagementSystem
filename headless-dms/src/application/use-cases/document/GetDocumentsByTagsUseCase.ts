@@ -1,6 +1,6 @@
 import { inject, injectable } from "tsyringe";
 import { Result } from "@carbonteq/fp";
-import type { IDocumentRepository } from "../../../documents/repositories/documents.repository.interface.js";
+import { DocumentApplicationService } from "../../services/DocumentApplicationService.js";
 import type { ILogger } from "../../../infrastructure/interfaces/ILogger.js";
 import type { GetDocumentsByTagsRequest, GetDocumentsByTagsResponse } from "../../dto/document/index.js";
 import { ApplicationError } from "../../errors/ApplicationError.js";
@@ -8,7 +8,7 @@ import { ApplicationError } from "../../errors/ApplicationError.js";
 @injectable()
 export class GetDocumentsByTagsUseCase {
   constructor(
-    @inject("IDocumentRepository") private documentRepository: IDocumentRepository,
+    @inject("DocumentApplicationService") private documentApplicationService: DocumentApplicationService,
     @inject("ILogger") private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'GetDocumentsByTagsUseCase' });
@@ -18,8 +18,18 @@ export class GetDocumentsByTagsUseCase {
     this.logger.info('Getting documents by tags', { tags: request.tags });
 
     try {
-      // 1. Get documents by tags from repository
-      const documents = await this.documentRepository.findByTags(request.tags);
+      // Delegate to DocumentApplicationService
+      const documentsResult = await this.documentApplicationService.getDocumentsByTags(request.tags);
+      
+      if (documentsResult.isErr()) {
+        this.logger.error('Failed to get documents by tags', { 
+          tags: request.tags,
+          error: documentsResult.unwrapErr().message 
+        });
+        return documentsResult;
+      }
+
+      const documents = documentsResult.unwrap();
 
       // 2. Transform to response DTOs
       const documentResponses = documents.map(document => ({

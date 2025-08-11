@@ -1,7 +1,6 @@
 import { inject, injectable } from "tsyringe";
 import { Result } from "@carbonteq/fp";
-import type { IDocumentRepository } from "../../../documents/repositories/documents.repository.interface.js";
-import type { IFileService } from "../../interfaces/IFileService.js";
+import { DocumentApplicationService } from "../../services/DocumentApplicationService.js";
 import type { ILogger } from "../../../infrastructure/interfaces/ILogger.js";
 import type { DownloadDocumentRequest, DownloadDocumentResponse } from "../../dto/document/index.js";
 import { ApplicationError } from "../../errors/ApplicationError.js";
@@ -9,8 +8,7 @@ import { ApplicationError } from "../../errors/ApplicationError.js";
 @injectable()
 export class DownloadDocumentUseCase {
   constructor(
-    @inject("IDocumentRepository") private documentRepository: IDocumentRepository,
-    @inject("IFileService") private fileService: IFileService,
+    @inject("DocumentApplicationService") private documentApplicationService: DocumentApplicationService,
     @inject("ILogger") private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'DownloadDocumentUseCase' });
@@ -20,26 +18,21 @@ export class DownloadDocumentUseCase {
     this.logger.info('Downloading document', { documentId: request.documentId });
 
     try {
-      // 1. Find document by ID
-      const document = await this.documentRepository.findById(request.documentId);
-      if (!document) {
-        this.logger.warn('Document not found for download', { documentId: request.documentId });
-        return Result.Err(new ApplicationError(
-          'DownloadDocumentUseCase.documentNotFound',
-          'Document not found',
-          { documentId: request.documentId }
-        ));
+      // Delegate to DocumentApplicationService
+      const downloadResult = await this.documentApplicationService.downloadDocument(
+        request.documentId,
+        request.userId
+      );
+      
+      if (downloadResult.isErr()) {
+        this.logger.warn('Document download failed', {
+          documentId: request.documentId,
+          error: downloadResult.unwrapErr().message
+        });
+        return downloadResult;
       }
 
-      // 2. Check if file exists
-      const fileExistsResult = await this.fileService.fileExists(document.filePath);
-      if (fileExistsResult.isErr() || !fileExistsResult.unwrap()) {
-        return Result.Err(new ApplicationError(
-          'DownloadDocumentUseCase.fileNotFound',
-          'File not found',
-          { documentId: request.documentId }
-        ));
-      }
+      const { document } = downloadResult.unwrap();
 
       // 3. Return response DTO (file streaming will be handled by infrastructure layer)
       const response: DownloadDocumentResponse = {
