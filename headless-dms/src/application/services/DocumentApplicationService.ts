@@ -546,15 +546,15 @@ export class DocumentApplicationService {
   }
 
   /**
-   * Get document importance score
+   * Get document by ID
    */
-  async getDocumentImportanceScore(documentId: string): Promise<Result<DocumentImportanceScore, ApplicationError>> {
-    this.logger.info('Getting document importance score', { documentId });
+  async getDocumentById(documentId: string): Promise<Result<Document, ApplicationError>> {
+    this.logger.info('Getting document by ID', { documentId });
     
     try {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
-        this.logger.warn('Document not found for importance score', { documentId });
+        this.logger.warn('Document not found', { documentId });
         return Result.Err(new ApplicationError(
           'DocumentApplicationService.documentNotFound',
           'Document not found',
@@ -562,30 +562,159 @@ export class DocumentApplicationService {
         ));
       }
 
-      const importanceScore = this.documentDomainService.calculateDocumentImportance(document);
-      
-      this.logger.info('Document importance score calculated', { documentId, score: importanceScore.score });
-      return Result.Ok(importanceScore);
+      this.logger.info('Document retrieved successfully', { documentId });
+      return Result.Ok(document);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId });
       return Result.Err(new ApplicationError(
-        'DocumentApplicationService.getDocumentImportanceScore',
-        error instanceof Error ? error.message : 'Failed to get document importance score',
+        'DocumentApplicationService.getDocumentById',
+        error instanceof Error ? error.message : 'Failed to get document',
         { documentId }
       ));
     }
   }
 
   /**
-   * Get document retention policy
+   * Get document by name
    */
-  async getDocumentRetentionPolicy(documentId: string): Promise<Result<DocumentRetentionPolicy, ApplicationError>> {
-    this.logger.info('Getting document retention policy', { documentId });
+  async getDocumentByName(name: string): Promise<Result<Document, ApplicationError>> {
+    this.logger.info('Getting document by name', { name });
     
     try {
+      const document = await this.documentRepository.findByName(name);
+      if (!document) {
+        this.logger.warn('Document not found', { name });
+        return Result.Err(new ApplicationError(
+          'DocumentApplicationService.documentNotFound',
+          'Document not found',
+          { name }
+        ));
+      }
+
+      this.logger.info('Document retrieved successfully', { name });
+      return Result.Ok(document);
+    } catch (error) {
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { name });
+      return Result.Err(new ApplicationError(
+        'DocumentApplicationService.getDocumentByName',
+        error instanceof Error ? error.message : 'Failed to get document',
+        { name }
+      ));
+    }
+  }
+
+  /**
+   * Get all documents
+   */
+  async getDocuments(): Promise<Result<Document[], ApplicationError>> {
+    this.logger.info('Getting all documents');
+    
+    try {
+      const result = await this.documentRepository.find();
+      const documents = result.data;
+      
+      this.logger.info('Documents retrieved successfully', { count: documents.length });
+      return Result.Ok(documents);
+    } catch (error) {
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error');
+      return Result.Err(new ApplicationError(
+        'DocumentApplicationService.getDocuments',
+        error instanceof Error ? error.message : 'Failed to get documents'
+      ));
+    }
+  }
+
+  /**
+   * Get documents by tags
+   */
+  async getDocumentsByTags(tags: string[]): Promise<Result<Document[], ApplicationError>> {
+    this.logger.info('Getting documents by tags', { tags });
+    
+    try {
+      const documents = await this.documentRepository.findByTags(tags);
+      
+      this.logger.info('Documents retrieved successfully', { tags, count: documents.length });
+      return Result.Ok(documents);
+    } catch (error) {
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { tags });
+      return Result.Err(new ApplicationError(
+        'DocumentApplicationService.getDocumentsByTags',
+        error instanceof Error ? error.message : 'Failed to get documents by tags',
+        { tags }
+      ));
+    }
+  }
+
+  /**
+   * Get documents by MIME type
+   */
+  async getDocumentsByMimeType(mimeType: string): Promise<Result<Document[], ApplicationError>> {
+    this.logger.info('Getting documents by MIME type', { mimeType });
+    
+    try {
+      const documents = await this.documentRepository.findByMimeType(mimeType);
+      
+      this.logger.info('Documents retrieved successfully', { mimeType, count: documents.length });
+      return Result.Ok(documents);
+    } catch (error) {
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { mimeType });
+      return Result.Err(new ApplicationError(
+        'DocumentApplicationService.getDocumentsByMimeType',
+        error instanceof Error ? error.message : 'Failed to get documents by MIME type',
+        { mimeType }
+      ));
+    }
+  }
+
+  /**
+   * Upload document
+   */
+  async uploadDocument(file: Buffer, filename: string, mimeType: string, userId: string): Promise<Result<Document, ApplicationError>> {
+    this.logger.info('Uploading document', { filename, mimeType, userId });
+    
+    try {
+      // Save file to storage
+      const filePath = await this.fileService.saveFile(file, filename);
+      
+      // Create document entity
+      const documentResult = Document.create(filename, filename, mimeType, file.length.toString(), [], {});
+      if (documentResult.isErr()) {
+        this.logger.error('Failed to create document entity', { filename, error: documentResult.unwrapErr() });
+        return Result.Err(new ApplicationError(
+          'DocumentApplicationService.entityCreation',
+          documentResult.unwrapErr(),
+          { filename }
+        ));
+      }
+
+      const document = documentResult.unwrap();
+      
+      // Save document to repository
+      const savedDocument = await this.documentRepository.save(document);
+
+      this.logger.info('Document uploaded successfully', { documentId: savedDocument.id, filename });
+      return Result.Ok(savedDocument);
+    } catch (error) {
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { filename });
+      return Result.Err(new ApplicationError(
+        'DocumentApplicationService.uploadDocument',
+        error instanceof Error ? error.message : 'Failed to upload document',
+        { filename }
+      ));
+    }
+  }
+
+  /**
+   * Download document
+   */
+  async downloadDocument(documentId: string, userId: string): Promise<Result<{ document: Document; file: Buffer }, ApplicationError>> {
+    this.logger.info('Downloading document', { documentId, userId });
+    
+    try {
+      // Get document
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
-        this.logger.warn('Document not found for retention policy', { documentId });
+        this.logger.warn('Document not found for download', { documentId });
         return Result.Err(new ApplicationError(
           'DocumentApplicationService.documentNotFound',
           'Document not found',
@@ -593,21 +722,189 @@ export class DocumentApplicationService {
         ));
       }
 
-      const retentionPolicy = this.documentDomainService.calculateRetentionPolicy(document);
+      // Get user for access validation
+      const user = await this.userRepository.findById(userId);
+      if (!user) {
+        this.logger.warn('User not found for document download', { userId });
+        return Result.Err(new ApplicationError(
+          'DocumentApplicationService.userNotFound',
+          'User not found',
+          { userId }
+        ));
+      }
+
+      // Validate access
+      const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
+      if (!accessValidation.canAccess) {
+        this.logger.warn('Document access denied for download', { documentId, userId, reason: accessValidation.reason });
+        return Result.Err(new ApplicationError(
+          'DocumentApplicationService.accessDenied',
+          'Access denied',
+          { documentId, userId, reason: accessValidation.reason }
+        ));
+      }
+
+      // Get file from storage
+      const file = await this.fileService.getFile(document.filePath);
+
+      this.logger.info('Document downloaded successfully', { documentId, userId });
+      return Result.Ok({ document, file });
+    } catch (error) {
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
+      return Result.Err(new ApplicationError(
+        'DocumentApplicationService.downloadDocument',
+        error instanceof Error ? error.message : 'Failed to download document',
+        { documentId, userId }
+      ));
+    }
+  }
+
+  /**
+   * Download document by token
+   */
+  async downloadDocumentByToken(token: string): Promise<Result<{ document: Document; file: Buffer }, ApplicationError>> {
+    this.logger.info('Downloading document by token', { token });
+    
+    try {
+      // Decode token to get document ID
+      // This would typically use a JWT service or similar
+      const documentId = this.decodeToken(token);
       
-      this.logger.info('Document retention policy calculated', { 
-        documentId, 
-        shouldRetain: retentionPolicy.shouldRetain,
-        retentionPeriod: retentionPolicy.retentionPeriod 
-      });
-      return Result.Ok(retentionPolicy);
+      // Get document
+      const document = await this.documentRepository.findById(documentId);
+      if (!document) {
+        this.logger.warn('Document not found for token download', { documentId });
+        return Result.Err(new ApplicationError(
+          'DocumentApplicationService.documentNotFound',
+          'Document not found',
+          { documentId }
+        ));
+      }
+
+      // Get file from storage
+      const file = await this.fileService.getFile(document.filePath);
+
+      this.logger.info('Document downloaded by token successfully', { documentId });
+      return Result.Ok({ document, file });
+    } catch (error) {
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { token });
+      return Result.Err(new ApplicationError(
+        'DocumentApplicationService.downloadDocumentByToken',
+        error instanceof Error ? error.message : 'Failed to download document by token',
+        { token }
+      ));
+    }
+  }
+
+  /**
+   * Generate download link
+   */
+  async generateDownloadLink(documentId: string, expiresInMinutes: number = 60): Promise<Result<string, ApplicationError>> {
+    this.logger.info('Generating download link', { documentId, expiresInMinutes });
+    
+    try {
+      // Get document
+      const document = await this.documentRepository.findById(documentId);
+      if (!document) {
+        this.logger.warn('Document not found for link generation', { documentId });
+        return Result.Err(new ApplicationError(
+          'DocumentApplicationService.documentNotFound',
+          'Document not found',
+          { documentId }
+        ));
+      }
+
+      // Generate token (this would typically use a JWT service)
+      const token = this.generateToken(documentId, expiresInMinutes);
+
+      this.logger.info('Download link generated successfully', { documentId });
+      return Result.Ok(token);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId });
       return Result.Err(new ApplicationError(
-        'DocumentApplicationService.getDocumentRetentionPolicy',
-        error instanceof Error ? error.message : 'Failed to get document retention policy',
+        'DocumentApplicationService.generateDownloadLink',
+        error instanceof Error ? error.message : 'Failed to generate download link',
         { documentId }
       ));
     }
+  }
+
+  /**
+   * Replace tags in document
+   */
+  async replaceTagsInDocument(documentId: string, tags: string[], userId: string): Promise<Result<Document, ApplicationError>> {
+    this.logger.info('Replacing tags in document', { documentId, tags, userId });
+    
+    try {
+      // Get user
+      const user = await this.userRepository.findById(userId);
+      if (!user) {
+        this.logger.warn('User not found for document tag replacement', { userId });
+        return Result.Err(new ApplicationError(
+          'DocumentApplicationService.userNotFound',
+          'User not found',
+          { userId }
+        ));
+      }
+
+      // Get document
+      const document = await this.documentRepository.findById(documentId);
+      if (!document) {
+        this.logger.warn('Document not found for tag replacement', { documentId });
+        return Result.Err(new ApplicationError(
+          'DocumentApplicationService.documentNotFound',
+          'Document not found',
+          { documentId }
+        ));
+      }
+
+      // Validate access
+      const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
+      if (!accessValidation.permissions.canWrite) {
+        this.logger.warn('Document write access denied for tag replacement', { documentId, userId });
+        return Result.Err(new ApplicationError(
+          'DocumentApplicationService.writeAccessDenied',
+          'Write access denied',
+          { documentId, userId }
+        ));
+      }
+
+      // Replace tags
+      const updateResult = document.replaceTags(tags);
+      if (updateResult.isErr()) {
+        this.logger.error('Failed to replace tags in document', { documentId, error: updateResult.unwrapErr() });
+        return Result.Err(new ApplicationError(
+          'DocumentApplicationService.tagReplacementFailed',
+          updateResult.unwrapErr(),
+          { documentId, tags }
+        ));
+      }
+
+      const updatedDocument = updateResult.unwrap();
+
+      // Save document
+      const savedDocument = await this.documentRepository.save(updatedDocument);
+
+      this.logger.info('Tags replaced in document successfully', { documentId, tags, userId });
+      return Result.Ok(savedDocument);
+    } catch (error) {
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
+      return Result.Err(new ApplicationError(
+        'DocumentApplicationService.replaceTagsInDocument',
+        error instanceof Error ? error.message : 'Failed to replace tags in document',
+        { documentId, userId }
+      ));
+    }
+  }
+
+  // Helper methods for token handling (these would typically be in a separate service)
+  private decodeToken(token: string): string {
+    // Implementation would decode JWT or similar token
+    return token; // Placeholder
+  }
+
+  private generateToken(documentId: string, expiresInMinutes: number): string {
+    // Implementation would generate JWT or similar token
+    return `${documentId}-${expiresInMinutes}`; // Placeholder
   }
 }

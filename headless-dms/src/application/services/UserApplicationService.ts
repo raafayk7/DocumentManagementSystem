@@ -276,15 +276,15 @@ export class UserApplicationService {
   }
 
   /**
-   * Get user activity score
+   * Get user by ID
    */
-  async getUserActivityScore(userId: string): Promise<Result<UserActivityScore, ApplicationError>> {
-    this.logger.info('Getting user activity score', { userId });
+  async getUserById(userId: string): Promise<Result<User, ApplicationError>> {
+    this.logger.info('Getting user by ID', { userId });
     
     try {
       const user = await this.userRepository.findById(userId);
       if (!user) {
-        this.logger.warn('User not found for activity score', { userId });
+        this.logger.warn('User not found', { userId });
         return Result.Err(new ApplicationError(
           'UserApplicationService.userNotFound',
           'User not found',
@@ -292,51 +292,85 @@ export class UserApplicationService {
         ));
       }
 
-      const activityScore = this.userDomainService.calculateUserActivityScore(user);
-      
-      this.logger.info('User activity score calculated', { userId, score: activityScore.score });
-      return Result.Ok(activityScore);
+      this.logger.info('User retrieved successfully', { userId });
+      return Result.Ok(user);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { userId });
       return Result.Err(new ApplicationError(
-        'UserApplicationService.getUserActivityScore',
-        error instanceof Error ? error.message : 'Failed to get user activity score',
+        'UserApplicationService.getUserById',
+        error instanceof Error ? error.message : 'Failed to get user',
         { userId }
       ));
     }
   }
 
   /**
-   * Validate user state and get recommendations
+   * Get user by email
    */
-  async validateUserState(userId: string): Promise<Result<UserStateValidation, ApplicationError>> {
-    this.logger.info('Validating user state', { userId });
+  async getUserByEmail(email: string): Promise<Result<User, ApplicationError>> {
+    this.logger.info('Getting user by email', { email });
     
     try {
-      const user = await this.userRepository.findById(userId);
+      const user = await this.userRepository.findByEmail(email);
       if (!user) {
-        this.logger.warn('User not found for state validation', { userId });
+        this.logger.warn('User not found', { email });
         return Result.Err(new ApplicationError(
           'UserApplicationService.userNotFound',
           'User not found',
-          { userId }
+          { email }
         ));
       }
 
-      const stateValidation = this.userDomainService.validateUserState(user);
-      
-      this.logger.info('User state validated', { 
-        userId, 
-        isValid: stateValidation.isValid,
-        issuesCount: stateValidation.issues.length 
-      });
-      return Result.Ok(stateValidation);
+      this.logger.info('User retrieved successfully', { email });
+      return Result.Ok(user);
     } catch (error) {
-      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { userId });
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email });
       return Result.Err(new ApplicationError(
-        'UserApplicationService.validateUserState',
-        error instanceof Error ? error.message : 'Failed to validate user state',
-        { userId }
+        'UserApplicationService.getUserByEmail',
+        error instanceof Error ? error.message : 'Failed to get user',
+        { email }
+      ));
+    }
+  }
+
+  /**
+   * Get all users
+   */
+  async getUsers(): Promise<Result<User[], ApplicationError>> {
+    this.logger.info('Getting all users');
+    
+    try {
+      const result = await this.userRepository.find();
+      const users = result.data;
+      
+      this.logger.info('Users retrieved successfully', { count: users.length });
+      return Result.Ok(users);
+    } catch (error) {
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error');
+      return Result.Err(new ApplicationError(
+        'UserApplicationService.getUsers',
+        error instanceof Error ? error.message : 'Failed to get users'
+      ));
+    }
+  }
+
+  /**
+   * Get users by role
+   */
+  async getUsersByRole(role: 'user' | 'admin'): Promise<Result<User[], ApplicationError>> {
+    this.logger.info('Getting users by role', { role });
+    
+    try {
+      const users = await this.userRepository.findByRole(role);
+      
+      this.logger.info('Users retrieved successfully', { role, count: users.length });
+      return Result.Ok(users);
+    } catch (error) {
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { role });
+      return Result.Err(new ApplicationError(
+        'UserApplicationService.getUsersByRole',
+        error instanceof Error ? error.message : 'Failed to get users by role',
+        { role }
       ));
     }
   }
