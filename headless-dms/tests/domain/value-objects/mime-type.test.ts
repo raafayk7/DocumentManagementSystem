@@ -1,6 +1,6 @@
 // tests/value-objects/mime-type.test.ts
 import 'reflect-metadata';
-import { MimeType } from '../../src/domain/value-objects/MimeType.js';
+import { MimeType } from '../../../src/domain/value-objects/MimeType.js';
 import { Result } from '@carbonteq/fp';
 
 console.log('=== MimeType Value Object Tests ===\n');

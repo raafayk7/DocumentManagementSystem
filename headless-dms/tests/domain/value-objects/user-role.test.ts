@@ -1,6 +1,6 @@
 // tests/value-objects/user-role.test.ts
 import 'reflect-metadata';
-import { UserRole } from '../../src/domain/value-objects/UserRole.js';
+import { UserRole } from '../../../src/domain/value-objects/UserRole.js';
 import { Result } from '@carbonteq/fp';
 
 console.log('=== UserRole Value Object Tests ===\n');

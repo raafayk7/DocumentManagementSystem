@@ -1,6 +1,6 @@
 // tests/value-objects/password.test.ts
 import 'reflect-metadata';
-import { Password } from '../../src/domain/value-objects/Password.js';
+import { Password } from '../../../src/domain/value-objects/Password.js';
 import { Result } from '@carbonteq/fp';
 
 console.log('=== Password Value Object Tests ===\n');

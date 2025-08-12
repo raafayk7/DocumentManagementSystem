@@ -1,6 +1,6 @@
 // tests/value-objects/document-name.test.ts
 import 'reflect-metadata';
-import { DocumentName } from '../../src/domain/value-objects/DocumentName.js';
+import { DocumentName } from '../../../src/domain/value-objects/DocumentName.js';
 import { Result } from '@carbonteq/fp';
 
 console.log('=== DocumentName Value Object Tests ===\n');

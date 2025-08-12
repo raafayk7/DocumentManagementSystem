@@ -1,6 +1,6 @@
 // tests/value-objects/email.test.ts
 import 'reflect-metadata';
-import { Email } from '../../src/domain/value-objects/Email.js';
+import { Email } from '../../../src/domain/value-objects/Email.js';
 import { Result } from '@carbonteq/fp';
 
 console.log('=== Email Value Object Tests ===\n');

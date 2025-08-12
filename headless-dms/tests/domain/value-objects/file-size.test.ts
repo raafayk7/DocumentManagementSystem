@@ -1,6 +1,6 @@
 // tests/value-objects/file-size.test.ts
 import 'reflect-metadata';
-import { FileSize } from '../../src/domain/value-objects/FileSize.js';
+import { FileSize } from '../../../src/domain/value-objects/FileSize.js';
 import { Result } from '@carbonteq/fp';
 
 console.log('=== FileSize Value Object Tests ===\n');
