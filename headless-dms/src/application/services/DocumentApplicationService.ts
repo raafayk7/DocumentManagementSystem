@@ -663,12 +663,12 @@ export class DocumentApplicationService {
       const documents = await this.documentRepository.find(queryParams);
       
       this.logger.info('Documents retrieved successfully', { 
-        count: documents.length, 
+        count: documents.data.length, 
         page, 
         limit,
         filtersApplied: Object.keys(filters || {}).length
       });
-      return Result.Ok(documents);
+      return Result.Ok(documents.data);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { page, limit, filters });
       return Result.Err(new ApplicationError(
