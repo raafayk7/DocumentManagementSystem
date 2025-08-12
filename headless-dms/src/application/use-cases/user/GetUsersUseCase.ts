@@ -19,14 +19,25 @@ export class GetUsersUseCase {
       page: request.page, 
       limit: request.limit, 
       search: request.search,
+      email: request.email,
       role: request.role,
       sortBy: request.sortBy,
       sortOrder: request.sortOrder
     });
 
     try {
-      // Delegate to UserApplicationService
-      const usersResult = await this.userApplicationService.getUsers();
+      // Delegate to UserApplicationService with enhanced filtering
+      const usersResult = await this.userApplicationService.getUsers(
+        request.page,
+        request.limit,
+        request.sortBy,
+        request.sortOrder,
+        {
+          search: request.search,
+          email: request.email,
+          role: request.role
+        }
+      );
       
       if (usersResult.isErr()) {
         this.logger.error('Failed to get users', { error: usersResult.unwrapErr().message });
@@ -59,7 +70,12 @@ export class GetUsersUseCase {
 
       this.logger.info('Users retrieved successfully', { 
         count: users.length,
-        page: request.page 
+        page: request.page,
+        filtersApplied: {
+          search: request.search,
+          email: request.email,
+          role: request.role
+        }
       });
       return Result.Ok(response);
     } catch (error) {

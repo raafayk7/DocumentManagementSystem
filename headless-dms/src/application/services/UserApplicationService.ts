@@ -334,22 +334,66 @@ export class UserApplicationService {
   }
 
   /**
-   * Get all users
+   * Get users with enhanced filtering
    */
-  async getUsers(): Promise<Result<User[], ApplicationError>> {
-    this.logger.info('Getting all users');
+  async getUsers(
+    page: number = 1,
+    limit: number = 10,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc',
+    filters?: {
+      search?: string;
+      email?: string;
+      role?: 'user' | 'admin';
+    }
+  ): Promise<Result<User[], ApplicationError>> {
+    this.logger.info('Getting users with filters', {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      filters
+    });
     
     try {
-      const result = await this.userRepository.find();
+      // Build query parameters for repository
+      const queryParams: any = {
+        page,
+        limit,
+        sortBy,
+        sortOrder
+      };
+
+      // Apply filters if provided
+      if (filters) {
+        if (filters.search) {
+          queryParams.search = filters.search;
+        }
+        if (filters.email) {
+          queryParams.email = filters.email;
+        }
+        if (filters.role) {
+          queryParams.role = filters.role;
+        }
+      }
+
+      // Use repository's find method with enhanced query parameters
+      const result = await this.userRepository.find(queryParams);
       const users = result.data;
       
-      this.logger.info('Users retrieved successfully', { count: users.length });
+      this.logger.info('Users retrieved successfully', {
+        count: users.length,
+        page,
+        limit,
+        filtersApplied: Object.keys(filters || {}).length
+      });
       return Result.Ok(users);
     } catch (error) {
-      this.logger.error(error instanceof Error ? error.message : 'Unknown error');
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { page, limit, filters });
       return Result.Err(new ApplicationError(
         'UserApplicationService.getUsers',
-        error instanceof Error ? error.message : 'Failed to get users'
+        error instanceof Error ? error.message : 'Failed to get users',
+        { page, limit, filters }
       ));
     }
   }

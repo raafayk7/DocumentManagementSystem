@@ -606,20 +606,76 @@ export class DocumentApplicationService {
   /**
    * Get all documents
    */
-  async getDocuments(): Promise<Result<Document[], ApplicationError>> {
-    this.logger.info('Getting all documents');
+  async getDocuments(
+    page: number = 1,
+    limit: number = 10,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc',
+    filters?: {
+      name?: string;
+      mimeType?: string;
+      tags?: string[];
+      metadata?: Record<string, string>;
+      fromDate?: string;
+      toDate?: string;
+    }
+  ): Promise<Result<Document[], ApplicationError>> {
+    this.logger.info('Getting documents with filters', { 
+      page, 
+      limit, 
+      sortBy, 
+      sortOrder, 
+      filters 
+    });
     
     try {
-      const result = await this.documentRepository.find();
+      // Build query parameters for repository
+      const queryParams: any = {
+        page,
+        limit,
+        sortBy,
+        sortOrder
+      };
+
+      // Apply filters if provided
+      if (filters) {
+        if (filters.name) {
+          queryParams.name = filters.name;
+        }
+        if (filters.mimeType) {
+          queryParams.mimeType = filters.mimeType;
+        }
+        if (filters.tags && filters.tags.length > 0) {
+          queryParams.tags = filters.tags;
+        }
+        if (filters.metadata && Object.keys(filters.metadata).length > 0) {
+          queryParams.metadata = filters.metadata;
+        }
+        if (filters.fromDate) {
+          queryParams.fromDate = new Date(filters.fromDate);
+        }
+        if (filters.toDate) {
+          queryParams.toDate = new Date(filters.toDate);
+        }
+      }
+
+      // Use repository's find method with enhanced query parameters
+      const result = await this.documentRepository.find(queryParams);
       const documents = result.data;
       
-      this.logger.info('Documents retrieved successfully', { count: documents.length });
+      this.logger.info('Documents retrieved successfully', { 
+        count: documents.length, 
+        page, 
+        limit,
+        filtersApplied: Object.keys(filters || {}).length
+      });
       return Result.Ok(documents);
     } catch (error) {
-      this.logger.error(error instanceof Error ? error.message : 'Unknown error');
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { page, limit, filters });
       return Result.Err(new ApplicationError(
         'DocumentApplicationService.getDocuments',
-        error instanceof Error ? error.message : 'Failed to get documents'
+        error instanceof Error ? error.message : 'Failed to get documents',
+        { page, limit, filters }
       ));
     }
   }

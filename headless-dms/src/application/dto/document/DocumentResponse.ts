@@ -81,58 +81,38 @@ export const DownloadDocumentByTokenResponseSchema=z.object({
 
 export type DownloadDocumentByTokenResponse = z.infer<typeof DownloadDocumentByTokenResponseSchema>;
 
+
+
+
 // 10
-export const GetDocumentByNameResponseSchema=z.object({
-  document:DocumentResponseSchema,
-});
-
-export type GetDocumentByNameResponse = z.infer<typeof GetDocumentByNameResponseSchema>;
-
-// 11
-export const GetDocumentsByTagsResponseSchema = z.object({
-  documents: z.array(DocumentResponseSchema),
-  total: z.number(),
-});
-
-export type GetDocumentsByTagsResponse = z.infer<typeof GetDocumentsByTagsResponseSchema>;
-
-// 12
-export const GetDocumentsByMimeTypeResponseSchema = z.object({
-  documents: z.array(DocumentResponseSchema),
-  total: z.number(),
-});
-
-export type GetDocumentsByMimeTypeResponse = z.infer<typeof GetDocumentsByMimeTypeResponseSchema>;
-
-// 13
 export const UpdateDocumentNameResponseSchema=z.object({
   success:z.boolean(),
   message:z.string(),
 });
 export type UpdateDocumentNameResponse = z.infer<typeof UpdateDocumentNameResponseSchema>;
 
-// 14
+// 11
 export const AddTagsToDocumentResponseSchema=z.object({
   success:z.boolean(),
   message:z.string(),
 });
 export type AddTagsToDocumentResponse = z.infer<typeof AddTagsToDocumentResponseSchema>;
 
-// 15
+// 12
 export const RemoveTagsFromDocumentResponseSchema=z.object({
   success:z.boolean(),
   message:z.string(),
 });
 export type RemoveTagsFromDocumentResponse = z.infer<typeof RemoveTagsFromDocumentResponseSchema>;
 
-// 16
+// 13
 export const ReplaceTagsinDocumentResponseSchema=z.object({
   success:z.boolean(),
   message:z.string(),
 });
 export type ReplaceTagsinDocumentResponse = z.infer<typeof ReplaceTagsinDocumentResponseSchema>;
 
-// 17
+// 14
 export const UpdateDocumentMetadataResponseSchema=z.object({
   success:z.boolean(),
   message:z.string(),

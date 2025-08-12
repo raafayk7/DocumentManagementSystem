@@ -18,14 +18,33 @@ export class GetDocumentsUseCase {
     this.logger.info("Getting documents", { 
       page: request.page, 
       limit: request.limit,
-      search: request.search,
       sortBy: request.sortBy,
-      sortOrder: request.sortOrder
+      sortOrder: request.sortOrder,
+      // Log filter parameters
+      name: request.name,
+      mimeType: request.mimeType,
+      tags: request.tags,
+      metadata: request.metadata,
+      fromDate: request.fromDate,
+      toDate: request.toDate
     });
 
     try {
-      // Delegate to DocumentApplicationService
-      const documentsResult = await this.documentApplicationService.getDocuments();
+      // Delegate to DocumentApplicationService with enhanced filtering
+      const documentsResult = await this.documentApplicationService.getDocuments(
+        request.page,
+        request.limit,
+        request.sortBy,
+        request.sortOrder,
+        {
+          name: request.name,
+          mimeType: request.mimeType,
+          tags: request.tags,
+          metadata: request.metadata,
+          fromDate: request.fromDate,
+          toDate: request.toDate
+        }
+      );
       
       if (documentsResult.isErr()) {
         this.logger.error('Failed to get documents', { error: documentsResult.unwrapErr().message });

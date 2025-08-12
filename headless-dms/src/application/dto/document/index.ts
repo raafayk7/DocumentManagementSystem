@@ -8,9 +8,6 @@ export * from './DownloadDocumentRequest.js';
 export * from './GenerateDownloadLinkRequest.js';
 export * from './DownloadDocumentByTokenRequest.js'
 
-export * from './GetDocumentByNameRequest.js';
-export * from './GetDocumentsByMimeTypeRequest.js';
-export * from './GetDocumentsByTagsRequest.js';
 
 export * from './RemoveTagsFromDocumentRequest.js';
 export * from './ReplaceTagsinDocumentRequest.js';
