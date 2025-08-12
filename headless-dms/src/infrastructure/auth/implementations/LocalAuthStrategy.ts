@@ -1,16 +1,16 @@
 import { injectable, inject } from 'tsyringe';
 import { Result } from '@carbonteq/fp';
-import { IAuthStrategy } from '../../auth/interfaces/IAuthStrategy.js';
-import { IUserRepository } from '../database/interfaces/user.repository.interface.js';
+import { IAuthStrategy } from '../interfaces/IAuthStrategy.js';
+import { IUserRepository } from '../../database/interfaces/user.repository.interface.js';
 import { ILogger } from '../../common/services/logger.service.interface.js';
-import { AuthError } from '../../common/errors/application.errors.js';
-import { User } from '../../domain/entities/User.js';
+import { AuthError } from '../../../common/errors/application.errors.js';
+import { User } from '../../../domain/entities/User.js';
 import { 
   LoginCredentials, 
   RegisterData, 
   DecodedToken, 
   AuthResult 
-} from '../../auth/interfaces/IAuthHandler.js';
+} from '../interfaces/IAuthHandler.js';
 
 interface MockUser {
   id: string;

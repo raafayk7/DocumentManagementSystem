@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { Result } from '@carbonteq/fp';
-import { FileError } from '../errors/application.errors.js';
+import { FileError } from '../common/errors/application.errors.js';
 
 interface FileInfo {
   path: string;

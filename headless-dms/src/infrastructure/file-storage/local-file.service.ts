@@ -6,9 +6,9 @@ import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { injectable, inject } from 'tsyringe';
-import { ILogger } from './logger.service.interface.js';
+import type { ILogger } from '../../../domain/interfaces/ILogger.js';
 import { Result } from '@carbonteq/fp';
-import { FileError } from '../errors/application.errors.js';
+import { FileError } from '../../common/errors/application.errors.js';
 
 interface FileInfo {
   path: string;
