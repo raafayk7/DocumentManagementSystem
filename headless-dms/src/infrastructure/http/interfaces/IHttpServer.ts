@@ -1,9 +1,10 @@
 export interface IHttpServer {
   start(port: number, host?: string): Promise<void>
   stop(): Promise<void>
-  registerRoute(method: string, path: string, handler: Function): void
-  registerMiddleware(middleware: Function): void
+  registerRoute(method: string, path: string, handler: (req: IHttpRequest, res: IHttpResponse) => Promise<void>): void
+  registerMiddleware(middleware: any): void
   getInstance(): any // Returns the underlying framework instance
+  logRoutes(): void // Log all registered routes
 }
 
 export interface IHttpRequest {

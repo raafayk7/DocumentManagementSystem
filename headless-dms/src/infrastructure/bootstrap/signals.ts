@@ -1,41 +1,41 @@
 // src/bootstrap/signals.ts
-import Fastify from 'fastify';
+import { IHttpServer } from '../http/interfaces/IHttpServer.js';
 
 // Shutdown state management
 let isShuttingDown = false;
 let shutdownStartTime: number | null = null;
 
 // Graceful shutdown function
-const gracefulShutdown = async (server: Fastify.FastifyInstance, signal: string) => {
+const gracefulShutdown = async (server: IHttpServer, signal: string) => {
   if (isShuttingDown) {
-    server.log.info('Shutdown already in progress, ignoring signal');
+    console.log('Shutdown already in progress, ignoring signal');
     return;
   }
 
   isShuttingDown = true;
   shutdownStartTime = Date.now();
   
-  server.log.info(`Shutdown initiated (${signal})`);
+  console.log(`Shutdown initiated (${signal})`);
   
   // Note: Delay removed due to Windows signal handling differences
   // The core graceful shutdown functionality works correctly
   
   try {
     // Stop accepting new requests
-    server.log.info('Stopping HTTP server (graceful shutdown)');
-    await server.close();
+    console.log('Stopping HTTP server (graceful shutdown)');
+    await server.stop();
     
     const shutdownDuration = Date.now() - (shutdownStartTime || 0);
-    server.log.info(`Shutdown completed successfully (${shutdownDuration}ms)`);
+    console.log(`Shutdown completed successfully (${shutdownDuration}ms)`);
     
     process.exit(0);
   } catch (error) {
-    server.log.error('Error during shutdown', error);
+    console.error('Error during shutdown', error);
     process.exit(1);
   }
 };
 
-export function setupSignalHandlers(server: Fastify.FastifyInstance): void {
+export function setupSignalHandlers(server: IHttpServer): void {
   console.log('Setting up signal handlers...');
 
   // Signal handlers
