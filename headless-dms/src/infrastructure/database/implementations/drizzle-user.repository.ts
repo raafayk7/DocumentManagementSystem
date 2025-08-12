@@ -1,6 +1,7 @@
 import { db } from '../index.js';
 import { users } from '../schema.js';
-import { IUserRepository, UserFilterQuery } from '../interfaces/user.repository.interface.js';
+import { IUserRepository } from '../../../application/interfaces/IUserRepository.js';
+import type { UserFilterQuery } from '../interfaces/user.repository.interface.js';
 import { User } from '../../../domain/entities/User.js';
 import { eq, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
@@ -34,7 +35,7 @@ export class DrizzleUserRepository implements IUserRepository {
       return User.fromRepository({
         ...newUsers[0],
         role: newUsers[0].role as 'user' | 'admin'
-      });
+      }).unwrap();
     } else {
       // Update existing user
       const updatedUsers = await db.update(users)
@@ -55,7 +56,7 @@ export class DrizzleUserRepository implements IUserRepository {
       return User.fromRepository({
         ...updatedUsers[0],
         role: updatedUsers[0].role as 'user' | 'admin'
-      });
+      }).unwrap();
     }
   }
 
@@ -102,7 +103,7 @@ export class DrizzleUserRepository implements IUserRepository {
     const usersList = results.map(user => User.fromRepository({
       ...user,
       role: user.role as 'user' | 'admin'
-    }));
+    }).unwrap());
 
     return {
       data: usersList,
@@ -143,7 +144,7 @@ export class DrizzleUserRepository implements IUserRepository {
     return User.fromRepository({
       ...user,
       role: user.role as 'user' | 'admin'
-    });
+    }).unwrap();
   }
 
   async findById(id: string): Promise<User | null> {
@@ -167,7 +168,7 @@ export class DrizzleUserRepository implements IUserRepository {
     return User.fromRepository({
       ...user,
       role: user.role as 'user' | 'admin'
-    });
+    }).unwrap();
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -191,7 +192,7 @@ export class DrizzleUserRepository implements IUserRepository {
     return User.fromRepository({
       ...user,
       role: user.role as 'user' | 'admin'
-    });
+    }).unwrap();
   }
 
   async findByRole(role: 'user' | 'admin'): Promise<User[]> {
@@ -210,7 +211,7 @@ export class DrizzleUserRepository implements IUserRepository {
     return result.map(user => User.fromRepository({
       ...user,
       role: user.role as 'user' | 'admin'
-    }));
+    }).unwrap());
   }
 
   async exists(query: UserFilterQuery): Promise<boolean> {

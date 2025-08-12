@@ -1,7 +1,7 @@
 import { injectable, inject } from 'tsyringe';
 import { Result } from '@carbonteq/fp';
 import { AuthApplicationService } from '../../services/AuthApplicationService.js';
-import type { ILogger } from '../../../infrastructure/interfaces/ILogger.js';
+import type { ILogger } from '../../../domain/interfaces/ILogger.js';
 import type { AuthenticateUserRequest, AuthenticateUserResponse } from '../../dto/user/index.js';
 import { ApplicationError } from '../../errors/ApplicationError.js';
 
@@ -36,15 +36,15 @@ export class AuthenticateUserUseCase {
         token: '', // Will be set by infrastructure layer
         user: {
           id: user.id,
-          email: user.email,
-          role: user.role,
+          email: user.email.value,
+          role: user.role.value,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
         },
         expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now
       };
 
-      this.logger.info('User authenticated successfully', { userId: user.id, email: user.email });
+      this.logger.info('User authenticated successfully', { userId: user.id, email: user.email.value });
       return Result.Ok(authResponse);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email: request.email });

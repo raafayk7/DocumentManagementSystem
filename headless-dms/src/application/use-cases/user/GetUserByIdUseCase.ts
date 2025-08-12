@@ -1,7 +1,7 @@
 import { inject, injectable } from "tsyringe";
 import { Result } from "@carbonteq/fp";
 import { UserApplicationService } from "../../services/UserApplicationService.js";
-import type { ILogger } from "../../../infrastructure/interfaces/ILogger.js";
+import type { ILogger } from "../../../domain/interfaces/ILogger.js";
 import type { GetUserByIdRequest, GetUserByIdResponse } from "../../dto/user/index.js";
 import { ApplicationError } from "../../errors/ApplicationError.js";
 
@@ -32,8 +32,8 @@ export class GetUserByIdUseCase {
       const response: GetUserByIdResponse = {
         user: {
           id: user.id,
-          email: user.email,
-          role: user.role,
+          email: user.email.value,
+          role: user.role.value,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
         },

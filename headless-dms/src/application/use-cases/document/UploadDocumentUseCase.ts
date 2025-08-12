@@ -1,7 +1,7 @@
 import { inject, injectable } from "tsyringe";
 import { Result } from "@carbonteq/fp";
 import { DocumentApplicationService } from "../../services/DocumentApplicationService.js";
-import type { ILogger } from "../../../infrastructure/interfaces/ILogger.js";
+import type { ILogger } from '../../../domain/interfaces/ILogger.js';
 import type { UploadDocumentRequest, UploadDocumentResponse } from "../../dto/document/index.js";
 import { ApplicationError } from "../../errors/ApplicationError.js";
 
@@ -48,7 +48,7 @@ export class UploadDocumentUseCase {
 
       this.logger.info('Document uploaded successfully', { 
         documentId: savedDocument.id, 
-        name: savedDocument.name 
+        name: savedDocument.name.value 
       });
       return Result.Ok(response);
     } catch (error) {

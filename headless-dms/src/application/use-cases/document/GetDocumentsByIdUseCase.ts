@@ -1,7 +1,7 @@
 import { injectable, inject } from 'tsyringe';
 import { Result } from '@carbonteq/fp';
 import { DocumentApplicationService } from '../../services/DocumentApplicationService.js';
-import type { ILogger } from '../../../infrastructure/interfaces/ILogger.js';
+import type { ILogger } from '../../../domain/interfaces/ILogger.js';
 import type { GetDocumentsByIdRequest, GetDocumentByIdResponse } from '../../dto/document/index.js';
 import { ApplicationError } from '../../errors/ApplicationError.js';
 
@@ -32,10 +32,10 @@ export class GetDocumentByIdUseCase {
       const response: GetDocumentByIdResponse = {
         document: {
           id: document.id,
-          name: document.name,
+          name: document.name.value,
           filePath: document.filePath,
-          mimeType: document.mimeType,
-          size: document.size,
+                      mimeType: document.mimeType.value,
+            size: document.size.bytes.toString(),
           tags: document.tags,
           metadata: document.metadata,
           createdAt: document.createdAt,

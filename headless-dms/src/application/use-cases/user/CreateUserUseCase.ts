@@ -1,7 +1,7 @@
 import { injectable, inject } from 'tsyringe';
 import { Result } from '@carbonteq/fp';
 import { UserApplicationService } from '../../services/UserApplicationService.js';
-import type { ILogger } from '../../../infrastructure/interfaces/ILogger.js';
+import type { ILogger } from '../../../domain/interfaces/ILogger.js';
 import type { CreateUserRequest, UserResponse } from '../../dto/user/index.js';
 import { ApplicationError } from '../../errors/ApplicationError.js';
 
@@ -38,13 +38,13 @@ export class CreateUserUseCase {
       // Create response DTO
       const userResponse: UserResponse = {
         id: user.id,
-        email: user.email,
-        role: user.role,
+        email: user.email.value,
+        role: user.role.value,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       };
 
-      this.logger.info('User registered successfully', { userId: user.id, email: user.email });
+      this.logger.info('User registered successfully', { userId: user.id, email: user.email.value });
       return Result.Ok(userResponse);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email: request.email });

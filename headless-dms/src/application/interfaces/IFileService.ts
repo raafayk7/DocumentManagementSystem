@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { Result } from '@carbonteq/fp';
-import { FileError } from '../common/errors/application.errors.js';
+import { FileError } from '../../common/errors/application.errors.js';
 
 interface FileInfo {
   path: string;
@@ -15,4 +15,5 @@ export interface IFileService {
   streamFile(filePath: string, reply: FastifyReply): Promise<Result<void, FileError>>;
   deleteFile(filePath: string): Promise<Result<boolean, FileError>>;
   fileExists(filePath: string): Promise<Result<boolean, FileError>>;
+  getFile(filePath: string): Promise<Result<Buffer, FileError>>;
 } 

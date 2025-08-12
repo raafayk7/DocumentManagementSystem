@@ -1,7 +1,7 @@
 import { injectable, inject } from 'tsyringe';
 import { Result } from '@carbonteq/fp';
 import { DocumentApplicationService } from '../../services/DocumentApplicationService.js';
-import type { ILogger } from '../../../infrastructure/interfaces/ILogger.js';
+import type { ILogger } from '../../../domain/interfaces/ILogger.js';
 import type { CreateDocumentRequest, DocumentResponse } from '../../dto/document/index.js';
 import { ApplicationError } from '../../errors/ApplicationError.js';
 
@@ -42,17 +42,17 @@ export class CreateDocumentUseCase {
       // 6. Return response DTO
       const response: DocumentResponse = {
         id: savedDocument.id,
-        name: savedDocument.name,
+        name: savedDocument.name.value,
         filePath: savedDocument.filePath,
-        mimeType: savedDocument.mimeType,
-        size: savedDocument.size,
+        mimeType: savedDocument.mimeType.value,
+        size: savedDocument.size.bytes.toString(),
         tags: savedDocument.tags,
         metadata: savedDocument.metadata,
         createdAt: savedDocument.createdAt,
         updatedAt: savedDocument.updatedAt,
       };
 
-      this.logger.info('Document created successfully', { documentId: savedDocument.id, name: savedDocument.name });
+      this.logger.info('Document created successfully', { documentId: savedDocument.id, name: savedDocument.name.value });
       return Result.Ok(response);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { name: request.name });

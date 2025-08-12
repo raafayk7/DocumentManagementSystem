@@ -155,4 +155,30 @@ export class LocalFileService implements IFileService {
       ));
     }
   }
+
+  async getFile(filePath: string): Promise<Result<Buffer, FileError>> {
+    this.logger.info('Reading file', { filePath });
+    
+    try {
+      if (!fs.existsSync(filePath)) {
+        this.logger.error('File not found for reading', { filePath });
+        return Result.Err(new FileError(
+          'LocalFileService.getFile',
+          'File not found',
+          { filePath }
+        ));
+      }
+
+      const fileBuffer = await fs.promises.readFile(filePath);
+      this.logger.info('File read successfully', { filePath, size: fileBuffer.length });
+      return Result.Ok(fileBuffer);
+    } catch (error) {
+      this.logger.logError(error as Error, { filePath });
+      return Result.Err(new FileError(
+        'LocalFileService.getFile',
+        error instanceof Error ? error.message : 'File reading failed',
+        { filePath }
+      ));
+    }
+  }
 } 

@@ -1,7 +1,7 @@
 import { inject, injectable } from "tsyringe";
 import { Result } from "@carbonteq/fp";
 import { DocumentApplicationService } from "../../services/DocumentApplicationService.js";
-import type { ILogger } from "../../../infrastructure/interfaces/ILogger.js";
+import type { ILogger } from '../../../domain/interfaces/ILogger.js';
 import type { DownloadDocumentRequest, DownloadDocumentResponse } from "../../dto/document/index.js";
 import { ApplicationError } from "../../errors/ApplicationError.js";
 
@@ -37,9 +37,9 @@ export class DownloadDocumentUseCase {
       // 3. Return response DTO (file streaming will be handled by infrastructure layer)
       const response: DownloadDocumentResponse = {
         filePath: document.filePath,
-        filename: document.name,
-        mimeType: document.mimeType,
-        size: parseInt(document.size),
+        filename: document.name.value,
+                  mimeType: document.mimeType.value,
+          size: parseInt(document.size.bytes.toString()),
       };
 
       this.logger.info('Document downloaded successfully', { documentId: request.documentId });

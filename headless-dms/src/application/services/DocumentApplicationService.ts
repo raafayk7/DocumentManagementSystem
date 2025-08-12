@@ -13,10 +13,10 @@ import {
   UserDomainService, 
   UserPermission 
 } from '../../domain/services/UserDomainService.js';
-import type { IDocumentRepository } from '../../infrastructure/database/interfaces/documents.repository.interface.js';
-import type { IUserRepository } from '../../infrastructure/database/interfaces/user.repository.interface.js';
-import type { IFileStorage } from '../../infrastructure/interfaces/IFileStorage.js';
-import type { ILogger } from '../../infrastructure/interfaces/ILogger.js';
+import type { IDocumentRepository } from '../interfaces/IDocumentRepository.js';
+import type { IUserRepository } from '../interfaces/IUserRepository.js';
+import type { IFileStorage } from '../interfaces/IFileStorage.js';
+import type { ILogger } from '../../domain/interfaces/ILogger.js';
 import { ApplicationError } from '../errors/ApplicationError.js';
 
 @injectable()
@@ -107,7 +107,7 @@ export class DocumentApplicationService {
 
       this.logger.info('Document created successfully', { 
         documentId: savedDocument.id, 
-        name: savedDocument.name,
+        name: savedDocument.name.value,
         userId 
       });
       return Result.Ok(savedDocument);
@@ -660,8 +660,7 @@ export class DocumentApplicationService {
       }
 
       // Use repository's find method with enhanced query parameters
-      const result = await this.documentRepository.find(queryParams);
-      const documents = result.data;
+      const documents = await this.documentRepository.find(queryParams);
       
       this.logger.info('Documents retrieved successfully', { 
         count: documents.length, 
@@ -801,8 +800,17 @@ export class DocumentApplicationService {
       }
 
       // Get file from storage
-      const file = await this.fileService.getFile(document.filePath);
+      const fileResult = await this.fileService.getFile(document.filePath);
+      if (fileResult.isErr()) {
+        this.logger.error('Failed to get file from storage', { documentId, error: fileResult.unwrapErr().message });
+        return Result.Err(new ApplicationError(
+          'DocumentApplicationService.fileReadFailed',
+          'Failed to read file from storage',
+          { documentId, error: fileResult.unwrapErr().message }
+        ));
+      }
 
+      const file = fileResult.unwrap();
       this.logger.info('Document downloaded successfully', { documentId, userId });
       return Result.Ok({ document, file });
     } catch (error) {
@@ -838,8 +846,17 @@ export class DocumentApplicationService {
       }
 
       // Get file from storage
-      const file = await this.fileService.getFile(document.filePath);
+      const fileResult = await this.fileService.getFile(document.filePath);
+      if (fileResult.isErr()) {
+        this.logger.error('Failed to get file from storage', { documentId, error: fileResult.unwrapErr().message });
+        return Result.Err(new ApplicationError(
+          'DocumentApplicationService.fileReadFailed',
+          'Failed to read file from storage',
+          { documentId, error: fileResult.unwrapErr().message }
+        ));
+      }
 
+      const file = fileResult.unwrap();
       this.logger.info('Document downloaded by token successfully', { documentId });
       return Result.Ok({ document, file });
     } catch (error) {

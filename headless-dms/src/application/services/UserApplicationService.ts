@@ -12,8 +12,8 @@ import {
   SecurityValidation, 
   PasswordStrength 
 } from '../../domain/services/AuthDomainService.js';
-import type { IUserRepository } from '../../infrastructure/database/interfaces/user.repository.interface.js';
-import type { ILogger } from '../../infrastructure/interfaces/ILogger.js';
+import type { IUserRepository } from '../interfaces/IUserRepository.js';
+import type { ILogger } from '../../domain/interfaces/ILogger.js';
 import { ApplicationError } from '../errors/ApplicationError.js';
 
 @injectable()
@@ -378,8 +378,7 @@ export class UserApplicationService {
       }
 
       // Use repository's find method with enhanced query parameters
-      const result = await this.userRepository.find(queryParams);
-      const users = result.data;
+      const users = await this.userRepository.find(queryParams);
       
       this.logger.info('Users retrieved successfully', {
         count: users.length,

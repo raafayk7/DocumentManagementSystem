@@ -1,6 +1,7 @@
 import { db } from '../index.js';
 import { documents } from '../schema.js';
-import { IDocumentRepository, DocumentFilterQuery } from '../interfaces/documents.repository.interface.js';
+import { IDocumentRepository } from '../../../application/interfaces/IDocumentRepository.js';
+import type { DocumentFilterQuery } from '../interfaces/documents.repository.interface.js';
 import { v4 as uuidv4 } from 'uuid';
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { arrayOverlaps } from 'drizzle-orm';
@@ -35,7 +36,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       ...savedData,
       tags: savedData.tags as string[],
       metadata: savedData.metadata as Record<string, string>,
-    });
+    }).unwrap();
   }
 
   async saveWithNameCheck(document: Document): Promise<Document> {
@@ -75,7 +76,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
         ...savedData,
         tags: savedData.tags as string[],
         metadata: savedData.metadata as Record<string, string>,
-      });
+      }).unwrap();
     });
   }
 
@@ -142,7 +143,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       ...doc,
       tags: doc.tags as string[],
       metadata: doc.metadata as Record<string, string>,
-    }));
+    }).unwrap());
 
     return {
       data: documentsList,
@@ -202,7 +203,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       ...doc,
       tags: doc.tags as string[],
       metadata: doc.metadata as Record<string, string>,
-    });
+    }).unwrap();
   }
 
   async findById(id: string): Promise<Document | null> {
@@ -230,7 +231,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       ...doc,
       tags: doc.tags as string[],
       metadata: doc.metadata as Record<string, string>,
-    });
+    }).unwrap();
   }
 
   async findByName(name: string): Promise<Document | null> {
@@ -258,7 +259,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       ...doc,
       tags: doc.tags as string[],
       metadata: doc.metadata as Record<string, string>,
-    });
+    }).unwrap();
   }
 
   async findByTags(tags: string[]): Promise<Document[]> {
@@ -281,7 +282,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       ...doc,
       tags: doc.tags as string[],
       metadata: doc.metadata as Record<string, string>,
-    }));
+    }).unwrap());
   }
 
   async findByMimeType(mimeType: string): Promise<Document[]> {
@@ -304,7 +305,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       ...doc,
       tags: doc.tags as string[],
       metadata: doc.metadata as Record<string, string>,
-    }));
+    }).unwrap());
   }
 
   async update(document: Document): Promise<Document> {
@@ -334,7 +335,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       ...updatedData,
       tags: updatedData.tags as string[],
       metadata: updatedData.metadata as Record<string, string>,
-    });
+    }).unwrap();
   }
 
   async delete(id: string): Promise<boolean> {

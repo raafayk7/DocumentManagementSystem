@@ -1,7 +1,7 @@
 import { inject, injectable } from "tsyringe";
 import { Result } from "@carbonteq/fp";
 import { DocumentApplicationService } from "../../services/DocumentApplicationService.js";
-import type { ILogger } from "../../../infrastructure/interfaces/ILogger.js";
+import type { ILogger } from '../../../domain/interfaces/ILogger.js';
 import type { RemoveTagsFromDocumentRequest, RemoveTagsFromDocumentResponse } from "../../dto/document/index.js";
 import { ApplicationError } from "../../errors/ApplicationError.js";
 

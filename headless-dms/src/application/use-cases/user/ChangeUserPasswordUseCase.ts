@@ -1,7 +1,7 @@
 import { injectable, inject } from 'tsyringe';
 import { Result } from '@carbonteq/fp';
 import { UserApplicationService } from '../../services/UserApplicationService.js';
-import type { ILogger } from '../../../infrastructure/interfaces/ILogger.js';
+import type { ILogger } from '../../../domain/interfaces/ILogger.js';
 import type { ChangeUserPasswordRequest, ChangeUserPasswordResponse } from '../../dto/user/index.js';
 import { ApplicationError } from '../../errors/ApplicationError.js';
 
