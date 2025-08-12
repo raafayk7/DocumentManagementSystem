@@ -1,11 +1,14 @@
 import { Result } from '@carbonteq/fp';
+import { DocumentName } from '../value-objects/DocumentName.js';
+import { MimeType } from '../value-objects/MimeType.js';
+import { FileSize } from '../value-objects/FileSize.js';
 
 export interface DocumentProps {
   id: string;
-  name: string;
+  name: DocumentName;
   filePath: string;
-  mimeType: string;
-  size: string;
+  mimeType: MimeType;
+  size: FileSize;
   tags: string[];
   metadata: Record<string, string>;
   createdAt: Date;
@@ -14,10 +17,10 @@ export interface DocumentProps {
 
 export class Document {
   private readonly _id: string;
-  private readonly _name: string;
+  private readonly _name: DocumentName;
   private readonly _filePath: string;
-  private readonly _mimeType: string;
-  private readonly _size: string;
+  private readonly _mimeType: MimeType;
+  private readonly _size: FileSize;
   private readonly _tags: string[];
   private readonly _metadata: Record<string, string>;
   private readonly _createdAt: Date;
@@ -37,10 +40,10 @@ export class Document {
 
   // Getters (read-only access)
   get id(): string { return this._id; }
-  get name(): string { return this._name; }
+  get name(): DocumentName { return this._name; }
   get filePath(): string { return this._filePath; }
-  get mimeType(): string { return this._mimeType; }
-  get size(): string { return this._size; }
+  get mimeType(): MimeType { return this._mimeType; }
+  get size(): FileSize { return this._size; }
   get tags(): string[] { return [...this._tags]; } // Return copy to prevent mutation
   get metadata(): Record<string, string> { return { ...this._metadata }; } // Return copy
   get createdAt(): Date { return this._createdAt; }
@@ -55,21 +58,27 @@ export class Document {
     tags: string[] = [], 
     metadata: Record<string, string> = {}
   ): Result<Document, string> {
-    // Basic validation
-    if (!Document.validateName(name)) {
-      return Result.Err('Document name cannot be empty');
+    // Validate name using DocumentName value object
+    const nameResult = DocumentName.create(name);
+    if (nameResult.isErr()) {
+      return Result.Err(nameResult.unwrapErr());
     }
 
+    // Validate file path
     if (!Document.validateFilePath(filePath)) {
       return Result.Err('Invalid file path');
     }
 
-    if (!Document.validateMimeType(mimeType)) {
-      return Result.Err('Invalid MIME type');
+    // Validate MIME type using MimeType value object
+    const mimeTypeResult = MimeType.create(mimeType);
+    if (mimeTypeResult.isErr()) {
+      return Result.Err(mimeTypeResult.unwrapErr());
     }
 
-    if (!Document.validateSize(size)) {
-      return Result.Err('Invalid file size');
+    // Validate size using FileSize value object
+    const sizeResult = FileSize.fromBytes(parseInt(size));
+    if (sizeResult.isErr()) {
+      return Result.Err(sizeResult.unwrapErr());
     }
 
     // Validate and clean tags
@@ -86,10 +95,10 @@ export class Document {
 
     const documentProps: DocumentProps = {
       id: crypto.randomUUID(),
-      name: name.trim(),
+      name: nameResult.unwrap(),
       filePath,
-      mimeType,
-      size,
+      mimeType: mimeTypeResult.unwrap(),
+      size: sizeResult.unwrap(),
       tags: cleanTags.unwrap(),
       metadata: cleanMetadata.unwrap(),
       createdAt: new Date(),
@@ -100,8 +109,48 @@ export class Document {
   }
 
   // Factory method for creating from repository data
-  static fromRepository(props: DocumentProps): Document {
-    return new Document(props);
+  static fromRepository(props: {
+    id: string;
+    name: string;
+    filePath: string;
+    mimeType: string;
+    size: string;
+    tags: string[];
+    metadata: Record<string, string>;
+    createdAt: Date;
+    updatedAt: Date;
+  }): Result<Document, string> {
+    // Validate name
+    const nameResult = DocumentName.create(props.name);
+    if (nameResult.isErr()) {
+      return Result.Err(`Invalid name in repository data: ${nameResult.unwrapErr()}`);
+    }
+
+    // Validate MIME type
+    const mimeTypeResult = MimeType.create(props.mimeType);
+    if (mimeTypeResult.isErr()) {
+      return Result.Err(`Invalid MIME type in repository data: ${mimeTypeResult.unwrapErr()}`);
+    }
+
+    // Validate size
+    const sizeResult = FileSize.fromBytes(parseInt(props.size));
+    if (sizeResult.isErr()) {
+      return Result.Err(`Invalid size in repository data: ${sizeResult.unwrapErr()}`);
+    }
+
+    const documentProps: DocumentProps = {
+      id: props.id,
+      name: nameResult.unwrap(),
+      filePath: props.filePath,
+      mimeType: mimeTypeResult.unwrap(),
+      size: sizeResult.unwrap(),
+      tags: props.tags,
+      metadata: props.metadata,
+      createdAt: props.createdAt,
+      updatedAt: props.updatedAt
+    };
+
+    return Result.Ok(new Document(documentProps));
   }
 
   // Factory method for creating from file upload
@@ -129,21 +178,8 @@ export class Document {
   }
 
   // Validation methods
-  static validateName(name: string): boolean {
-    return name.trim().length > 0;
-  }
-
   static validateFilePath(filePath: string): boolean {
     return filePath.trim().length > 0;
-  }
-
-  static validateMimeType(mimeType: string): boolean {
-    return mimeType.trim().length > 0;
-  }
-
-  static validateSize(size: string): boolean {
-    const sizeNum = parseInt(size);
-    return !isNaN(sizeNum) && sizeNum > 0;
   }
 
   static validateAndCleanTags(tags: string[]): Result<string[], string> {
@@ -223,13 +259,21 @@ export class Document {
 
   // State-changing operations
   updateName(newName: string): Result<Document, string> {
-    if (!Document.validateName(newName)) {
-      return Result.Err('Document name cannot be empty');
+    // Validate new name using DocumentName value object
+    const nameResult = DocumentName.create(newName);
+    if (nameResult.isErr()) {
+      return Result.Err(nameResult.unwrapErr());
     }
 
     const updatedProps: DocumentProps = {
-      ...this.toRepository(),
-      name: newName.trim(),
+      id: this._id,
+      name: nameResult.unwrap(),
+      filePath: this._filePath,
+      mimeType: this._mimeType,
+      size: this._size,
+      tags: this._tags,
+      metadata: this._metadata,
+      createdAt: this._createdAt,
       updatedAt: new Date()
     };
 
@@ -246,8 +290,14 @@ export class Document {
     const uniqueTags = [...new Set(allTags)]; // Remove duplicates
 
     const updatedProps: DocumentProps = {
-      ...this.toRepository(),
+      id: this._id,
+      name: this._name,
+      filePath: this._filePath,
+      mimeType: this._mimeType,
+      size: this._size,
       tags: uniqueTags,
+      metadata: this._metadata,
+      createdAt: this._createdAt,
       updatedAt: new Date()
     };
 
@@ -259,8 +309,14 @@ export class Document {
     const remainingTags = this._tags.filter(tag => !tagsToRemoveSet.has(tag));
 
     const updatedProps: DocumentProps = {
-      ...this.toRepository(),
+      id: this._id,
+      name: this._name,
+      filePath: this._filePath,
+      mimeType: this._mimeType,
+      size: this._size,
       tags: remainingTags,
+      metadata: this._metadata,
+      createdAt: this._createdAt,
       updatedAt: new Date()
     };
 
@@ -274,8 +330,14 @@ export class Document {
     }
 
     const updatedProps: DocumentProps = {
-      ...this.toRepository(),
+      id: this._id,
+      name: this._name,
+      filePath: this._filePath,
+      mimeType: this._mimeType,
+      size: this._size,
       tags: cleanTags.unwrap(),
+      metadata: this._metadata,
+      createdAt: this._createdAt,
       updatedAt: new Date()
     };
 
@@ -289,8 +351,14 @@ export class Document {
     }
 
     const updatedProps: DocumentProps = {
-      ...this.toRepository(),
+      id: this._id,
+      name: this._name,
+      filePath: this._filePath,
+      mimeType: this._mimeType,
+      size: this._size,
+      tags: this._tags,
       metadata: cleanMetadata.unwrap(),
+      createdAt: this._createdAt,
       updatedAt: new Date()
     };
 
@@ -302,19 +370,27 @@ export class Document {
       return Result.Err('Invalid file path');
     }
 
-    if (!Document.validateMimeType(newMimeType)) {
-      return Result.Err('Invalid MIME type');
+    // Validate new MIME type using MimeType value object
+    const mimeTypeResult = MimeType.create(newMimeType);
+    if (mimeTypeResult.isErr()) {
+      return Result.Err(mimeTypeResult.unwrapErr());
     }
 
-    if (!Document.validateSize(newSize)) {
-      return Result.Err('Invalid file size');
+    // Validate new size using FileSize value object
+    const sizeResult = FileSize.fromBytes(parseInt(newSize));
+    if (sizeResult.isErr()) {
+      return Result.Err(sizeResult.unwrapErr());
     }
 
     const updatedProps: DocumentProps = {
-      ...this.toRepository(),
+      id: this._id,
+      name: this._name,
       filePath: newFilePath,
-      mimeType: newMimeType,
-      size: newSize,
+      mimeType: mimeTypeResult.unwrap(),
+      size: sizeResult.unwrap(),
+      tags: this._tags,
+      metadata: this._metadata,
+      createdAt: this._createdAt,
       updatedAt: new Date()
     };
 
@@ -323,23 +399,23 @@ export class Document {
 
   // Business rules
   isImage(): boolean {
-    return this._mimeType.startsWith('image/');
+    return this._mimeType.isImage;
   }
 
   isPDF(): boolean {
-    return this._mimeType === 'application/pdf';
+    return this._mimeType.isDocument;
   }
 
   isTextFile(): boolean {
-    return this._mimeType.startsWith('text/');
+    return this._mimeType.isText;
   }
 
   getFileSizeInBytes(): number {
-    return parseInt(this._size);
+    return this._size.bytes;
   }
 
   getFileSizeInMB(): number {
-    return this.getFileSizeInBytes() / (1024 * 1024);
+    return this._size.bytes / (1024 * 1024);
   }
 
   hasTag(tag: string): boolean {
@@ -361,13 +437,23 @@ export class Document {
   }
 
   // Convert to plain object for repository
-  toRepository(): DocumentProps {
+  toRepository(): {
+    id: string;
+    name: string;
+    filePath: string;
+    mimeType: string;
+    size: string;
+    tags: string[];
+    metadata: Record<string, string>;
+    createdAt: Date;
+    updatedAt: Date;
+  } {
     return {
       id: this._id,
-      name: this._name,
+      name: this._name.value,
       filePath: this._filePath,
-      mimeType: this._mimeType,
-      size: this._size,
+      mimeType: this._mimeType.value,
+      size: this._size.bytes.toString(),
       tags: this._tags,
       metadata: this._metadata,
       createdAt: this._createdAt,

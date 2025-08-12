@@ -1,20 +1,23 @@
 import { Result } from '@carbonteq/fp';
 import * as bcrypt from 'bcrypt';
+import { Email } from '../value-objects/Email.js';
+import { Password } from '../value-objects/Password.js';
+import { UserRole } from '../value-objects/UserRole.js';
 
 export interface UserProps {
   id: string;
-  email: string;
+  email: Email;
   passwordHash: string;
-  role: 'user' | 'admin';
+  role: UserRole;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export class User {
   private readonly _id: string;
-  private readonly _email: string;
+  private readonly _email: Email;
   private readonly _passwordHash: string;
-  private readonly _role: 'user' | 'admin';
+  private readonly _role: UserRole;
   private readonly _createdAt: Date;
   private readonly _updatedAt: Date;
 
@@ -29,25 +32,30 @@ export class User {
 
   // Getters (read-only access)
   get id(): string { return this._id; }
-  get email(): string { return this._email; }
+  get email(): Email { return this._email; }
   get passwordHash(): string { return this._passwordHash; }
-  get role(): 'user' | 'admin' { return this._role; }
+  get role(): UserRole { return this._role; }
   get createdAt(): Date { return this._createdAt; }
   get updatedAt(): Date { return this._updatedAt; }
 
   // Factory method for creating new users
-  static async create(email: string, password: string, role: 'user' | 'admin'): Promise<Result<User, string>> {
-    // Basic validation
-    if (!User.validateEmail(email)) {
-      return Result.Err('Invalid email format');
+  static async create(email: string, password: string, role: string): Promise<Result<User, string>> {
+    // Validate email using Email value object
+    const emailResult = Email.create(email);
+    if (emailResult.isErr()) {
+      return Result.Err(emailResult.unwrapErr());
     }
 
-    if (!User.validatePassword(password)) {
-      return Result.Err('Password must be at least 8 characters');
+    // Validate password using Password value object
+    const passwordResult = Password.create(password);
+    if (passwordResult.isErr()) {
+      return Result.Err(passwordResult.unwrapErr());
     }
 
-    if (!User.validateRole(role)) {
-      return Result.Err('Role must be either "user" or "admin"');
+    // Validate role using UserRole value object
+    const roleResult = UserRole.create(role);
+    if (roleResult.isErr()) {
+      return Result.Err(roleResult.unwrapErr());
     }
 
     // Hash password
@@ -55,9 +63,9 @@ export class User {
 
     const userProps: UserProps = {
       id: crypto.randomUUID(),
-      email: email.toLowerCase().trim(),
+      email: emailResult.unwrap(),
       passwordHash,
-      role,
+      role: roleResult.unwrap(),
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -66,24 +74,36 @@ export class User {
   }
 
   // Factory method for creating from repository data
-  static fromRepository(props: UserProps): User {
-    return new User(props);
-  }
+  static fromRepository(props: {
+    id: string;
+    email: string;
+    passwordHash: string;
+    role: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }): Result<User, string> {
+    // Validate email
+    const emailResult = Email.create(props.email);
+    if (emailResult.isErr()) {
+      return Result.Err(`Invalid email in repository data: ${emailResult.unwrapErr()}`);
+    }
 
-  // Validation methods
-  static validateEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
+    // Validate role
+    const roleResult = UserRole.create(props.role);
+    if (roleResult.isErr()) {
+      return Result.Err(`Invalid role in repository data: ${roleResult.unwrapErr()}`);
+    }
 
-  static validatePassword(password: string): boolean {
-    // Check if password is present and has minimum length
-    return Boolean(password) && password.length >= 8;
-  }
+    const userProps: UserProps = {
+      id: props.id,
+      email: emailResult.unwrap(),
+      passwordHash: props.passwordHash,
+      role: roleResult.unwrap(),
+      createdAt: props.createdAt,
+      updatedAt: props.updatedAt
+    };
 
-  static validateRole(role: string): role is 'user' | 'admin' {
-    // Check if role is present and has valid value
-    return Boolean(role) && (role === 'user' || role === 'admin');
+    return Result.Ok(new User(userProps));
   }
 
   // Password hashing using bcrypt
@@ -93,28 +113,38 @@ export class User {
 
   // State-changing operations
   async changePassword(newPassword: string): Promise<Result<User, string>> {
-    if (!User.validatePassword(newPassword)) {
-      return Result.Err('Password must be at least 8 characters');
+    // Validate new password using Password value object
+    const passwordResult = Password.create(newPassword);
+    if (passwordResult.isErr()) {
+      return Result.Err(passwordResult.unwrapErr());
     }
 
     const newPasswordHash = await User.hashPassword(newPassword);
     const updatedProps: UserProps = {
-      ...this.toRepository(),
+      id: this._id,
+      email: this._email,
       passwordHash: newPasswordHash,
+      role: this._role,
+      createdAt: this._createdAt,
       updatedAt: new Date()
     };
 
     return Result.Ok(new User(updatedProps));
   }
 
-  changeRole(newRole: 'user' | 'admin'): Result<User, string> {
-    if (!User.validateRole(newRole)) {
-      return Result.Err('Role must be either "user" or "admin"');
+  changeRole(newRole: string): Result<User, string> {
+    // Validate new role using UserRole value object
+    const roleResult = UserRole.create(newRole);
+    if (roleResult.isErr()) {
+      return Result.Err(roleResult.unwrapErr());
     }
 
     const updatedProps: UserProps = {
-      ...this.toRepository(),
-      role: newRole,
+      id: this._id,
+      email: this._email,
+      passwordHash: this._passwordHash,
+      role: roleResult.unwrap(),
+      createdAt: this._createdAt,
       updatedAt: new Date()
     };
 
@@ -122,13 +152,18 @@ export class User {
   }
 
   changeEmail(newEmail: string): Result<User, string> {
-    if (!User.validateEmail(newEmail)) {
-      return Result.Err('Invalid email format');
+    // Validate new email using Email value object
+    const emailResult = Email.create(newEmail);
+    if (emailResult.isErr()) {
+      return Result.Err(emailResult.unwrapErr());
     }
 
     const updatedProps: UserProps = {
-      ...this.toRepository(),
-      email: newEmail.toLowerCase().trim(),
+      id: this._id,
+      email: emailResult.unwrap(),
+      passwordHash: this._passwordHash,
+      role: this._role,
+      createdAt: this._createdAt,
       updatedAt: new Date()
     };
 
@@ -143,9 +178,9 @@ export class User {
   // Business rule: Role-based permissions
   hasPermission(requiredRole: 'user' | 'admin'): boolean {
     if (requiredRole === 'user') {
-      return this._role === 'user' || this._role === 'admin';
+      return this._role.isUser || this._role.isAdmin;
     }
-    return this._role === 'admin';
+    return this._role.isAdmin;
   }
 
   // Business rule: Account age validation
@@ -156,12 +191,19 @@ export class User {
   }
 
   // Convert to plain object for repository
-  toRepository(): UserProps {
+  toRepository(): {
+    id: string;
+    email: string;
+    passwordHash: string;
+    role: string;
+    createdAt: Date;
+    updatedAt: Date;
+  } {
     return {
       id: this._id,
-      email: this._email,
+      email: this._email.value,
       passwordHash: this._passwordHash,
-      role: this._role,
+      role: this._role.value,
       createdAt: this._createdAt,
       updatedAt: this._updatedAt
     };

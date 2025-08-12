@@ -14,7 +14,18 @@
     "test:repositories": "tsx tests/repositories/user-repository.test.ts && tsx tests/repositories/document-repository.test.ts",
     "test:pipeline": "tsx test-pipeline.js",
     "test:signals": "tsx test-signals.js",
-    "test:services": "tsx tests/services/user-service.test.ts && tsx tests/services/document-service.test.ts"
+    "test:services": "tsx tests/services/user-service.test.ts && tsx tests/services/document-service.test.ts",
+    "test:value-objects": "tsx tests/domain/value-objects/run-all-val-obj-tests.ts",
+    "test:user-role": "tsx tests/domain/value-objects/user-role.test.ts",
+    "test:mime-type": "tsx tests/domain/value-objects/mime-type.test.ts",
+    "test:file-size": "tsx tests/domain/value-objects/file-size.test.ts",
+    "test:document-name": "tsx tests/domain/value-objects/document-name.test.ts",
+    "test:email": "tsx tests/domain/value-objects/email.test.ts",
+    "test:password": "tsx tests/domain/value-objects/password.test.ts",
+    
+    "test:entities": "tsx tests/domain/entities/run-all-entity-tests.ts",
+    "test:user-entity": "tsx tests/domain/entities/user.entity.test.ts",
+    "test:document-entity": "tsx tests/domain/entities/document.entity.test.ts"
   },
   "keywords": [],
   "author": "",
