@@ -1,6 +1,6 @@
 import { db } from '../index.js';
 import { documents } from '../schema.js';
-import { IDocumentRepository, DocumentFilterQuery } from '../../../documents/repositories/documents.repository.interface.js';
+import { IDocumentRepository, DocumentFilterQuery } from '../interfaces/documents.repository.interface.js';
 import { v4 as uuidv4 } from 'uuid';
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { arrayOverlaps } from 'drizzle-orm';

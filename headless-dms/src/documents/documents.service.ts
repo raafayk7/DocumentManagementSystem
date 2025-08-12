@@ -1,4 +1,4 @@
-import { IDocumentRepository } from './repositories/documents.repository.interface.js';
+import { IDocumentRepository } from '../infrastructure/database/interfaces/documents.repository.interface.js';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentDto } from './dto/documents.dto.js';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { IFileService } from '../application/interfaces/IFileService.js';

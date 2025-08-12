@@ -1,4 +1,4 @@
-import { IUserRepository } from '../repositories/user.repository.interface.js';
+import { IUserRepository } from '../../infrastructure/database/interfaces/user.repository.interface.js';
 import { RegisterDto } from '../dto/register.dto.js';
 import { LoginDto } from '../dto/login.dto.js';
 import { User } from '../../domain/entities/User.js';

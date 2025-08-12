@@ -1,7 +1,7 @@
 // tests/services/document-service.test.ts
 import 'reflect-metadata';
 import { DocumentService } from '../../src/documents/documents.service.js';
-import { IDocumentRepository } from '../../src/documents/repositories/documents.repository.interface.js';
+import { IDocumentRepository } from '../../src/infrastructure/database/interfaces/documents.repository.interface.js';
 import { Document } from '../../src/domain/entities/Document.js';
 import { DocumentValidator } from '../../src/domain/validators/DocumentValidator.js';
 import { Result } from '@carbonteq/fp';

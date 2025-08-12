@@ -1,5 +1,5 @@
-import { PaginationInput, PaginationOutput } from '../../common/dto/pagination.dto.js';
-import { User } from '../../domain/entities/User.js';
+import { PaginationInput, PaginationOutput } from '../../../common/dto/pagination.dto.js';
+import { User } from '../../../domain/entities/User.js';
 
 export interface UserFilterQuery {
   email?: string;

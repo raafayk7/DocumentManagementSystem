@@ -1,7 +1,7 @@
 // tests/services/user-service.test.ts
 import 'reflect-metadata';
 import { AuthService } from '../../src/auth/services/auth.service.js';
-import { IUserRepository } from '../../src/auth/repositories/user.repository.interface.js';
+import { IUserRepository } from '../../src/infrastructure/database/interfaces/user.repository.interface.js';
 import { User } from '../../src/domain/entities/User.js';
 import { UserValidator } from '../../src/domain/validators/UserValidator.js';
 import { Result } from '@carbonteq/fp';

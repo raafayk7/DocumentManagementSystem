@@ -1,6 +1,6 @@
 import { db } from '../index.js';
 import { users } from '../schema.js';
-import { IUserRepository, UserFilterQuery } from '../../../auth/repositories/user.repository.interface.js';
+import { IUserRepository, UserFilterQuery } from '../interfaces/user.repository.interface.js';
 import { User } from '../../../domain/entities/User.js';
 import { eq, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';

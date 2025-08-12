@@ -12,7 +12,7 @@ import {
   SecurityValidation, 
   PasswordStrength 
 } from '../../domain/services/AuthDomainService.js';
-import type { IUserRepository } from '../../auth/repositories/user.repository.interface.js';
+import type { IUserRepository } from '../../infrastructure/database/interfaces/user.repository.interface.js';
 import type { ILogger } from '../../infrastructure/interfaces/ILogger.js';
 import { ApplicationError } from '../errors/ApplicationError.js';
 

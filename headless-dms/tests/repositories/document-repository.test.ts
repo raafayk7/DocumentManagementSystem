@@ -1,6 +1,6 @@
 // tests/repositories/document-repository.test.ts
 import { Document } from '../../src/domain/entities/Document.js';
-import { IDocumentRepository, DocumentFilterQuery } from '../../src/documents/repositories/documents.repository.interface.js';
+import { IDocumentRepository, DocumentFilterQuery } from '../../src/infrastructure/database/interfaces/documents.repository.interface.js';
 import { PaginationInput, PaginationOutput } from '../../src/common/dto/pagination.dto.js';
 
 // In-memory implementation for testing

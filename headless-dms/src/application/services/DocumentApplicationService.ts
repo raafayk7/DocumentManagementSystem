@@ -13,8 +13,8 @@ import {
   UserDomainService, 
   UserPermission 
 } from '../../domain/services/UserDomainService.js';
-import type { IDocumentRepository } from '../../documents/repositories/documents.repository.interface.js';
-import type { IUserRepository } from '../../auth/repositories/user.repository.interface.js';
+import type { IDocumentRepository } from '../../infrastructure/database/interfaces/documents.repository.interface.js';
+import type { IUserRepository } from '../../infrastructure/database/interfaces/user.repository.interface.js';
 import type { IFileStorage } from '../../infrastructure/interfaces/IFileStorage.js';
 import type { ILogger } from '../../infrastructure/interfaces/ILogger.js';
 import { ApplicationError } from '../errors/ApplicationError.js';
