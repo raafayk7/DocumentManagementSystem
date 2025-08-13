@@ -16,7 +16,9 @@ const tests = [
   'repositories/user-repository.test.ts',
   'repositories/document-repository.test.ts',
   'services/user-service.test.ts',
-  'services/document-service.test.ts'
+  'services/document-service.test.ts',
+  'framework-independence/domain-services.test.js',
+  'framework-independence/use-cases-with-mocks.test.js'
 ];
 
 let passedTests = 0;
