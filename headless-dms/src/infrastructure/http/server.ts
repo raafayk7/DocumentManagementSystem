@@ -16,6 +16,12 @@ export async function setupHTTPServer(config: AppConfig): Promise<IHttpServer> {
     trustProxy: true,
   });
 
+  // Register multipart plugin directly on Fastify instance (before abstraction)
+  const multipart = await import('@fastify/multipart');
+  await fastifyInstance.register(multipart.default, {
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  });
+
   // Wrap with our abstraction
   const server: IHttpServer = new FastifyHttpServer(fastifyInstance);
 

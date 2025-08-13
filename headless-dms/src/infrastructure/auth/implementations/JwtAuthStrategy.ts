@@ -52,10 +52,22 @@ export class JwtAuthStrategy implements IAuthStrategy {
       }
 
       // Generate JWT token
+      this.logger.info('About to generate JWT token for user', { 
+        userId: user.id, 
+        email: user.email.value, 
+        role: user.role.value 
+      });
+      
       const tokenResult = await this.generateToken({
         sub: user.id,
-        email: user.email,
-        role: user.role
+        email: user.email.value, // Use primitive string value
+        role: user.role.value    // Use primitive string value
+      });
+      
+      this.logger.info('JWT token generation result', { 
+        isOk: tokenResult.isOk(),
+        isErr: tokenResult.isErr(),
+        error: tokenResult.isErr() ? tokenResult.unwrapErr().message : 'none'
       });
 
       if (tokenResult.isErr()) {
@@ -90,8 +102,17 @@ export class JwtAuthStrategy implements IAuthStrategy {
 
   async generateToken(payload: any): Promise<Result<string, AuthError>> {
     try {
+      this.logger.info('JWT generateToken called with payload', { payload });
+      
       const secret = process.env.JWT_SECRET;
+      this.logger.info('JWT_SECRET from env', { 
+        hasSecret: !!secret, 
+        secretLength: secret ? secret.length : 0,
+        secretPreview: secret ? `${secret.substring(0, 10)}...` : 'undefined'
+      });
+      
       if (!secret) {
+        this.logger.error('JWT secret not configured');
         return Result.Err(new AuthError(
           'JwtAuthStrategy.generateToken',
           'JWT secret not configured',
@@ -99,10 +120,20 @@ export class JwtAuthStrategy implements IAuthStrategy {
         ));
       }
 
+      this.logger.info('About to call jwt.sign with payload and secret');
       const token = jwt.sign(payload, secret, { expiresIn: '1h' });
+      this.logger.info('jwt.sign completed successfully', { 
+        tokenLength: token.length,
+        tokenPreview: token.substring(0, 20) + '...'
+      });
+      
       return Result.Ok(token);
     } catch (error) {
-      this.logger.logError(error as Error, { payload });
+      this.logger.error('JWT token generation failed', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : 'No stack trace',
+        payload 
+      });
       return Result.Err(new AuthError(
         'JwtAuthStrategy.generateToken',
         error instanceof Error ? error.message : 'Token generation failed',
@@ -192,8 +223,8 @@ export class JwtAuthStrategy implements IAuthStrategy {
       // Generate token
       const tokenResult = await this.generateToken({
         sub: savedUser.id,
-        email: savedUser.email,
-        role: savedUser.role
+        email: savedUser.email.value, // Use primitive string value
+        role: savedUser.role.value    // Use primitive string value
       });
 
       if (tokenResult.isErr()) {
@@ -239,8 +270,8 @@ export class JwtAuthStrategy implements IAuthStrategy {
       // Generate new token with same payload
       const newTokenResult = await this.generateToken({
         sub: decoded.sub,
-        email: decoded.email,
-        role: decoded.role
+        email: decoded.email, // This is already a string from decoded token
+        role: decoded.role    // This is already a string from decoded token
       });
 
       if (newTokenResult.isErr()) {

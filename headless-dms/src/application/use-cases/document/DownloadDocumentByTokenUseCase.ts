@@ -28,21 +28,22 @@ export class DownloadDocumentByTokenUseCase {
         return result;
       }
 
-      const { document } = result.unwrap();
+      const { document, file } = result.unwrap();
 
-      // 4. Return response DTO (file streaming will be handled by infrastructure layer)
+      // 4. Return response DTO with both document info and file content
       const response: DownloadDocumentByTokenResponse = {
         document: {
           id: document.id,
           name: document.name.value,
           filePath: document.filePath,
-                      mimeType: document.mimeType.value,
-            size: document.size.bytes.toString(),
+          mimeType: document.mimeType.value,
+          size: document.size.bytes.toString(),
           tags: document.tags,
           metadata: document.metadata,
           createdAt: document.createdAt,
           updatedAt: document.updatedAt,
         },
+        file: file // Include the actual file content
       };
 
       this.logger.info('Document downloaded by token successfully', { documentId: document.id });

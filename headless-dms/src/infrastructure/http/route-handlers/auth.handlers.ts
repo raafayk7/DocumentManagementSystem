@@ -158,7 +158,7 @@ export async function handleChangeUserRole(req: IHttpRequest, res: IHttpResponse
     const result = await changeUserRoleUseCase.execute({ 
       userId: id, 
       newRole,
-      currentUserId: req.user?.id
+      currentUserId: req.user?.sub
     });
     
     matchRes(result, {
@@ -188,7 +188,7 @@ export async function handleDeleteUser(req: IHttpRequest, res: IHttpResponse): P
     const { id } = req.params as { id: string };
     const result = await deleteUserUseCase.execute({ 
       userId: id,
-      currentUserId: req.user?.id
+      currentUserId: req.user?.sub
     });
     
     matchRes(result, {

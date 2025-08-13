@@ -120,46 +120,102 @@ export async function handleGetDocumentById(req: IHttpRequest, res: IHttpRespons
 
 // PATCH /documents/:id - Updated to use Use Cases
 export async function handleUpdateDocument(req: IHttpRequest, res: IHttpResponse): Promise<void> {
-  logger.info('PATCH /documents/:id request received', { params: req.params, body: req.body });
+  logger.info('PATCH /documents/:id request received', { 
+    params: req.params, 
+    body: req.body,
+    user: req.user,
+    userId: req.user?.sub,
+    hasUser: !!req.user,
+    userKeys: req.user ? Object.keys(req.user) : []
+  });
   
   try {
     const { id } = req.params as { id: string };
     const updateData = req.body as any;
     
+    // Validate user authentication
+    if (!req.user?.sub) {
+      logger.error('No user ID found in request', { 
+        user: req.user, 
+        headers: req.headers,
+        hasUser: !!req.user 
+      });
+      return res.status(401).send({ error: 'User not authenticated' });
+    }
+    
+    logger.info('User authentication validated', { 
+      userId: req.user.sub,
+      userEmail: req.user.email,
+      userRole: req.user.role
+    });
+    
     let result;
     
     // Apply updates in order of priority using Use Cases
     if (updateData.name !== undefined) {
+      logger.info('Updating document name', { 
+        documentId: id, 
+        newName: updateData.name,
+        userId: req.user.sub 
+      });
+      
       const nameResult = await updateDocumentNameUseCase.execute({ 
         documentId: id, 
         name: updateData.name,
-        userId: req.user?.id // Extract from authenticated user
+        userId: req.user.sub // Extract from authenticated user
       });
       if (nameResult.isErr()) {
+        logger.error('Document name update failed', { 
+          error: nameResult.unwrapErr().message,
+          documentId: id,
+          userId: req.user.sub
+        });
         return res.status(400).send({ error: nameResult.unwrapErr().message });
       }
       result = nameResult;
     }
     
     if (updateData.tags !== undefined) {
+      logger.info('Updating document tags', { 
+        documentId: id, 
+        newTags: updateData.tags,
+        userId: req.user.sub 
+      });
+      
       const tagsResult = await replaceTagsInDocumentUseCase.execute({ 
         documentId: id, 
         tags: updateData.tags,
-        userId: req.user?.id
+        userId: req.user.sub
       });
       if (tagsResult.isErr()) {
+        logger.error('Document tags update failed', { 
+          error: tagsResult.unwrapErr().message,
+          documentId: id,
+          userId: req.user.sub
+        });
         return res.status(400).send({ error: tagsResult.unwrapErr().message });
       }
       result = tagsResult;
     }
     
     if (updateData.metadata !== undefined) {
+      logger.info('Updating document metadata', { 
+        documentId: id, 
+        newMetadata: updateData.metadata,
+        userId: req.user.sub 
+      });
+      
       const metadataResult = await updateDocumentMetadataUseCase.execute({ 
         documentId: id, 
         metadata: updateData.metadata,
-        userId: req.user?.id
+        userId: req.user.sub
       });
       if (metadataResult.isErr()) {
+        logger.error('Document metadata update failed', { 
+          error: metadataResult.unwrapErr().message,
+          documentId: id,
+          userId: req.user.sub
+        });
         return res.status(400).send({ error: metadataResult.unwrapErr().message });
       }
       result = metadataResult;
@@ -187,13 +243,28 @@ export async function handleUpdateDocument(req: IHttpRequest, res: IHttpResponse
 
 // DELETE /documents/:id
 export async function handleDeleteDocument(req: IHttpRequest, res: IHttpResponse): Promise<void> {
-  logger.info('DELETE /documents/:id request received', { params: req.params });
+  logger.info('DELETE /documents/:id request received', { 
+    params: req.params,
+    user: req.user,
+    userId: req.user?.sub,
+    hasUser: !!req.user
+  });
   
   try {
     const { id } = req.params as { id: string };
+    
+    if (!req.user?.sub) {
+      logger.error('No user ID found in request', { 
+        user: req.user, 
+        headers: req.headers,
+        hasUser: !!req.user 
+      });
+      return res.status(401).send({ error: 'User not authenticated' });
+    }
+    
     const result = await deleteDocumentUseCase.execute({ 
       documentId: id,
-      userId: req.user?.id
+      userId: req.user.sub
     });
     
     matchRes(result, {
@@ -218,19 +289,66 @@ export async function handleUploadDocument(req: IHttpRequest, res: IHttpResponse
   logger.info('POST /documents/upload request received');
   
   try {
-    // Extract file data from request
-    const file = (req as any).file;
-    const filename = file?.filename || 'unknown';
-    const mimeType = file?.mimetype || 'application/octet-stream';
-    const size = file?.size || 0;
+    // Extract both file and form data from multipart request
+    const parts = req.parts();
+    let fileData: any = null;
+    let formData: any = {};
+    
+    // Iterate through all parts to separate files and form fields
+    for await (const part of parts) {
+      if (part.type === 'file') {
+        fileData = part;
+      } else if (part.type === 'field') {
+        formData[part.fieldname] = part.value;
+      }
+    }
+    
+    if (!fileData) {
+      return res.status(400).send({ error: 'No file uploaded' });
+    }
+    
+    // Extract file information
+    const filename = fileData.filename || 'unknown';
+    const mimeType = fileData.mimetype || 'application/octet-stream';
+    const buffer = await fileData.toBuffer();
+    const size = buffer.length;
+    
+    // Extract form fields with defaults
+    const name = formData.name || filename;
+    const tags = formData.tags ? formData.tags.split(',').map((tag: string) => tag.trim()) : [];
+    
+    // Handle metadata - could be JSON string or already an object
+    let metadata = {};
+    if (formData.metadata) {
+      try {
+        metadata = typeof formData.metadata === 'string' ? JSON.parse(formData.metadata) : formData.metadata;
+      } catch (error) {
+        logger.warn('Invalid metadata format, using empty object', { 
+          metadata: formData.metadata, 
+          error: (error as Error).message 
+        });
+        metadata = {};
+      }
+    }
+    
+    logger.info('Upload data extracted', { 
+      filename, 
+      name, 
+      tags, 
+      metadata, 
+      size,
+      formFields: Object.keys(formData)
+    });
     
     const result = await uploadDocumentUseCase.execute({ 
-      name: filename,
-      file: file?.buffer || Buffer.alloc(0),
+      name,
+      file: buffer,
       filename,
       mimeType,
       size,
-      userId: req.user?.id
+      tags,
+      metadata,
+      userId: req.user?.sub
     });
     
     matchRes(result, {
@@ -284,13 +402,20 @@ export async function handleGenerateDownloadLink(req: IHttpRequest, res: IHttpRe
         return res.status(400).send({ error: 'Token is required' });
       }
       
+      // Get document and file content from the application service
       const result = await downloadDocumentByTokenUseCase.execute({ token });
       
       matchRes(result, {
         Ok: (downloadResult) => {
           logger.info('Document downloaded by token successfully', { statusCode: 200 });
-          // Return document info - actual file download will be handled by infrastructure layer
-          res.send(downloadResult);
+          
+          // Set appropriate headers for file download
+          res.header('Content-Type', downloadResult.document.mimeType);
+          res.header('Content-Disposition', `attachment; filename="${downloadResult.document.name}"`);
+          res.header('Content-Length', downloadResult.document.size);
+          
+          // Stream the file content
+          res.send(downloadResult.file);
         },
         Err: (error) => {
           logger.error('Token-based download failed', { error: error.message });

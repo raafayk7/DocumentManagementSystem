@@ -42,7 +42,7 @@ export class DocumentDomainService {
    * Calculate document importance score based on various factors
    */
   calculateDocumentImportance(document: Document): DocumentImportanceScore {
-    const sizeInMB = parseInt(document.size) / (1024 * 1024);
+    const sizeInMB = parseInt(document.size.bytes.toString()) / (1024 * 1024);
     const sizeWeight = Math.min(sizeInMB / 10, 1.0); // Normalize to 0-1
     
     const tagWeight = document.tags.length / 10; // Normalize to 0-1
@@ -70,7 +70,7 @@ export class DocumentDomainService {
    * Validate document access for a specific user
    */
   validateDocumentAccess(user: User, document: Document): DocumentAccessValidation {
-    const isAdmin = user.role === 'admin';
+    const isAdmin = user.role.value === 'admin';
     
     // For now, we'll use simple rules
     // In a real system, this would check ownership, sharing permissions, etc.
@@ -152,7 +152,7 @@ export class DocumentDomainService {
    * Calculate document storage cost (theoretical)
    */
   calculateStorageCost(document: Document): number {
-    const sizeInMB = parseInt(document.size) / (1024 * 1024);
+    const sizeInMB = parseInt(document.size.bytes.toString()) / (1024 * 1024);
     const costPerMB = 0.01; // $0.01 per MB
     return sizeInMB * costPerMB;
   }
@@ -161,7 +161,7 @@ export class DocumentDomainService {
    * Determine if document should be compressed
    */
   shouldCompressDocument(document: Document): boolean {
-    const sizeInMB = parseInt(document.size) / (1024 * 1024);
+    const sizeInMB = parseInt(document.size.bytes.toString()) / (1024 * 1024);
     const importanceScore = this.calculateDocumentImportance(document);
     
     // Compress if large and not very important
@@ -175,18 +175,18 @@ export class DocumentDomainService {
     const issues: string[] = [];
 
     // Check for special characters
-    if (/[<>:"/\\|?*]/.test(document.name)) {
+    if (/[<>:"/\\|?*]/.test(document.name.value)) {
       issues.push('Document name contains invalid characters');
     }
 
     // Check length
-    if (document.name.length > 255) {
+    if (document.name.value.length > 255) {
       issues.push('Document name too long (max 255 characters)');
     }
 
     // Check for reserved names
     const reservedNames = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'LPT1', 'LPT2'];
-    if (reservedNames.includes(document.name.toUpperCase())) {
+    if (reservedNames.includes(document.name.value.toUpperCase())) {
       issues.push('Document name is reserved');
     }
 
@@ -201,7 +201,7 @@ export class DocumentDomainService {
    */
   calculateSecurityLevel(document: Document): 'low' | 'medium' | 'high' {
     const importanceScore = this.calculateDocumentImportance(document);
-    const sizeInMB = parseInt(document.size) / (1024 * 1024);
+    const sizeInMB = parseInt(document.size.bytes.toString()) / (1024 * 1024);
     
     if (importanceScore.score > 80 || sizeInMB > 100) {
       return 'high';

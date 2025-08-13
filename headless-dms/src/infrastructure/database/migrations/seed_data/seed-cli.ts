@@ -13,7 +13,7 @@ async function main() {
       case 'run':
         console.log('🚀 Running seeds...');
         await seedManager.runSeeds();
-        const summary = seedManager.getSeedSummary();
+        const summary = await seedManager.getSeedSummary();
         console.log('\n📊 Seed Summary:');
         console.log(`👥 Users: ${summary.userCount} (${summary.adminCount} admin)`);
         console.log(`🏷️ Tags: ${summary.tagCount}`);
@@ -29,7 +29,7 @@ async function main() {
       case 'refresh':
         console.log('🔄 Refreshing seeds...');
         await seedManager.refreshSeeds();
-        const refreshSummary = seedManager.getSeedSummary();
+        const refreshSummary = await seedManager.getSeedSummary();
         console.log('\n📊 Refresh Summary:');
         console.log(`👥 Users: ${refreshSummary.userCount} (${refreshSummary.adminCount} admin)`);
         console.log(`🏷️ Tags: ${refreshSummary.tagCount}`);
@@ -37,8 +37,13 @@ async function main() {
         console.log(`📁 File Types: ${refreshSummary.fileTypes.join(', ')}`);
         break;
 
+      case 'clearAll':
+        console.log('⚠️ Clearing ALL data from database...');
+        await seedManager.clearAllData();
+        break;
+
       case 'summary':
-        const currentSummary = seedManager.getSeedSummary();
+        const currentSummary = await seedManager.getSeedSummary();
         console.log('\n📊 Current Seed Summary:');
         console.log(`👥 Users: ${currentSummary.userCount} (${currentSummary.adminCount} admin)`);
         console.log(`🏷️ Tags: ${currentSummary.tagCount}`);
@@ -55,8 +60,9 @@ Usage: tsx seed-cli.ts [command]
 
 Commands:
   run       Generate seed data (default)
-  reset     Clear all seed data
-  refresh   Clear and regenerate seed data
+  reset     Clear only seed-generated data (preserves manually created data)
+  refresh   Clear seed data and regenerate
+  clearAll  Clear ALL data from database (⚠️ use with caution!)
   summary   Show current seed data summary
   help      Show this help message
 
@@ -64,6 +70,7 @@ Examples:
   tsx seed-cli.ts run
   tsx seed-cli.ts reset
   tsx seed-cli.ts refresh
+  tsx seed-cli.ts clearAll
   tsx seed-cli.ts summary
         `);
         break;

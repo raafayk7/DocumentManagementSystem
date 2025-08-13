@@ -30,6 +30,7 @@
     "seed:run": "npx tsx src/infrastructure/database/migrations/seed_data/seed-cli.ts run",
     "seed:reset": "npx tsx src/infrastructure/database/migrations/seed_data/seed-cli.ts reset",
     "seed:refresh": "npx tsx src/infrastructure/database/migrations/seed_data/seed-cli.ts refresh",
+    "seed:clearAll": "npx tsx src/infrastructure/database/migrations/seed_data/seed-cli.ts clearAll",
     "seed:summary": "npx tsx src/infrastructure/database/migrations/seed_data/seed-cli.ts summary"
   },
   "keywords": [],

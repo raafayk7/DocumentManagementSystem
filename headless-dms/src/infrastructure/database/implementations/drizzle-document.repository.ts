@@ -3,7 +3,7 @@ import { documents } from '../schema.js';
 import { IDocumentRepository } from '../../../application/interfaces/IDocumentRepository.js';
 import type { DocumentFilterQuery } from '../interfaces/documents.repository.interface.js';
 import { v4 as uuidv4 } from 'uuid';
-import { and, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, eq, gte, lte, sql, asc, desc } from 'drizzle-orm';
 import { arrayOverlaps } from 'drizzle-orm';
 import fs from 'fs';
 import { injectable } from 'tsyringe';
@@ -120,6 +120,30 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
     const limit = pagination?.limit || 10;
     const offset = (page - 1) * limit;
 
+    // Handle sorting
+    let orderByClause;
+    const sortField = pagination?.sort || 'createdAt';
+    const sortOrder = pagination?.order || 'desc';
+    
+    switch (sortField) {
+      case 'name':
+        orderByClause = sortOrder === 'asc' ? asc(documents.name) : desc(documents.name);
+        break;
+      case 'mimeType':
+        orderByClause = sortOrder === 'asc' ? asc(documents.mimeType) : desc(documents.mimeType);
+        break;
+      case 'size':
+        orderByClause = sortOrder === 'asc' ? asc(documents.size) : desc(documents.size);
+        break;
+      case 'updatedAt':
+        orderByClause = sortOrder === 'asc' ? asc(documents.updatedAt) : desc(documents.updatedAt);
+        break;
+      case 'createdAt':
+      default:
+        orderByClause = sortOrder === 'asc' ? asc(documents.createdAt) : desc(documents.createdAt);
+        break;
+    }
+
     // Get paginated results
     const results = await db.select({
       id: documents.id,
@@ -136,7 +160,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       .where(whereClause)
       .limit(limit)
       .offset(offset)
-      .orderBy(documents.createdAt)
+      .orderBy(orderByClause)
       .execute();
 
     const documentsList = results.map(doc => Document.fromRepository({

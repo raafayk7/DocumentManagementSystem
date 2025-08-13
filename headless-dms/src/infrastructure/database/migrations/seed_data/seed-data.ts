@@ -43,6 +43,7 @@ export interface SeedDocument {
   userId: string;
   tags: string[];
   filePath: string;
+  metadata: Record<string, string>;
 }
 
 export interface SeedTag {

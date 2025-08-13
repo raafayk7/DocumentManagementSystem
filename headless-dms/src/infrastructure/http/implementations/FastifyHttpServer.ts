@@ -34,6 +34,16 @@ class FastifyHttpRequest implements IHttpRequest {
     // Access user from Fastify request (set by auth middleware)
     return (this.fastifyRequest as any).user;
   }
+
+  async file(): Promise<any> {
+    // Access file from multipart request
+    return (this.fastifyRequest as any).file();
+  }
+
+  parts(): AsyncIterable<any> {
+    // Access all parts from multipart request
+    return (this.fastifyRequest as any).parts();
+  }
 }
 
 // Fastify-specific response wrapper
@@ -88,7 +98,7 @@ export class FastifyHttpServer implements IHttpServer {
     }
   }
 
-  registerRoute(method: string, path: string, handler: (req: IHttpRequest, res: IHttpResponse) => Promise<void>): void {
+  registerRoute(method: string, path: string, handler: (req: IHttpRequest, res: IHttpResponse) => Promise<void>, middleware?: any[]): void {
     // Convert our interface-based handler to Fastify-compatible handler
     const fastifyHandler = async (fastifyRequest: FastifyRequest, fastifyReply: FastifyReply) => {
       try {
@@ -102,22 +112,28 @@ export class FastifyHttpServer implements IHttpServer {
       }
     };
 
+    // Prepare route options with middleware if provided
+    const routeOptions: any = {};
+    if (middleware && middleware.length > 0) {
+      routeOptions.preHandler = middleware;
+    }
+
     // Register the route with Fastify
     switch (method.toLowerCase()) {
       case 'get':
-        this.server.get(path, fastifyHandler);
+        this.server.get(path, routeOptions, fastifyHandler);
         break;
       case 'post':
-        this.server.post(path, fastifyHandler);
+        this.server.post(path, routeOptions, fastifyHandler);
         break;
       case 'put':
-        this.server.put(path, fastifyHandler);
+        this.server.put(path, routeOptions, fastifyHandler);
         break;
       case 'patch':
-        this.server.patch(path, fastifyHandler);
+        this.server.patch(path, routeOptions, fastifyHandler);
         break;
       case 'delete':
-        this.server.delete(path, fastifyHandler);
+        this.server.delete(path, routeOptions, fastifyHandler);
         break;
       default:
         throw new Error(`Unsupported HTTP method: ${method}`);
@@ -129,8 +145,16 @@ export class FastifyHttpServer implements IHttpServer {
       // Traditional middleware function
       this.server.addHook('preHandler', middleware as any);
     } else if (middleware.plugin) {
-      // Fastify plugin
-      this.server.register(middleware.plugin as any, middleware.options);
+      // Fastify plugin - handle multipart specifically
+      if (middleware.plugin.toString().includes('@fastify/multipart')) {
+        // Register multipart plugin directly
+        this.server.register(require('@fastify/multipart'), {
+          limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+        });
+      } else {
+        // Handle other plugins
+        this.server.register(middleware.plugin as any, middleware.options);
+      }
     } else {
       throw new Error('Invalid middleware format');
     }

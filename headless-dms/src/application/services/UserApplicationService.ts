@@ -336,7 +336,7 @@ export class UserApplicationService {
   /**
    * Get users with enhanced filtering
    */
-  async getUsers(
+    async getUsers(
     page: number = 1,
     limit: number = 10,
     sortBy: string = 'createdAt',
@@ -356,37 +356,35 @@ export class UserApplicationService {
     });
     
     try {
-      // Build query parameters for repository
-      const queryParams: any = {
-        page,
-        limit,
-        sortBy,
-        sortOrder
-      };
-
-      // Apply filters if provided
+      // Build filter query for repository
+      const filterQuery: any = {};
       if (filters) {
-        if (filters.search) {
-          queryParams.search = filters.search;
-        }
         if (filters.email) {
-          queryParams.email = filters.email;
+          filterQuery.email = filters.email;
         }
         if (filters.role) {
-          queryParams.role = filters.role;
+          filterQuery.role = filters.role;
         }
       }
 
-      // Use repository's find method with enhanced query parameters
-      const users = await this.userRepository.find(queryParams);
+      // Build pagination parameters for repository
+      const paginationParams = {
+        page,
+        limit,
+        order: sortOrder,
+        sort: sortBy
+      };
+
+      // Use repository's find method with separate filter and pagination parameters
+      const usersResult = await this.userRepository.find(filterQuery, paginationParams);
       
       this.logger.info('Users retrieved successfully', {
-        count: users.length,
+        count: usersResult.data.length,
         page,
         limit,
         filtersApplied: Object.keys(filters || {}).length
       });
-      return Result.Ok(users);
+      return Result.Ok(usersResult.data);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { page, limit, filters });
       return Result.Err(new ApplicationError(

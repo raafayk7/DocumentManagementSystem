@@ -32,7 +32,7 @@ export class UserDomainService {
    * Calculate user activity score based on their actions and role
    */
   calculateUserActivityScore(user: User): UserActivityScore {
-    const roleWeight = user.role === 'admin' ? 2.0 : 1.0;
+    const roleWeight = user.role.value === 'admin' ? 2.0 : 1.0;
     const daysSinceCreation = Math.floor(
       (Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)
     );
@@ -56,7 +56,7 @@ export class UserDomainService {
    */
   canUserAccessDocument(user: User, document: Document): boolean {
     // Admins can access all documents
-    if (user.role === 'admin') {
+    if (user.role.value === 'admin') {
       return true;
     }
 
@@ -70,7 +70,7 @@ export class UserDomainService {
    * Get detailed permissions for a user on a specific document
    */
   getUserDocumentPermissions(user: User, document: Document): UserPermission {
-    const isAdmin = user.role === 'admin';
+    const isAdmin = user.role.value === 'admin';
     const isOwner = this.canUserAccessDocument(user, document);
 
     return {
@@ -91,7 +91,7 @@ export class UserDomainService {
     resource: 'document' | 'user' | 'system'
   ): boolean {
     // Admin can do everything
-    if (user.role === 'admin') {
+    if (user.role.value === 'admin') {
       return true;
     }
 
@@ -166,7 +166,7 @@ export class UserDomainService {
    */
   canUserChangeRole(currentUser: User, targetUser: User, newRole: string): boolean {
     // Only admins can change roles
-    if (currentUser.role !== 'admin') {
+    if (currentUser.role.value !== 'admin') {
       return false;
     }
 
@@ -184,6 +184,6 @@ export class UserDomainService {
    */
   canUserPerformSystemAction(user: User, action: string): boolean {
     // Only admins can perform system actions
-    return user.role === 'admin';
+    return user.role.value === 'admin';
   }
 } 

@@ -15,16 +15,17 @@ import {
 } from '../../domain/services/UserDomainService.js';
 import type { IDocumentRepository } from '../interfaces/IDocumentRepository.js';
 import type { IUserRepository } from '../interfaces/IUserRepository.js';
-import type { IFileStorage } from '../interfaces/IFileStorage.js';
+import type { IFileService } from '../interfaces/IFileService.js';
 import type { ILogger } from '../../domain/interfaces/ILogger.js';
 import { ApplicationError } from '../errors/ApplicationError.js';
+import jwt from 'jsonwebtoken';
 
 @injectable()
 export class DocumentApplicationService {
   constructor(
     @inject("IDocumentRepository") private documentRepository: IDocumentRepository,
     @inject("IUserRepository") private userRepository: IUserRepository,
-    @inject("IFileStorage") private fileService: IFileStorage,
+    @inject("IFileService") private fileService: IFileService,
     @inject("DocumentDomainService") private documentDomainService: DocumentDomainService,
     @inject("UserDomainService") private userDomainService: UserDomainService,
     @inject("ILogger") private logger: ILogger,
@@ -242,7 +243,7 @@ export class DocumentApplicationService {
       }
 
       // Save document
-      const savedDocument = await this.documentRepository.save(updatedDocument);
+      const savedDocument = await this.documentRepository.update(updatedDocument);
 
       this.logger.info('Document name updated successfully', { documentId, newName, userId });
       return Result.Ok(savedDocument);
@@ -314,7 +315,7 @@ export class DocumentApplicationService {
       const updatedDocument = updateResult.unwrap();
 
       // Save document
-      const savedDocument = await this.documentRepository.save(updatedDocument);
+      const savedDocument = await this.documentRepository.update(updatedDocument);
 
       this.logger.info('Tags added to document successfully', { documentId, tags, userId });
       return Result.Ok(savedDocument);
@@ -386,7 +387,7 @@ export class DocumentApplicationService {
       const updatedDocument = updateResult.unwrap();
 
       // Save document
-      const savedDocument = await this.documentRepository.save(updatedDocument);
+      const savedDocument = await this.documentRepository.update(updatedDocument);
 
       this.logger.info('Tags removed from document successfully', { documentId, tags, userId });
       return Result.Ok(savedDocument);
@@ -467,7 +468,7 @@ export class DocumentApplicationService {
       }
 
       // Save document
-      const savedDocument = await this.documentRepository.save(updatedDocument);
+      const savedDocument = await this.documentRepository.update(updatedDocument);
 
       this.logger.info('Document metadata updated successfully', { documentId, userId });
       return Result.Ok(savedDocument);
@@ -522,12 +523,24 @@ export class DocumentApplicationService {
       }
 
       // Check if file exists and delete it
-      const fileExists = await this.fileService.fileExists(document.filePath);
-      if (fileExists) {
+      const fileExistsResult = await this.fileService.fileExists(document.filePath);
+      if (fileExistsResult.isOk() && fileExistsResult.unwrap()) {
         const deleteFileResult = await this.fileService.deleteFile(document.filePath);
-        if (!deleteFileResult) {
+        if (deleteFileResult.isOk() && !deleteFileResult.unwrap()) {
           this.logger.warn('Failed to delete file', { documentId, filePath: document.filePath });
+        } else if (deleteFileResult.isErr()) {
+          this.logger.error('Error deleting file', { 
+            documentId, 
+            filePath: document.filePath,
+            error: deleteFileResult.unwrapErr().message 
+          });
         }
+      } else if (fileExistsResult.isErr()) {
+        this.logger.error('Error checking file existence', { 
+          documentId, 
+          filePath: document.filePath,
+          error: fileExistsResult.unwrapErr().message 
+        });
       }
 
       // Delete document from repository
@@ -724,21 +737,31 @@ export class DocumentApplicationService {
   /**
    * Upload document
    */
-  async uploadDocument(file: Buffer, filename: string, mimeType: string, userId: string): Promise<Result<Document, ApplicationError>> {
-    this.logger.info('Uploading document', { filename, mimeType, userId });
+  async uploadDocument(file: Buffer, name: string, mimeType: string, userId: string, tags: string[] = [], metadata: Record<string, string> = {}): Promise<Result<Document, ApplicationError>> {
+    this.logger.info('Uploading document', { name, mimeType, userId, tags, metadata });
     
     try {
-      // Save file to storage
-      const filePath = await this.fileService.saveFile(file, filename);
-      
+      // Save file using file service
+      const fileInfoResult = await this.fileService.saveFile(file, name, mimeType);
+      if (fileInfoResult.isErr()) {
+        this.logger.error('Failed to save file via file service', { name, error: fileInfoResult.unwrapErr().message });
+        return Result.Err(new ApplicationError(
+          'DocumentApplicationService.fileSave',
+          'Failed to save file',
+          { name }
+        ));
+      }
+
+      const fileInfo = fileInfoResult.unwrap();
+
       // Create document entity
-      const documentResult = Document.create(filename, filename, mimeType, file.length.toString(), [], {});
+      const documentResult = Document.create(name, fileInfo.path, mimeType, fileInfo.size, tags, metadata);
       if (documentResult.isErr()) {
-        this.logger.error('Failed to create document entity', { filename, error: documentResult.unwrapErr() });
+        this.logger.error('Failed to create document entity', { name, error: documentResult.unwrapErr() });
         return Result.Err(new ApplicationError(
           'DocumentApplicationService.entityCreation',
           documentResult.unwrapErr(),
-          { filename }
+          { name }
         ));
       }
 
@@ -747,14 +770,14 @@ export class DocumentApplicationService {
       // Save document to repository
       const savedDocument = await this.documentRepository.save(document);
 
-      this.logger.info('Document uploaded successfully', { documentId: savedDocument.id, filename });
+      this.logger.info('Document uploaded successfully', { documentId: savedDocument.id, name: savedDocument.name.value });
       return Result.Ok(savedDocument);
     } catch (error) {
-      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { filename });
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { name });
       return Result.Err(new ApplicationError(
         'DocumentApplicationService.uploadDocument',
         error instanceof Error ? error.message : 'Failed to upload document',
-        { filename }
+        { name }
       ));
     }
   }
@@ -956,7 +979,7 @@ export class DocumentApplicationService {
       const updatedDocument = updateResult.unwrap();
 
       // Save document
-      const savedDocument = await this.documentRepository.save(updatedDocument);
+      const savedDocument = await this.documentRepository.update(updatedDocument);
 
       this.logger.info('Tags replaced in document successfully', { documentId, tags, userId });
       return Result.Ok(savedDocument);
@@ -972,12 +995,30 @@ export class DocumentApplicationService {
 
   // Helper methods for token handling (these would typically be in a separate service)
   private decodeToken(token: string): string {
-    // Implementation would decode JWT or similar token
-    return token; // Placeholder
+    try {
+      // Decode JWT token to get document ID
+      const payload = jwt.verify(token, process.env.DOWNLOAD_JWT_SECRET!) as any;
+      return payload.documentId;
+    } catch (error) {
+      throw new Error('Invalid or expired download token');
+    }
   }
 
   private generateToken(documentId: string, expiresInMinutes: number): string {
-    // Implementation would generate JWT or similar token
-    return `${documentId}-${expiresInMinutes}`; // Placeholder
+    try {
+      const payload = {
+        documentId,
+        exp: Math.floor(Date.now() / 1000) + (expiresInMinutes * 60) // Convert minutes to seconds
+      };
+      
+      const secret = process.env.DOWNLOAD_JWT_SECRET;
+      if (!secret) {
+        throw new Error('Download JWT secret not configured');
+      }
+      
+      return jwt.sign(payload, secret);
+    } catch (error) {
+      throw new Error('Failed to generate download token');
+    }
   }
 }

@@ -2,7 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { Result } from '@carbonteq/fp';
 import { FileError } from '../../common/errors/application.errors.js';
 
-interface FileInfo {
+export interface FileInfo {
   path: string;
   name: string;
   mimeType: string;
@@ -11,7 +11,12 @@ interface FileInfo {
 }
 
 export interface IFileService {
-  saveFile(request: FastifyRequest): Promise<Result<FileInfo, FileError>>;
+  // New method for direct file saving (Buffer-based)
+  saveFile(file: Buffer, name: string, mimeType: string): Promise<Result<FileInfo, FileError>>;
+  
+  // Legacy method for FastifyRequest-based uploads (kept for backward compatibility)
+  saveFileFromRequest(request: FastifyRequest): Promise<Result<FileInfo, FileError>>;
+  
   streamFile(filePath: string, reply: FastifyReply): Promise<Result<void, FileError>>;
   deleteFile(filePath: string): Promise<Result<boolean, FileError>>;
   fileExists(filePath: string): Promise<Result<boolean, FileError>>;

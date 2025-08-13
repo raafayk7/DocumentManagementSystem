@@ -26,8 +26,49 @@ export class LocalFileService implements IFileService {
     this.logger = this.logger.child({ service: 'LocalFileService' });
   }
 
-  async saveFile(request: FastifyRequest): Promise<Result<FileInfo, FileError>> {
-    this.logger.info('Starting file upload');
+  // New method for direct file saving (Buffer-based)
+  async saveFile(file: Buffer, name: string, mimeType: string): Promise<Result<FileInfo, FileError>> {
+    this.logger.info('Starting direct file upload', { name, mimeType, size: file.length });
+    
+    try {
+      // Ensure upload directory exists
+      await fs.promises.mkdir(this.uploadDir, { recursive: true });
+      
+      // Generate unique filename
+      const uniqueName = `${Date.now()}-${uuidv4()}${path.extname(name)}`;
+      const uploadPath = path.join(this.uploadDir, uniqueName);
+      
+      // Write file to disk
+      await fs.promises.writeFile(uploadPath, file);
+      
+      const fileInfo: FileInfo = {
+        path: uploadPath,
+        name: name,
+        mimeType: mimeType,
+        size: file.length.toString(),
+        fields: {}
+      };
+      
+      this.logger.info('File saved successfully via direct upload', { 
+        fileName: name, 
+        fileSize: fileInfo.size,
+        uploadPath 
+      });
+      
+      return Result.Ok(fileInfo);
+    } catch (error) {
+      this.logger.logError(error as Error, { uploadDir: this.uploadDir, name });
+      return Result.Err(new FileError(
+        'LocalFileService.saveFile',
+        error instanceof Error ? error.message : 'Direct file upload failed',
+        { uploadDir: this.uploadDir, name }
+      ));
+    }
+  }
+
+  // Legacy method for FastifyRequest-based uploads (renamed for clarity)
+  async saveFileFromRequest(request: FastifyRequest): Promise<Result<FileInfo, FileError>> {
+    this.logger.info('Starting file upload from request');
     
     try {
       const parts = request.parts();
@@ -51,7 +92,7 @@ export class LocalFileService implements IFileService {
           await new Promise<void>((resolve) => writeStream.on('finish', resolve));
           file.size = fs.statSync(uploadPath).size.toString();
           
-          this.logger.info('File saved successfully', { 
+          this.logger.info('File saved successfully from request', { 
             fileName: part.filename, 
             fileSize: file.size,
             uploadPath 
@@ -65,12 +106,12 @@ export class LocalFileService implements IFileService {
       if (!file) { 
         this.logger.error('No file found in request');
         return Result.Err(new FileError(
-          'LocalFileService.saveFile',
+          'LocalFileService.saveFileFromRequest',
           'No file found in request'
         ));
       }
       
-      this.logger.debug('Upload completed', { 
+      this.logger.debug('Upload completed from request', { 
         fileName: file.filename, 
         fileSize: file.size,
         fieldsCount: Object.keys(fields).length 
@@ -80,8 +121,8 @@ export class LocalFileService implements IFileService {
     } catch (error) {
       this.logger.logError(error as Error, { uploadDir: this.uploadDir });
       return Result.Err(new FileError(
-        'LocalFileService.saveFile',
-        error instanceof Error ? error.message : 'File upload failed',
+        'LocalFileService.saveFileFromRequest',
+        error instanceof Error ? error.message : 'File upload from request failed',
         { uploadDir: this.uploadDir }
       ));
     }

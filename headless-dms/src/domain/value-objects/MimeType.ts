@@ -12,7 +12,7 @@ import { Result } from '@carbonteq/fp';
  */
 export class MimeType {
   // Common MIME type patterns
-  private static readonly MIME_TYPE_PATTERN = /^[a-zA-Z0-9!#$&\-\^_]*\/[a-zA-Z0-9!#$&\-\^_]*$/;
+  private static readonly MIME_TYPE_PATTERN = /^[a-zA-Z0-9!#$&\-\^_]*\/[a-zA-Z0-9!#$&\-\^_\.+]*$/;
   
   // Common MIME type categories
   private static readonly TEXT_TYPES = ['text/plain', 'text/html', 'text/css', 'text/javascript', 'text/markdown'];

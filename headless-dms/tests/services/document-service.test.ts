@@ -139,7 +139,17 @@ class MockLogger implements ILogger {
 
 // Mock file service for testing
 class MockFileService implements IFileService {
-  async saveFile(request: any): Promise<Result<any, any>> {
+  async saveFile(file: Buffer, name: string, mimeType: string): Promise<Result<any, any>> {
+    return Result.Ok({
+      path: '/uploads/test.pdf',
+      name: name,
+      mimeType: mimeType,
+      size: file.length.toString(),
+      fields: {}
+    });
+  }
+  
+  async saveFileFromRequest(request: any): Promise<Result<any, any>> {
     return Result.Ok({
       path: '/uploads/test.pdf',
       name: 'test.pdf',
@@ -148,14 +158,21 @@ class MockFileService implements IFileService {
       fields: {}
     });
   }
+  
   async streamFile(filePath: string, reply: any): Promise<Result<void, any>> {
     return Result.Ok(undefined);
   }
+  
   async deleteFile(filePath: string): Promise<Result<boolean, any>> {
     return Result.Ok(true);
   }
+  
   async fileExists(filePath: string): Promise<Result<boolean, any>> {
     return Result.Ok(true);
+  }
+  
+  async getFile(filePath: string): Promise<Result<Buffer, any>> {
+    return Result.Ok(Buffer.from('test file content'));
   }
 }
 

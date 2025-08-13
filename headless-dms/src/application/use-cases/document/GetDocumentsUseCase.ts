@@ -1,6 +1,6 @@
 import { inject, injectable } from "tsyringe";
 import { Result } from "@carbonteq/fp";
-import { DocumentApplicationService } from "../../services/DocumentApplicationService.js";
+import type { IDocumentRepository } from "../../interfaces/IDocumentRepository.js";
 import type { ILogger } from '../../../domain/interfaces/ILogger.js';
 import type { GetDocumentsRequest, GetDocumentsResponse } from "../../dto/document/index.js";
 import { ApplicationError } from "../../errors/ApplicationError.js";
@@ -8,7 +8,7 @@ import { ApplicationError } from "../../errors/ApplicationError.js";
 @injectable()
 export class GetDocumentsUseCase {
   constructor(
-    @inject("DocumentApplicationService") private documentApplicationService: DocumentApplicationService,
+    @inject("IDocumentRepository") private documentRepository: IDocumentRepository,
     @inject("ILogger") private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'GetDocumentsUseCase' });
@@ -30,31 +30,40 @@ export class GetDocumentsUseCase {
     });
 
     try {
-      // Delegate to DocumentApplicationService with enhanced filtering
-      const documentsResult = await this.documentApplicationService.getDocuments(
-        request.page,
-        request.limit,
-        request.sortBy,
-        request.sortOrder,
-        {
-          name: request.name,
-          mimeType: request.mimeType,
-          tags: request.tags,
-          metadata: request.metadata,
-          fromDate: request.fromDate,
-          toDate: request.toDate
-        }
-      );
-      
-      if (documentsResult.isErr()) {
-        this.logger.error('Failed to get documents', { error: documentsResult.unwrapErr().message });
-        return documentsResult;
+      // Build filter query for repository
+      const filterQuery: any = {};
+      if (request.name) {
+        filterQuery.name = request.name;
+      }
+      if (request.mimeType) {
+        filterQuery.mimeType = request.mimeType;
+      }
+      if (request.tags) {
+        filterQuery.tags = request.tags;
+      }
+      if (request.metadata) {
+        filterQuery.metadata = request.metadata;
+      }
+      if (request.fromDate) {
+        filterQuery.from = request.fromDate;
+      }
+      if (request.toDate) {
+        filterQuery.to = request.toDate;
       }
 
-      const documents = documentsResult.unwrap();
+      // Build pagination parameters for repository
+      const paginationParams = {
+        page: request.page,
+        limit: request.limit,
+        order: request.sortOrder,
+        sort: request.sortBy
+      };
+
+      // Use repository directly to get full pagination information
+      const documentsResult = await this.documentRepository.find(filterQuery, paginationParams);
       
       // Transform to response DTOs
-      const documentDtos = documents.map(document => ({
+      const documentDtos = documentsResult.data.map((document: any) => ({
         id: document.id,
         name: document.name.value,
         filePath: document.filePath,
@@ -66,20 +75,19 @@ export class GetDocumentsUseCase {
         updatedAt: document.updatedAt,
       }));
 
-      // Build response (simplified pagination for now)
+      // Use the pagination metadata from repository
       const response: GetDocumentsResponse = {
         document: documentDtos,
-        pagination: {
-          page: request.page,
-          limit: request.limit,
-          total: documents.length,
-        },
+        pagination: documentsResult.pagination,
       };
 
       this.logger.info("Documents retrieved successfully", { 
-        count: documents.length, 
-        total: documents.length,
-        page: request.page 
+        count: documentDtos.length, 
+        total: documentsResult.pagination.total,
+        page: request.page,
+        totalPages: documentsResult.pagination.totalPages,
+        hasNext: documentsResult.pagination.hasNext,
+        hasPrev: documentsResult.pagination.hasPrev
       });
       return Result.Ok(response);
     } catch (error) {

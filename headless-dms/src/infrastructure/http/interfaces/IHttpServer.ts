@@ -1,7 +1,7 @@
 export interface IHttpServer {
   start(port: number, host?: string): Promise<void>
   stop(): Promise<void>
-  registerRoute(method: string, path: string, handler: (req: IHttpRequest, res: IHttpResponse) => Promise<void>): void
+  registerRoute(method: string, path: string, handler: (req: IHttpRequest, res: IHttpResponse) => Promise<void>, middleware?: any[]): void
   registerMiddleware(middleware: any): void
   getInstance(): any // Returns the underlying framework instance
   logRoutes(): void // Log all registered routes
@@ -15,6 +15,8 @@ export interface IHttpRequest {
   method: string
   url: string
   user?: any // For authenticated requests
+  file?(): Promise<any> // For multipart file uploads
+  parts(): AsyncIterable<any> // For multipart form data (files + fields)
 }
 
 export interface IHttpResponse {

@@ -483,7 +483,7 @@ export class DocumentService {
     
     try {
       // Use file service to handle file upload and get form fields
-      const fileResult = await this.fileService.saveFile(request);
+      const fileResult = await this.fileService.saveFileFromRequest(request);
       if (fileResult.isErr()) {
         return Result.Err(new DocumentError(
           'DocumentService.uploadDocument.saveFile',

@@ -77,6 +77,7 @@ export type GenerateDownloadLinkResponse = z.infer<typeof GenerateDownloadLinkRe
 // 9
 export const DownloadDocumentByTokenResponseSchema=z.object({
   document:DocumentResponseSchema,
+  file: z.instanceof(Buffer), // Include the actual file content
 });
 
 export type DownloadDocumentByTokenResponse = z.infer<typeof DownloadDocumentByTokenResponseSchema>;

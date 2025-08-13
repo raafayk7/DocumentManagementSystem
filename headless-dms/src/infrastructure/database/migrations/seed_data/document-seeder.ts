@@ -1,63 +1,62 @@
 import { faker } from '@faker-js/faker';
-import { SeedDocument, SeedUser, SeedTag, SEED_CONFIG } from './seed-data.js';
+import { SeedUser, SeedDocument } from './seed-data.js';
 import { FileGenerator } from './file-generator.js';
 
 export class DocumentSeeder {
-  private documents: SeedDocument[] = [];
   private fileGenerator: FileGenerator;
 
   constructor() {
     this.fileGenerator = new FileGenerator();
   }
 
-  async generateDocuments(users: SeedUser[], tags: SeedTag[]): Promise<SeedDocument[]> {
-    this.documents = [];
-    
-    for (let i = 0; i < SEED_CONFIG.documents.count; i++) {
-      const document = await this.generateDocument(users, tags);
-      this.documents.push(document);
+  async generateDocuments(users: SeedUser[], count: number = 20): Promise<SeedDocument[]> {
+    const documents: SeedDocument[] = [];
+    const documentTypes = ['txt', 'pdf', 'docx', 'jpg', 'png'];
+
+    for (let i = 0; i < count; i++) {
+      const user = faker.helpers.arrayElement(users);
+      const documentType = faker.helpers.arrayElement(documentTypes);
+      const fileName = this.generateFileName(documentType);
+      
+      // Generate tags for this document
+      const tagsForDocument = this.generateTagsForDocument();
+      
+      let fileInfo: { filePath: string; size: number };
+
+      // Generate different types of files
+      switch (documentType) {
+        case 'txt':
+          const textContent = this.generateTextContent();
+          fileInfo = this.fileGenerator.generateTextFile(fileName, textContent);
+          break;
+        case 'pdf':
+          const title = faker.company.catchPhrase();
+          const pdfContent = this.generatePDFContent();
+          fileInfo = await this.fileGenerator.generatePDFFile(fileName, title, pdfContent);
+          break;
+        case 'jpg':
+        case 'png':
+          fileInfo = this.fileGenerator.generateSimpleImage(fileName);
+          break;
+        default:
+          // For other file types, create a simple text file as placeholder
+          const placeholderContent = `Placeholder for ${documentType} file`;
+          fileInfo = this.fileGenerator.generateTextFile(fileName, placeholderContent);
+      }
+
+      documents.push({
+        id: faker.string.uuid(),
+        name: fileName,
+        mimeType: this.getMimeType(documentType),
+        size: fileInfo.size,
+        userId: user.id,
+        tags: tagsForDocument.map(tag => tag.name),
+        filePath: fileInfo.filePath,
+        metadata: this.generateMetadata(user, documentType)
+      });
     }
 
-    return this.documents;
-  }
-
-  private async generateDocument(users: SeedUser[], tags: SeedTag[]): Promise<SeedDocument> {
-    const user = faker.helpers.arrayElement(users);
-    const documentType = faker.helpers.arrayElement(SEED_CONFIG.documents.fileTypes);
-    const fileName = this.generateFileName(documentType);
-    const tagsForDocument = faker.helpers.arrayElements(tags, faker.number.int({ min: 0, max: 3 }));
-    
-    let fileInfo: { filePath: string; size: number };
-    
-    switch (documentType) {
-      case 'txt':
-        const content = this.generateTextContent();
-        fileInfo = this.fileGenerator.generateTextFile(fileName, content);
-        break;
-      case 'pdf':
-        const title = faker.company.catchPhrase();
-        const pdfContent = this.generatePDFContent();
-        fileInfo = await this.fileGenerator.generatePDFFile(fileName, title, pdfContent);
-        break;
-      case 'jpg':
-      case 'png':
-        fileInfo = this.fileGenerator.generateSimpleImage(fileName);
-        break;
-      default:
-        // For other file types, create a simple text file as placeholder
-        const placeholderContent = `Placeholder for ${documentType} file`;
-        fileInfo = this.fileGenerator.generateTextFile(fileName, placeholderContent);
-    }
-
-    return {
-      id: faker.string.uuid(),
-      name: fileName,
-      mimeType: this.getMimeType(documentType),
-      size: fileInfo.size,
-      userId: user.id,
-      tags: tagsForDocument.map(tag => tag.name),
-      filePath: fileInfo.filePath
-    };
+    return documents;
   }
 
   private generateFileName(fileType: string): string {
@@ -108,23 +107,56 @@ export class DocumentSeeder {
     return content.trim();
   }
 
-  getDocuments(): SeedDocument[] {
-    return this.documents;
+  private generateTagsForDocument(): Array<{ name: string }> {
+    const allTags = [
+      'personal', 'work', 'finance', 'health', 'education', 'travel', 'family',
+      'business', 'legal', 'medical', 'academic', 'creative', 'technical',
+      'confidential', 'draft', 'final', 'archived', 'urgent', 'review'
+    ];
+    
+    const tagCount = faker.number.int({ min: 1, max: 4 });
+    const selectedTags = faker.helpers.arrayElements(allTags, tagCount);
+    
+    return selectedTags.map(tag => ({ name: tag }));
   }
 
-  getDocumentById(id: string): SeedDocument | undefined {
-    return this.documents.find(doc => doc.id === id);
-  }
+  private generateMetadata(user: SeedUser, documentType: string): Record<string, string> {
+    const metadata: Record<string, string> = {
+      author: `${user.firstName} ${user.lastName}`,
+      department: faker.commerce.department(),
+      project: faker.company.catchPhrase(),
+      version: faker.string.alphanumeric(3),
+      status: faker.helpers.arrayElement(['draft', 'review', 'approved', 'final']),
+      priority: faker.helpers.arrayElement(['low', 'medium', 'high', 'urgent']),
+      createdAt: faker.date.recent().toISOString(),
+      updatedAt: faker.date.recent().toISOString()
+    };
 
-  getDocumentsByUserId(userId: string): SeedDocument[] {
-    return this.documents.filter(doc => doc.userId === userId);
-  }
+    // Add type-specific metadata
+    switch (documentType) {
+      case 'pdf':
+        metadata.title = faker.company.catchPhrase();
+        metadata.author = faker.person.fullName();
+        metadata.pages = faker.number.int({ min: 1, max: 50 }).toString();
+        metadata.keywords = faker.helpers.arrayElements(['business', 'strategy', 'analysis', 'report', 'planning'], 3).join(', ');
+        break;
+      case 'docx':
+        metadata.title = faker.company.catchPhrase();
+        metadata.template = faker.helpers.arrayElement(['standard', 'executive', 'technical', 'creative']);
+        metadata.wordCount = faker.number.int({ min: 100, max: 5000 }).toString();
+        break;
+      case 'jpg':
+      case 'png':
+        metadata.camera = faker.helpers.arrayElement(['iPhone 15', 'Canon EOS R5', 'Sony A7III', 'Nikon Z6']);
+        metadata.location = faker.location.city();
+        metadata.event = faker.helpers.arrayElement(['vacation', 'work', 'family', 'travel', 'celebration']);
+        break;
+      case 'txt':
+        metadata.category = faker.helpers.arrayElement(['note', 'journal', 'idea', 'reminder', 'draft']);
+        metadata.lines = faker.number.int({ min: 10, max: 100 }).toString();
+        break;
+    }
 
-  getDocumentsByTag(tagName: string): SeedDocument[] {
-    return this.documents.filter(doc => doc.tags.includes(tagName));
+    return metadata;
   }
-
-  getDocumentsByType(mimeType: string): SeedDocument[] {
-    return this.documents.filter(doc => doc.mimeType === mimeType);
-  }
-} 
+}

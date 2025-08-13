@@ -1,13 +1,6 @@
 import { Result } from '@carbonteq/fp';
-import { FileError } from '../errors/ApplicationError.js';
-
-export interface FileInfo {
-  path: string;
-  name: string;
-  mimeType: string;
-  size: string;
-  fields: Record<string, string>;
-}
+import { FileError } from '../../common/errors/application.errors.js';
+import type { FileInfo } from './IFileService.js';
 
 export interface IFileStorage {
   saveFile(file: Buffer, filename: string): Promise<Result<string, FileError>>;

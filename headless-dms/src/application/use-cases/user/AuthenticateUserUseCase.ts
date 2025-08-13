@@ -4,11 +4,13 @@ import { AuthApplicationService } from '../../services/AuthApplicationService.js
 import type { ILogger } from '../../../domain/interfaces/ILogger.js';
 import type { AuthenticateUserRequest, AuthenticateUserResponse } from '../../dto/user/index.js';
 import { ApplicationError } from '../../errors/ApplicationError.js';
+import type { IAuthStrategy } from '../../../infrastructure/auth/interfaces/IAuthStrategy.js';
 
 @injectable()
 export class AuthenticateUserUseCase {
   constructor(
     @inject('AuthApplicationService') private authApplicationService: AuthApplicationService,
+    @inject('IAuthStrategy') private authStrategy: IAuthStrategy,
     @inject('ILogger') private logger: ILogger
   ) {
     this.logger = this.logger.child({ useCase: 'AuthenticateUserUseCase' });
@@ -31,9 +33,28 @@ export class AuthenticateUserUseCase {
 
       const user = userResult.unwrap();
   
-      // 3. Generate authentication response (token generation will be handled by infrastructure)
+      // Generate authentication response using the auth strategy
+      const authResult = await this.authStrategy.authenticate({
+        email: request.email,
+        password: request.password
+      });
+      
+      if (authResult.isErr()) {
+        this.logger.error('Auth strategy failed', { 
+          email: request.email, 
+          error: authResult.unwrapErr().message 
+        });
+        return Result.Err(new ApplicationError(
+          'AuthenticateUserUseCase.authStrategyFailed',
+          'Authentication strategy failed',
+          { email: request.email }
+        ));
+      }
+      
+      const authData = authResult.unwrap();
+      
       const authResponse: AuthenticateUserResponse = {
-        token: '', // Will be set by infrastructure layer
+        token: authData.token,
         user: {
           id: user.id,
           email: user.email.value,
@@ -41,7 +62,7 @@ export class AuthenticateUserUseCase {
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
         },
-        expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now
+        expiresAt: authData.expiresAt,
       };
 
       this.logger.info('User authenticated successfully', { userId: user.id, email: user.email.value });

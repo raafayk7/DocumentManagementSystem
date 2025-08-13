@@ -33,12 +33,12 @@ export class FileGenerator {
     const stats = statSync(filePath);
     
     return {
-      filePath: fileName,
+      filePath: filePath, // Return full path, not just filename
       size: stats.size
     };
   }
 
-  generatePDFFile(fileName: string, title: string, content: string): { filePath: string; size: number } {
+  async generatePDFFile(fileName: string, title: string, content: string): Promise<{ filePath: string; size: number }> {
     const filePath = join(this.uploadsDir, fileName);
     const dir = dirname(filePath);
     
@@ -61,7 +61,7 @@ export class FileGenerator {
       stream.on('finish', () => {
         const stats = statSync(filePath);
         resolve({
-          filePath: fileName,
+          filePath: filePath, // Return full path, not just filename
           size: stats.size
         });
       });
@@ -99,7 +99,7 @@ export class FileGenerator {
     writeFileSync(filePath, buffer);
     
     return {
-      filePath: fileName,
+      filePath: filePath, // Return full path, not just filename
       size: buffer.length
     };
   }
