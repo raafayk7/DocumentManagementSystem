@@ -1,12 +1,13 @@
+// Consolidated application errors
 // Base application error class
 export class ApplicationError extends Error {
   constructor(
-    public operation: string,
-    public cause: Error | string,
-    public context?: Record<string, any>
+    public readonly operation: string,
+    public readonly cause: Error | string,
+    public readonly context?: Record<string, any>
   ) {
     super(`[${operation}] ${cause}`);
-    this.name = this.constructor.name;
+    this.name = 'ApplicationError';
   }
 }
 
@@ -63,4 +64,7 @@ export class ValidationError extends ApplicationError {
   ) {
     super(operation, cause, context);
   }
-} 
+}
+
+// Re-export the base class for backward compatibility
+export { ApplicationError as default };

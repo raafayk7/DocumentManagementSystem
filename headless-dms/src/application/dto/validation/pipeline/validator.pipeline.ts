@@ -1,8 +1,8 @@
 // src/validation/pipeline/validator.pipeline.ts
 import { InputValidator } from '../technical/input.validator.js';
 import { FormatValidator } from '../technical/format.validator.js';
-import { UserValidator } from '../../domain/validators/UserValidator.js';
-import { DocumentValidator } from '../../domain/validators/DocumentValidator.js';
+import { UserValidator } from '../../../../domain/validators/UserValidator.js';
+import { DocumentValidator } from '../../../../domain/validators/DocumentValidator.js';
 
 export interface ValidationResult<T> {
   success: boolean;

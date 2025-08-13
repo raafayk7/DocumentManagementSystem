@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { injectable, inject } from 'tsyringe';
 import type { ILogger } from '../../../domain/interfaces/ILogger.js';
 import { Result } from '@carbonteq/fp';
-import { FileError } from '../../common/errors/application.errors.js';
+import { FileError } from '../../application/errors/index.js';
 
 interface FileInfo {
   path: string;

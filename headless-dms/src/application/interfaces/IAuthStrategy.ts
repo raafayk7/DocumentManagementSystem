@@ -1,5 +1,5 @@
 import { Result } from '@carbonteq/fp';
-import { AuthError } from '../../../common/errors/application.errors.js';
+import { AuthError } from '../errors/index.js';
 import { LoginCredentials, RegisterData, DecodedToken, AuthResult } from './IAuthHandler.js';
 
 export interface IAuthStrategy {

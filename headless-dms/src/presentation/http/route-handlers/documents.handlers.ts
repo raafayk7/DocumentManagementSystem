@@ -1,9 +1,9 @@
 // src/infrastructure/http/route-handlers/documents.handlers.ts
-import { IHttpRequest, IHttpResponse } from '../interfaces/IHttpServer.js';
-import { zodValidate } from '../../../validation/technical/simple.validator.js';
-import { container } from '../../di/container.js';
+import { IHttpRequest, IHttpResponse } from '../../../application/http/interfaces/IHttpServer.js';
+import { zodValidate } from '../../../application/dto/validation/technical/simple.validator.js';
+import { container } from '../../../application/di/container.js';
 import { ILogger } from '../../../domain/interfaces/ILogger.js';
-import { PaginationInputSchema } from '../../../common/dto/pagination.dto.js';
+import { PaginationInputSchema } from '../../../application/dto/common/pagination.dto.js';
 import { matchRes } from '@carbonteq/fp';
 
 // Import Use Cases

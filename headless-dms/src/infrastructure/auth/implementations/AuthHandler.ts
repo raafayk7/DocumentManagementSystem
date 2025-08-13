@@ -1,17 +1,17 @@
 import { injectable, inject } from 'tsyringe';
 import { Result } from '@carbonteq/fp';
-import type { IAuthHandler } from '../interfaces/IAuthHandler.js';
-import type { IAuthStrategy } from '../interfaces/IAuthStrategy.js';
+import type { IAuthHandler } from '../../../application/interfaces/IAuthHandler.js';
+import type { IAuthStrategy } from '../../../application/interfaces/IAuthStrategy.js';
 import type { IUserRepository } from '../../database/interfaces/user.repository.interface.js';
 import type { ILogger } from '../../../domain/interfaces/ILogger.js';
-import { AuthError } from '../../../common/errors/application.errors.js';
+import { AuthError } from '../../../application/errors/index.js';
 import { User } from '../../../domain/entities/User.js';
 import { 
   LoginCredentials, 
   RegisterData, 
   DecodedToken, 
   AuthResult 
-} from '../interfaces/IAuthHandler.js';
+} from '../../../application/interfaces/IAuthHandler.js';
 
 @injectable()
 export class AuthHandler implements IAuthHandler {

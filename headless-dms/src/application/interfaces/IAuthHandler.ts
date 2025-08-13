@@ -1,6 +1,6 @@
 import { Result } from '@carbonteq/fp';
-import { User } from '../../../domain/entities/User.js';
-import { AuthError } from '../../../common/errors/application.errors.js';
+import { User } from '../../domain/entities/User.js';
+import { AuthError } from '../errors/index.js';
 
 export interface LoginCredentials {
   email: string;

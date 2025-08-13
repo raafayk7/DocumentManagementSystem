@@ -4,7 +4,7 @@ import { AuthApplicationService } from '../../services/AuthApplicationService.js
 import type { ILogger } from '../../../domain/interfaces/ILogger.js';
 import type { AuthenticateUserRequest, AuthenticateUserResponse } from '../../dto/user/index.js';
 import { ApplicationError } from '../../errors/ApplicationError.js';
-import type { IAuthStrategy } from '../../../infrastructure/auth/interfaces/IAuthStrategy.js';
+import type { IAuthStrategy } from '../../interfaces/IAuthStrategy.js';
 
 @injectable()
 export class AuthenticateUserUseCase {

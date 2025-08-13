@@ -1,5 +1,5 @@
 // src/http/middleware.ts - HTTP middleware setup
-import { IHttpServer } from './interfaces/IHttpServer.js';
+import { IHttpServer } from '../interfaces/IHttpServer.js';
 
 export async function registerMiddleware(server: IHttpServer): Promise<void> {
   console.log('Registering HTTP middleware...');

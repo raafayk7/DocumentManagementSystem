@@ -1,4 +1,4 @@
-import { PaginationInput, PaginationOutput } from '../../../common/dto/pagination.dto.js';
+import { PaginationInput, PaginationOutput } from '../../../application/dto/common/pagination.dto.js';
 import { User } from '../../../domain/entities/User.js';
 
 export interface UserFilterQuery {

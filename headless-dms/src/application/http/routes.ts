@@ -8,7 +8,7 @@ import {
   handleChangeUserRole, 
   handleDeleteUser, 
   handleChangeUserPassword 
-} from './route-handlers/auth.handlers.js';
+} from '../../presentation/http/route-handlers/auth.handlers.js';
 import { 
   handleGetDocuments, 
   handleGetDocumentById, 
@@ -17,9 +17,9 @@ import {
   handleUploadDocument, 
   handleGenerateDownloadLink, 
   handleDownloadByToken 
-} from './route-handlers/documents.handlers.js';
-import { authenticateJWT } from './middleware/authenticate.js';
-import { requireRole } from './middleware/roleGuard.js';
+} from '../../presentation/http/route-handlers/documents.handlers.js';
+import { authenticateJWT } from '../../presentation/http/middleware/authenticate.js';
+import { requireRole } from '../../presentation/http/middleware/roleGuard.js';
 
 export async function registerRoutes(server: IHttpServer): Promise<void> {
   console.log('Registering HTTP routes...');

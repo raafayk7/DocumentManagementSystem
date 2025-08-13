@@ -1,8 +1,8 @@
 // src/bootstrap/index.ts
-import { loadConfig, validateDatabaseConfig, validateServerConfig, validateJWTConfig, AppConfig } from './config.js';
-import { setupServer } from './server.js';
+import { loadConfig, validateDatabaseConfig, validateServerConfig, validateJWTConfig, AppConfig } from '../../application/config/config.js';
+import { setupHTTPServer } from '../../application/http/server.js';
 import { initializeDatabase } from './database.js';
-import { parseCliArgs, validateModeConfig, StartupMode } from '../../commander/cli.js';
+import { parseCliArgs, validateModeConfig, StartupMode } from '../../application/commander/cli.js';
 
 // Global error handlers (essential for concurrency)
 process.on('unhandledRejection', (reason, promise) => {
@@ -85,7 +85,7 @@ export async function bootstrap(options: BootstrapOptions = {}): Promise<Bootstr
     // 4. Setup HTTP server (if enabled)
     if (shouldSetupServer) {
       console.log('Setting up HTTP server...');
-      result.server = await setupServer(config);
+      result.server = await setupHTTPServer(config);
     }
 
     console.log(`Bootstrap completed successfully in ${startupMode} mode`);

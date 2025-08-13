@@ -2,7 +2,7 @@
 import { Result } from '@carbonteq/fp';
 import { User } from '../../src/domain/entities/User.js';
 import { IUserRepository, UserFilterQuery } from '../../src/infrastructure/database/interfaces/user.repository.interface.js';
-import { PaginationInput, PaginationOutput } from '../../src/common/dto/pagination.dto.js';
+import { PaginationInput, PaginationOutput } from '../../src/application/dto/common/pagination.dto.js';
 
 // In-memory implementation for testing
 class InMemoryUserRepository implements IUserRepository {

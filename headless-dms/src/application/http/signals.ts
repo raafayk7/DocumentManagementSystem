@@ -1,5 +1,5 @@
 // src/bootstrap/signals.ts
-import { IHttpServer } from '../http/interfaces/IHttpServer.js';
+import { IHttpServer } from './interfaces/IHttpServer.js';
 
 // Shutdown state management
 let isShuttingDown = false;

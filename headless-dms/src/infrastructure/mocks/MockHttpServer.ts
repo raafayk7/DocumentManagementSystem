@@ -1,5 +1,5 @@
 import { injectable } from 'tsyringe';
-import { IHttpServer } from '../http/interfaces/IHttpServer.js';
+import { IHttpServer } from '../../application/http/interfaces/IHttpServer.js';
 
 export interface MockRoute {
   method: string;

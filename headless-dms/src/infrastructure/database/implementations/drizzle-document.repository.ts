@@ -7,7 +7,7 @@ import { and, eq, gte, lte, sql, asc, desc } from 'drizzle-orm';
 import { arrayOverlaps } from 'drizzle-orm';
 import fs from 'fs';
 import { injectable } from 'tsyringe';
-import { PaginationInput, PaginationOutput, calculatePaginationMetadata } from '../../../common/dto/pagination.dto.js';
+import { PaginationInput, PaginationOutput, calculatePaginationMetadata } from '../../../application/dto/common/pagination.dto.js';
 import { Document } from '../../../domain/entities/Document.js';
 
 @injectable()

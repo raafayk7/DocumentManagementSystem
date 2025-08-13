@@ -6,7 +6,7 @@ import { User } from '../../../domain/entities/User.js';
 import { eq, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { injectable } from 'tsyringe';
-import { PaginationInput, PaginationOutput, calculatePaginationMetadata } from '../../../common/dto/pagination.dto.js';
+import { PaginationInput, PaginationOutput, calculatePaginationMetadata } from '../../../application/dto/common/pagination.dto.js';
 import { sql } from 'drizzle-orm';
 
 @injectable()

@@ -1,6 +1,6 @@
 // src/validation/middleware/error-handler.middleware.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { ErrorFormatter } from '../../../validation/pipeline/error-formatter.js';
+import { ErrorFormatter } from '../../../application/dto/validation/pipeline/error-formatter.js';
 
 export interface ErrorHandlerOptions {
   includeStackTrace?: boolean;

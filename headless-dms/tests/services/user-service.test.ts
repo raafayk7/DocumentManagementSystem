@@ -5,7 +5,7 @@ import { IUserRepository } from '../../src/infrastructure/database/interfaces/us
 import { User } from '../../src/domain/entities/User.js';
 import { UserValidator } from '../../src/domain/validators/UserValidator.js';
 import { Result } from '@carbonteq/fp';
-import { ILogger } from '../../src/common/services/logger.service.interface.js';
+import { ILogger } from '../../src/domain/interfaces/ILogger.js';
 
 // Mock repository for testing
 class MockUserRepository implements IUserRepository {

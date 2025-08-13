@@ -1,24 +1,24 @@
 import 'reflect-metadata';
 import { container } from 'tsyringe';
-import { IDocumentRepository } from '../../application/interfaces/IDocumentRepository.js';
-import { DrizzleDocumentRepository } from '../database/implementations/drizzle-document.repository.js';
-import { IUserRepository } from '../../application/interfaces/IUserRepository.js';
-import { DrizzleUserRepository } from '../database/implementations/drizzle-user.repository.js';
-import { IFileService } from '../../application/interfaces/IFileService.js';
-import { LocalFileService } from '../file-storage/local-file.service.js';
+import { IDocumentRepository } from '../interfaces/IDocumentRepository.js';
+import { DrizzleDocumentRepository } from '../../infrastructure/database/implementations/drizzle-document.repository.js';
+import { IUserRepository } from '../interfaces/IUserRepository.js';
+import { DrizzleUserRepository } from '../../infrastructure/database/implementations/drizzle-user.repository.js';
+import { IFileService } from '../interfaces/IFileService.js';
+import { LocalFileService } from '../../infrastructure/file-storage/local-file.service.js';
 import { DocumentService } from '../../documents/documents.service.js';
-import { AuthApplicationService } from '../../application/services/AuthApplicationService.js';
-import { UserApplicationService } from '../../application/services/UserApplicationService.js';
-import { DocumentApplicationService } from '../../application/services/DocumentApplicationService.js';
+import { AuthApplicationService } from '../services/AuthApplicationService.js';
+import { UserApplicationService } from '../services/UserApplicationService.js';
+import { DocumentApplicationService } from '../services/DocumentApplicationService.js';
 import { ILogger } from '../../domain/interfaces/ILogger.js';
-import { ConsoleLogger } from '../logging/console-logger.service.js';
-import { FileLogger } from '../logging/file-logger.service.js';
+import { ConsoleLogger } from '../../infrastructure/logging/console-logger.service.js';
+import { FileLogger } from '../../infrastructure/logging/file-logger.service.js';
 import {UserValidator, DocumentValidator, EmailValidator} from '../../domain/validators/index.js';
 import { AuthDomainService, UserDomainService, DocumentDomainService } from '../../domain/services/index.js';
-import { IAuthStrategy } from '../auth/interfaces/IAuthStrategy.js';
-import { JwtAuthStrategy, LocalAuthStrategy } from '../auth/index.js';
-import { IAuthHandler } from '../auth/interfaces/IAuthHandler.js';
-import { AuthHandler } from '../auth/implementations/AuthHandler.js';
+import { IAuthStrategy } from '../interfaces/IAuthStrategy.js';
+import { JwtAuthStrategy, LocalAuthStrategy } from '../../infrastructure/auth/index.js';
+import { IAuthHandler } from '../interfaces/IAuthHandler.js';
+import { AuthHandler } from '../../infrastructure/auth/implementations/AuthHandler.js';
 
 // Import all use cases
 import { 
@@ -30,7 +30,7 @@ import {
   DeleteUserUseCase,
   ChangeUserPasswordUseCase,
   ValidateUserCredentialsUseCase
-} from '../../application/use-cases/user/index.js';
+} from '../use-cases/user/index.js';
 
 import {
   GetDocumentsUseCase,
@@ -42,7 +42,7 @@ import {
   GenerateDownloadLinkUseCase,
   DownloadDocumentByTokenUseCase,
   ReplaceTagsInDocumentUseCase
-} from '../../application/use-cases/document/index.js';
+} from '../use-cases/document/index.js';
 
 // Register repositories
 container.registerSingleton<IDocumentRepository>('IDocumentRepository', DrizzleDocumentRepository);

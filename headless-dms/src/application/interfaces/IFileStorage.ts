@@ -1,5 +1,5 @@
 import { Result } from '@carbonteq/fp';
-import { FileError } from '../../common/errors/application.errors.js';
+import { FileError } from '../errors/index.js';
 import type { FileInfo } from './IFileService.js';
 
 export interface IFileStorage {

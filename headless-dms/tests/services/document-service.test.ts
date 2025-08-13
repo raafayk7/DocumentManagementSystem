@@ -5,8 +5,8 @@ import { IDocumentRepository } from '../../src/infrastructure/database/interface
 import { Document } from '../../src/domain/entities/Document.js';
 import { DocumentValidator } from '../../src/domain/validators/DocumentValidator.js';
 import { Result } from '@carbonteq/fp';
-import { ILogger } from '../../src/common/services/logger.service.interface.js';
-import { IFileService } from '../../src/common/services/file.service.interface.js';
+import { ILogger } from '../../src/domain/interfaces/ILogger.js';
+import { IFileService } from '../../src/application/interfaces/IFileService.js';
 
 // Mock repository for testing
 class MockDocumentRepository implements IDocumentRepository {

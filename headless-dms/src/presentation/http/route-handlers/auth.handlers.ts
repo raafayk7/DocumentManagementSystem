@@ -1,10 +1,10 @@
 // src/infrastructure/http/route-handlers/auth.handlers.ts
-import { IHttpRequest, IHttpResponse } from '../interfaces/IHttpServer.js';
-import { container } from '../../di/container.js';
+import { IHttpRequest, IHttpResponse } from '../../../application/http/interfaces/IHttpServer.js';
+import { container } from '../../../application/di/container.js';
 import { ILogger } from '../../../domain/interfaces/ILogger.js';
-import { zodValidate } from '../../../validation/technical/simple.validator.js';
+import { zodValidate } from '../../../application/dto/validation/technical/simple.validator.js';
 import { matchRes } from '@carbonteq/fp';
-import { PaginationInputSchema } from '../../../common/dto/pagination.dto.js';
+import { PaginationInputSchema } from '../../../application/dto/common/pagination.dto.js';
 
 // Import Use Cases
 import { AuthenticateUserUseCase, CreateUserUseCase, GetUsersUseCase, GetUserByIdUseCase, ChangeUserRoleUseCase, DeleteUserUseCase, ChangeUserPasswordUseCase } from '../../../application/use-cases/user/index.js';

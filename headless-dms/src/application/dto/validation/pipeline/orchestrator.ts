@@ -2,8 +2,8 @@
 import { z } from 'zod';
 import { Result } from '@carbonteq/fp';
 import { InputValidator } from '../technical/input.validator.js';
-import { UserValidator } from '../../domain/validators/UserValidator.js';
-import { DocumentValidator } from '../../domain/validators/DocumentValidator.js';
+import { UserValidator } from '../../../../domain/validators/UserValidator.js';
+import { DocumentValidator } from '../../../../domain/validators/DocumentValidator.js';
 
 export interface ValidationError {
   field: string;

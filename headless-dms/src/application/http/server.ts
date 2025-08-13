@@ -1,11 +1,11 @@
 // src/http/server.ts - HTTP server setup using abstraction
 import Fastify from 'fastify';
-import { AppConfig } from '../bootstrap/config.js';
-import { registerMiddleware } from './middleware.js';
+import { AppConfig } from '../config/config.js';
+import { registerMiddleware } from './middleware/middleware.js';
 import { registerRoutes } from './routes.js';
-import { setupSignalHandlers } from '../bootstrap/signals.js';
-import { FastifyHttpServer } from './implementations/FastifyHttpServer.js';
-import { IHttpServer } from './interfaces/IHttpServer.js';
+import { setupSignalHandlers } from './signals.js';
+import { FastifyHttpServer } from '../http/implementations/FastifyHttpServer.js';
+import { IHttpServer } from '../http/interfaces/IHttpServer.js';
 
 export async function setupHTTPServer(config: AppConfig): Promise<IHttpServer> {
   console.log('Setting up HTTP server...');

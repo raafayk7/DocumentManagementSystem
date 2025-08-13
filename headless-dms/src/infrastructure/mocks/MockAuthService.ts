@@ -1,5 +1,5 @@
 import { injectable } from 'tsyringe';
-import { IAuthStrategy } from '../auth/interfaces/IAuthStrategy.js';
+import { IAuthStrategy } from '../../application/interfaces/IAuthStrategy.js';
 import { User } from '../../domain/entities/User.js';
 
 export interface MockAuthResult {

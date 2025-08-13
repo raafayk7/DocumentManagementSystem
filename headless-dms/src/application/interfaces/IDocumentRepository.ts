@@ -1,5 +1,5 @@
 import { Document } from '../../domain/entities/Document.js';
-import { PaginationOutput, PaginationInput } from '../../common/dto/pagination.dto.js';
+import { PaginationOutput, PaginationInput } from '../dto/common/pagination.dto.js';
 
 export interface DocumentFilterQuery {
   name?: string;
