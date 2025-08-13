@@ -19,7 +19,7 @@ const tests = [
   'services/document-service.test.ts',
   'framework-independence/domain-services.test.js',
   'framework-independence/use-cases-with-mocks.test.js'
-];
+]
 
 let passedTests = 0;
 let totalTests = tests.length;

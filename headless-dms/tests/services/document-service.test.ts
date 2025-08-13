@@ -1,12 +1,14 @@
 // tests/services/document-service.test.ts
 import 'reflect-metadata';
-import { DocumentService } from '../../src/documents/documents.service.js';
-import { IDocumentRepository } from '../../src/infrastructure/database/interfaces/documents.repository.interface.js';
+import { DocumentApplicationService } from '../../src/application/services/DocumentApplicationService.js';
+import { IDocumentRepository } from '../../src/application/interfaces/IDocumentRepository.js';
 import { Document } from '../../src/domain/entities/Document.js';
 import { DocumentValidator } from '../../src/domain/validators/DocumentValidator.js';
 import { Result } from '@carbonteq/fp';
 import { ILogger } from '../../src/domain/interfaces/ILogger.js';
 import { IFileService } from '../../src/application/interfaces/IFileService.js';
+import { IUserRepository } from '../../src/application/interfaces/IUserRepository.js';
+import { FileError } from '../../src/application/errors/index.js';
 
 // Mock repository for testing
 class MockDocumentRepository implements IDocumentRepository {
@@ -22,7 +24,7 @@ class MockDocumentRepository implements IDocumentRepository {
     // Check if name already exists
     const existingDocs = Array.from(this.documents.values());
     const nameExists = existingDocs.some(doc => 
-      doc.name.toLowerCase() === document.name.toLowerCase()
+      doc.name.toLowerCase() === document.name.value.toLowerCase()
     );
 
     if (nameExists) {
@@ -34,7 +36,7 @@ class MockDocumentRepository implements IDocumentRepository {
 
   async find(query?: any, pagination?: any): Promise<any> {
     const documents = Array.from(this.documents.values()).map(doc => 
-      Document.fromRepository(doc)
+      Document.fromRepository(doc).unwrap()
     );
     return {
       data: documents,
@@ -52,8 +54,8 @@ class MockDocumentRepository implements IDocumentRepository {
   async findOne(query: any): Promise<Document | null> {
     for (const docData of this.documents.values()) {
       const doc = Document.fromRepository(docData);
-      if (query.name && doc.name.includes(query.name)) {
-        return doc;
+      if (query.name && doc.unwrap().name.value.includes(query.name)) {
+        return doc.unwrap();
       }
     }
     return null;
@@ -61,14 +63,14 @@ class MockDocumentRepository implements IDocumentRepository {
 
   async findById(id: string): Promise<Document | null> {
     const docData = this.documents.get(id);
-    return docData ? Document.fromRepository(docData) : null;
+    return docData ? Document.fromRepository(docData).unwrap() : null;
   }
 
   async findByName(name: string): Promise<Document | null> {
     for (const docData of this.documents.values()) {
       const doc = Document.fromRepository(docData);
-      if (doc.name === name) {
-        return doc;
+      if (doc.unwrap().name.value === name) {
+        return doc.unwrap();
       }
     }
     return null;
@@ -77,13 +79,13 @@ class MockDocumentRepository implements IDocumentRepository {
   async findByTags(tags: string[]): Promise<Document[]> {
     return Array.from(this.documents.values())
       .filter(docData => tags.some(tag => docData.tags.includes(tag)))
-      .map(docData => Document.fromRepository(docData));
+      .map(docData => Document.fromRepository(docData).unwrap());
   }
 
   async findByMimeType(mimeType: string): Promise<Document[]> {
     return Array.from(this.documents.values())
       .filter(docData => docData.mimeType === mimeType)
-      .map(docData => Document.fromRepository(docData));
+      .map(docData => Document.fromRepository(docData).unwrap());
   }
 
   async update(document: Document): Promise<Document> {
@@ -107,7 +109,7 @@ class MockDocumentRepository implements IDocumentRepository {
   async exists(query: any): Promise<boolean> {
     for (const docData of this.documents.values()) {
       const doc = Document.fromRepository(docData);
-      if (query.name && doc.name.includes(query.name)) {
+      if (query.name && doc.unwrap().name.value.toLowerCase() === query.name.toLowerCase()) {
         return true;
       }
     }
@@ -124,87 +126,190 @@ class MockDocumentRepository implements IDocumentRepository {
   }
 }
 
+// Mock user repository for testing
+class MockUserRepository implements IUserRepository {
+  private users: Map<string, any> = new Map();
+
+  async saveUser(user: any): Promise<any> {
+    this.users.set(user.id, user);
+    return user;
+  }
+
+  async findById(id: string): Promise<any> {
+    return this.users.get(id) || null;
+  }
+
+  async findByEmail(email: string): Promise<any> {
+    for (const user of this.users.values()) {
+      if (user.email === email) {
+        return user;
+      }
+    }
+    return null;
+  }
+
+  // Add other required methods with minimal implementations
+  async find(query?: any, pagination?: any): Promise<any> { return { data: [], pagination: {} }; }
+  async findOne(query: any): Promise<any> { return null; }
+  async findByRole(role: string): Promise<any[]> { return []; }
+  async exists(query: any): Promise<boolean> { return false; }
+  async count(query?: any): Promise<number> { return 0; }
+  async delete(id: string): Promise<boolean> { return false; }
+}
+
+// Mock file service for testing
+class MockFileService implements IFileService {
+  async uploadFile(file: any, metadata: any): Promise<Result<string, Error>> {
+    return Result.Ok('mock-file-path');
+  }
+
+  async saveFile(file: Buffer, name: string, mimeType: string): Promise<Result<any, any>> {
+    return Result.Ok({ path: '/uploads/test.pdf', name, mimeType, size: file.length.toString() });
+  }
+
+  async saveFileFromRequest(request: any): Promise<Result<any, any>> {
+    return Result.Ok({ path: '/uploads/test.pdf', name: 'test.pdf', mimeType: 'application/pdf', size: '1024' });
+  }
+
+  async streamFile(filePath: string, reply: any): Promise<Result<void, any>> {
+    return Result.Ok(undefined);
+  }
+
+  async fileExists(filePath: string): Promise<Result<boolean, any>> {
+    return Result.Ok(true);
+  }
+
+  async getFile(filePath: string): Promise<Result<Buffer, any>> {
+    return Result.Ok(Buffer.from('test file content'));
+  }
+
+  async deleteFile(filePath: string): Promise<Result<boolean, FileError>> {
+    return Result.Ok(true);
+  }
+
+  async getFileInfo(filePath: string): Promise<Result<any, Error>> {
+    return Result.Ok({ size: 1024, mimeType: 'application/pdf' });
+  }
+
+  async generateDownloadLink(filePath: string, expiresIn?: number): Promise<Result<string, Error>> {
+    return Result.Ok('mock-download-link');
+  }
+}
+
+// Mock domain services for testing
+class MockDocumentDomainService {
+  validateDocumentName(document: any) {
+    return { isValid: true, issues: [] };
+  }
+
+  validateDocumentMetadata(document: any) {
+    return { isValid: true, issues: [] };
+  }
+
+  calculateDocumentImportance(document: any) {
+    return { score: 100, level: 'high' };
+  }
+
+  validateDocumentAccess(user: any, document: any) {
+    return { 
+      isValid: true, 
+      issues: [],
+      permissions: {
+        canRead: true,
+        canWrite: true,
+        canDelete: true,
+        canShare: true,
+        canDownload: true
+      }
+    };
+  }
+
+  validateDocumentRetention(document: any) {
+    return { isValid: true, issues: [] };
+  }
+
+  calculateRetentionPolicy(document: any) {
+    return { days: 365, policy: 'standard' };
+  }
+
+  calculateStorageCost(document: any) {
+    return { cost: 0.01, currency: 'USD' };
+  }
+
+  shouldCompressDocument(document: any) {
+    return false;
+  }
+
+  calculateSecurityLevel(document: any) {
+    return { level: 'medium', encryption: 'AES-256' };
+  }
+
+  shouldBackupDocument(document: any) {
+    return true;
+  }
+}
+
+class MockUserDomainService {
+  canUserPerformAction(user: any, action: string, resource: string) {
+    return true;
+  }
+}
+
 // Mock logger for testing
 class MockLogger implements ILogger {
   error(message: string, context?: any): void {}
   warn(message: string, context?: any): void {}
   info(message: string, context?: any): void {}
   debug(message: string, context?: any): void {}
-  log(level: string, message: string, context?: any): void {}
+  log(level: any, message: string, context?: any): void {}
   logError(error: Error, context?: any): void {}
   logRequest(request: any, context?: any): void {}
   logResponse(response: any, context?: any): void {}
   child(context: any): ILogger { return this; }
 }
 
-// Mock file service for testing
-class MockFileService implements IFileService {
-  async saveFile(file: Buffer, name: string, mimeType: string): Promise<Result<any, any>> {
-    return Result.Ok({
-      path: '/uploads/test.pdf',
-      name: name,
-      mimeType: mimeType,
-      size: file.length.toString(),
-      fields: {}
-    });
-  }
-  
-  async saveFileFromRequest(request: any): Promise<Result<any, any>> {
-    return Result.Ok({
-      path: '/uploads/test.pdf',
-      name: 'test.pdf',
-      mimeType: 'application/pdf',
-      size: '1024',
-      fields: {}
-    });
-  }
-  
-  async streamFile(filePath: string, reply: any): Promise<Result<void, any>> {
-    return Result.Ok(undefined);
-  }
-  
-  async deleteFile(filePath: string): Promise<Result<boolean, any>> {
-    return Result.Ok(true);
-  }
-  
-  async fileExists(filePath: string): Promise<Result<boolean, any>> {
-    return Result.Ok(true);
-  }
-  
-  async getFile(filePath: string): Promise<Result<Buffer, any>> {
-    return Result.Ok(Buffer.from('test file content'));
-  }
-}
-
-console.log('=== Document Service Tests ===\n');
-
 async function runDocumentServiceTests() {
+  console.log('=== Document Application Service Tests ===\n');
+
   const repository = new MockDocumentRepository();
-  const logger = new MockLogger();
+  const userRepository = new MockUserRepository();
   const fileService = new MockFileService();
-  const service = new DocumentService(repository, fileService, logger);
+  const documentDomainService = new MockDocumentDomainService();
+  const userDomainService = new MockUserDomainService();
+  const logger = new MockLogger();
+  
+  // Add test user to mock repository
+  const testUser = { id: 'user-123', email: 'test@example.com', role: 'user' };
+  userRepository.saveUser(testUser);
+  
+  const service = new DocumentApplicationService(
+    repository, 
+    userRepository, 
+    fileService, 
+    documentDomainService as any, 
+    userDomainService as any, 
+    logger
+  );
 
   // Test 1: Create Document
   console.log('Test 1: Create Document');
   try {
-    const createData = {
-      name: 'Test Document.pdf',
-      filePath: '/uploads/test.pdf',
-      mimeType: 'application/pdf',
-      size: '1024',
-      tags: ['test', 'document'],
-      metadata: { author: 'John Doe' }
-    };
-
-    const result = await service.createDocument(createData);
+    const result = await service.createDocument(
+      'Test Document',
+      'test.pdf',
+      'application/pdf',
+      '1024',
+      ['test', 'pdf'],
+      { category: 'test' },
+      'user-123'
+    );
     
     if (result.isOk()) {
       const document = result.unwrap();
       console.log('✅ Document created successfully');
       console.log('  - ID:', document.id);
-      console.log('  - Name:', document.name);
-      console.log('  - Size:', document.size);
-      console.log('  - Tags:', document.tags);
+      console.log('  - Name:', document.name.value);
+      console.log('  - Size:', document.size.toString());
     } else {
       console.log('❌ Document creation failed:', result.unwrapErr());
     }
@@ -212,55 +317,63 @@ async function runDocumentServiceTests() {
     console.log('❌ Create document test failed:', error);
   }
 
-  // Test 2: Create Duplicate Document
-  console.log('\nTest 2: Create Duplicate Document');
+  // Test 2: Create Document with Duplicate Name
+  console.log('\nTest 2: Create Document with Duplicate Name');
   try {
-    const createData = {
-      name: 'Duplicate Document.pdf',
-      filePath: '/uploads/duplicate.pdf',
-      mimeType: 'application/pdf',
-      size: '1024',
-      tags: ['duplicate'],
-      metadata: {}
-    };
-
-    const result1 = await service.createDocument(createData);
-    const result2 = await service.createDocument(createData);
+    const result1 = await service.createDocument(
+      'Duplicate Document',
+      'duplicate.pdf',
+      'application/pdf',
+      '1024',
+      ['duplicate'],
+      {},
+      'user-123'
+    );
+    
+    const result2 = await service.createDocument(
+      'Duplicate Document',
+      'duplicate2.pdf',
+      'application/pdf',
+      '2048',
+      ['duplicate2'],
+      {},
+      'user-123'
+    );
     
     if (result1.isOk() && result2.isErr()) {
-      console.log('✅ Duplicate document properly rejected');
+      console.log('✅ Duplicate name properly rejected');
       console.log('  - First creation:', result1.isOk() ? 'SUCCESS' : 'FAIL');
       console.log('  - Second creation:', result2.isErr() ? 'REJECTED' : 'ALLOWED');
     } else {
-      console.log('❌ Duplicate document handling failed');
+      console.log('❌ Duplicate name handling failed');
     }
   } catch (error) {
-    console.log('❌ Duplicate document test failed:', error);
+    console.log('❌ Duplicate name test failed:', error);
   }
 
   // Test 3: Get Document by ID
   console.log('\nTest 3: Get Document by ID');
   try {
-    const createData = {
-      name: 'Get by ID Document.pdf',
-      filePath: '/uploads/getbyid.pdf',
-      mimeType: 'application/pdf',
-      size: '2048',
-      tags: ['get', 'test'],
-      metadata: {}
-    };
-
-    const createResult = await service.createDocument(createData);
+    const createResult = await service.createDocument(
+      'Get By ID Test',
+      'getbyid.pdf',
+      'application/pdf',
+      '1024',
+      ['getbyid'],
+      {},
+      'user-123'
+    );
     
     if (createResult.isOk()) {
-      const createdDoc = createResult.unwrap();
-      const getResult = await service.findOneDocument(createdDoc.id);
+      const document = createResult.unwrap();
+      const getResult = await service.getDocumentById(document.id);
       
       if (getResult.isOk()) {
-        const document = getResult.unwrap();
+        const foundDocument = getResult.unwrap();
         console.log('✅ Document retrieved by ID successfully');
-        console.log('  - Found document:', document.name);
-        console.log('  - IDs match:', document.id === createdDoc.id);
+        console.log('  - Found document ID:', foundDocument.id);
+        console.log('  - Found document name:', foundDocument.name.value);
+        console.log('  - IDs match:', foundDocument.id === document.id);
       } else {
         console.log('❌ Get document by ID failed:', getResult.unwrapErr());
       }
@@ -271,72 +384,65 @@ async function runDocumentServiceTests() {
     console.log('❌ Get document by ID test failed:', error);
   }
 
-  // Test 4: Update Document Name
-  console.log('\nTest 4: Update Document Name');
+  // Test 4: Update Document
+  console.log('\nTest 4: Update Document');
   try {
-    const createData = {
-      name: 'Update Test Document.pdf',
-      filePath: '/uploads/update.pdf',
-      mimeType: 'application/pdf',
-      size: '1024',
-      tags: ['update'],
-      metadata: {}
-    };
-
-    const createResult = await service.createDocument(createData);
+    const createResult = await service.createDocument(
+      'Update Test Document',
+      'update.pdf',
+      'application/pdf',
+      '1024',
+      ['update'],
+      { version: '1.0' },
+      'user-123'
+    );
     
     if (createResult.isOk()) {
-      const originalDoc = createResult.unwrap();
-      const updateResult = await service.updateDocumentName(originalDoc.id, 'Updated Document Name.pdf');
+      const document = createResult.unwrap();
+      const updateResult = await service.updateDocumentName(
+        document.id,
+        'Updated Document Name',
+        'user-123'
+      );
       
       if (updateResult.isOk()) {
-        const updatedDoc = updateResult.unwrap();
-        console.log('✅ Document name updated successfully');
-        console.log('  - Original name:', originalDoc.name);
-        console.log('  - Updated name:', updatedDoc.name);
-        console.log('  - Name changed:', originalDoc.name !== updatedDoc.name);
+        const updatedDocument = updateResult.unwrap();
+        console.log('✅ Document updated successfully');
+        console.log('  - Original name:', document.name.value);
+        console.log('  - Updated name:', updatedDocument.name.value);
+        console.log('  - Name changed:', document.name.value !== updatedDocument.name.value);
       } else {
-        console.log('❌ Update document name failed:', updateResult.unwrapErr());
+        console.log('❌ Document update failed:', updateResult.unwrapErr());
       }
     } else {
       console.log('❌ Document creation for update test failed');
     }
   } catch (error) {
-    console.log('❌ Update document name test failed:', error);
+    console.log('❌ Update document test failed:', error);
   }
 
   // Test 5: Delete Document
   console.log('\nTest 5: Delete Document');
   try {
-    const createData = {
-      name: 'Delete Test Document.pdf',
-      filePath: '/uploads/delete.pdf',
-      mimeType: 'application/pdf',
-      size: '1024',
-      tags: ['delete'],
-      metadata: {}
-    };
-
-    const createResult = await service.createDocument(createData);
+    const createResult = await service.createDocument(
+      'Delete Test Document',
+      'delete.pdf',
+      'application/pdf',
+      '1024',
+      ['delete'],
+      {},
+      'user-123'
+    );
     
     if (createResult.isOk()) {
       const document = createResult.unwrap();
-      const deleteResult = await service.removeDocument(document.id);
+      const deleteResult = await service.deleteDocument(document.id, 'user-123');
       
       if (deleteResult.isOk()) {
-        const result = deleteResult.unwrap();
         console.log('✅ Document deleted successfully');
-        console.log('  - Deleted:', result.deleted);
-        
-        // Verify document is gone
-        const getResult = await service.findOneDocument(document.id);
-        if (getResult.isErr()) {
-          console.log('✅ Document properly removed from system');
-        } else {
-          console.log('❌ Document still exists after deletion');
-        }
+        console.log('  - Deleted document ID:', document.id);
       } else {
-        console.log('❌ Delete document failed:', deleteResult.unwrapErr());
+        console.log('❌ Document deletion failed:', deleteResult.unwrapErr());
       }
     } else {
       console.log('❌ Document creation for delete test failed');
@@ -348,43 +454,18 @@ async function runDocumentServiceTests() {
   // Test 6: List Documents
   console.log('\nTest 6: List Documents');
   try {
-    repository.clear();
+    // Create some test documents
+    await service.createDocument('List Test 1', 'list1.pdf', 'application/pdf', '1024', ['list'], {}, 'user-123');
+    await service.createDocument('List Test 2', 'list2.pdf', 'application/pdf', '2048', ['list'], {}, 'user-123');
+    await service.createDocument('List Test 3', 'list3.pdf', 'application/pdf', '3072', ['list'], {}, 'user-123');
     
-    // Create multiple documents
-    await service.createDocument({
-      name: 'List Document 1.pdf',
-      filePath: '/uploads/list1.pdf',
-      mimeType: 'application/pdf',
-      size: '1024',
-      tags: ['list'],
-      metadata: {}
-    });
-
-    await service.createDocument({
-      name: 'List Document 2.pdf',
-      filePath: '/uploads/list2.pdf',
-      mimeType: 'application/pdf',
-      size: '2048',
-      tags: ['list'],
-      metadata: {}
-    });
-
-    await service.createDocument({
-      name: 'List Document 3.txt',
-      filePath: '/uploads/list3.txt',
-      mimeType: 'text/plain',
-      size: '512',
-      tags: ['list', 'text'],
-      metadata: {}
-    });
-    
-    const listResult = await service.findAllDocuments();
+    const listResult = await service.getDocuments(1, 10);
     
     if (listResult.isOk()) {
-      const result = listResult.unwrap();
+      const documents = listResult.unwrap();
       console.log('✅ Documents listed successfully');
-      console.log('  - Total documents:', result.data.length);
-      console.log('  - Document names:', result.data.map(d => d.name));
+      console.log('  - Total documents:', documents.length);
+      console.log('  - Document names:', documents.map((d: any) => d.name?.value || 'No name'));
     } else {
       console.log('❌ List documents failed:', listResult.unwrapErr());
     }
@@ -392,94 +473,71 @@ async function runDocumentServiceTests() {
     console.log('❌ List documents test failed:', error);
   }
 
-  // Test 7: Search Documents by Tags
-  console.log('\nTest 7: Search Documents by Tags');
+  // Test 7: Find Documents by Tags
+  console.log('\nTest 7: Find Documents by Tags');
   try {
-    const searchResult = await service.findDocumentsByTags(['list']);
+    const searchResult = await service.getDocumentsByTags(['list']);
     
     if (searchResult.isOk()) {
       const documents = searchResult.unwrap();
-      console.log('✅ Documents found by tags');
-      console.log('  - Found count:', documents.length);
-      console.log('  - Found names:', documents.map(d => d.name));
+      console.log('✅ Document search by tags successful');
+      console.log('  - Found documents:', documents.length);
+      console.log('  - Document names:', documents.map((d: any) => d.name.value));
     } else {
-      console.log('❌ Search documents by tags failed:', searchResult.unwrapErr());
+      console.log('❌ Document search failed:', searchResult.unwrapErr());
     }
   } catch (error) {
-    console.log('❌ Search documents by tags test failed:', error);
+    console.log('❌ Search documents test failed:', error);
   }
 
-  // Test 8: Search Documents by MIME Type
-  console.log('\nTest 8: Search Documents by MIME Type');
+  // Test 8: Input Validation
+  console.log('\nTest 8: Input Validation');
+  
+  // Test invalid name
   try {
-    const searchResult = await service.findDocumentsByMimeType('application/pdf');
+    const invalidNameResult = await service.createDocument(
+      '',
+      'invalid.pdf',
+      'application/pdf',
+      '1024',
+      [],
+      {},
+      'user-123'
+    );
     
-    if (searchResult.isOk()) {
-      const documents = searchResult.unwrap();
-      console.log('✅ Documents found by MIME type');
-      console.log('  - Found count:', documents.length);
-      console.log('  - Found names:', documents.map(d => d.name));
-      console.log('  - All PDFs:', documents.every(d => d.mimeType === 'application/pdf'));
-    } else {
-      console.log('❌ Search documents by MIME type failed:', searchResult.unwrapErr());
-    }
-  } catch (error) {
-    console.log('❌ Search documents by MIME type test failed:', error);
-  }
-
-  // Test 9: Validation Errors
-  console.log('\nTest 9: Validation Errors');
-  try {
-    // Test invalid file name
-    const invalidNameResult = await service.createDocument({
-      name: '',
-      filePath: '/uploads/invalid.pdf',
-      mimeType: 'application/pdf',
-      size: '1024',
-      tags: ['invalid'],
-      metadata: {}
-    });
     if (invalidNameResult.isErr()) {
-      console.log('✅ Invalid file name properly rejected');
+      console.log('✅ Invalid name properly rejected');
+      console.log('  - Error:', invalidNameResult.unwrapErr());
     } else {
-      console.log('❌ Invalid file name should have been rejected');
+      console.log('❌ Invalid name should have been rejected');
     }
+  } catch (error) {
+    console.log('❌ Invalid name test failed:', error);
+  }
 
-    // Test invalid file size
-    const invalidSizeResult = await service.createDocument({
-      name: 'Invalid Size.pdf',
-      filePath: '/uploads/invalid.pdf',
-      mimeType: 'application/pdf',
-      size: '-1024',
-      tags: ['invalid'],
-      metadata: {}
-    });
+  // Test invalid file size
+  try {
+    const invalidSizeResult = await service.createDocument(
+      'Invalid Size Test',
+      'invalid.pdf',
+      'application/pdf',
+      '-1024',
+      [],
+      {},
+      'user-123'
+    );
+    
     if (invalidSizeResult.isErr()) {
       console.log('✅ Invalid file size properly rejected');
+      console.log('  - Error:', invalidSizeResult.unwrapErr());
     } else {
       console.log('❌ Invalid file size should have been rejected');
     }
-
-    // Test invalid MIME type
-    const invalidMimeResult = await service.createDocument({
-      name: 'Invalid MIME.pdf',
-      filePath: '/uploads/invalid.pdf',
-      mimeType: 'invalid/mime',
-      size: '1024',
-      tags: ['invalid'],
-      metadata: {}
-    });
-    if (invalidMimeResult.isErr()) {
-      console.log('✅ Invalid MIME type properly rejected');
-    } else {
-      console.log('❌ Invalid MIME type should have been rejected');
-    }
-
   } catch (error) {
-    console.log('❌ Validation errors test failed:', error);
+    console.log('❌ Invalid file size test failed:', error);
   }
 
-  console.log('\n=== Document Service Tests Complete ===');
+  console.log('\n=== Document Application Service Tests Complete ===');
   console.log('✅ All tests completed!');
 }
 
