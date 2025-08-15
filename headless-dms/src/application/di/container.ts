@@ -6,7 +6,7 @@ import { IUserRepository } from '../interfaces/IUserRepository.js';
 import { DrizzleUserRepository } from '../../infrastructure/database/implementations/drizzle-user.repository.js';
 import { IFileService } from '../interfaces/IFileService.js';
 import { LocalFileService } from '../../infrastructure/file-storage/local-file.service.js';
-import { DocumentService } from '../../documents/documents.service.js';
+// DocumentService removed - now using DocumentApplicationService
 import { AuthApplicationService } from '../services/AuthApplicationService.js';
 import { UserApplicationService } from '../services/UserApplicationService.js';
 import { DocumentApplicationService } from '../services/DocumentApplicationService.js';
@@ -67,7 +67,6 @@ if (process.env.NODE_ENV === 'test') {
 container.registerSingleton<IAuthHandler>('IAuthHandler', AuthHandler);
 
 // Register services
-container.registerSingleton(DocumentService);
 container.registerSingleton('AuthApplicationService', AuthApplicationService);
 container.registerSingleton('UserApplicationService', UserApplicationService);
 container.registerSingleton('DocumentApplicationService', DocumentApplicationService);

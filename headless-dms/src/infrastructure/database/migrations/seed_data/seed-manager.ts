@@ -55,6 +55,18 @@ export class SeedManager {
 
       console.log('🎉 Seed data generation completed successfully!');
       
+      // Display user credentials for login
+      console.log('\n🔑 Generated User Credentials:');
+      console.log('=====================================');
+      this.generatedUsers.forEach((user, index) => {
+        console.log(`${index + 1}. ${user.role.toUpperCase()}: ${user.email}`);
+        console.log(`   Password: password123`);
+        console.log(`   ID: ${user.id}`);
+        console.log('');
+      });
+      console.log('=====================================');
+      console.log('💡 Use these credentials to login to your DMS!');
+      
       return { users: this.generatedUsers, tags: this.generatedTags, documents: this.generatedDocuments };
     } catch (error) {
       console.error('❌ Error during seed generation:', error);

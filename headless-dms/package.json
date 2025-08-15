@@ -8,6 +8,7 @@
     "build": "tsc --noEmit",
     "start": "node dist/app.js",
     "start:dev": "tsx --watch src/app.ts",
+    
     "test": "node tests/run-all-tests.js",
     "test:domain": "tsx tests/domain/user.test.ts && tsx tests/domain/document.test.ts",
     "test:validators": "tsx tests/validators/user-validator.test.ts && tsx tests/validators/document-validator.test.ts",
