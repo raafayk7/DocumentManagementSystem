@@ -1,5 +1,5 @@
 import { injectable, inject } from 'tsyringe';
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 import { Document } from '../../domain/entities/Document.js';
 import { User } from '../../domain/entities/User.js';
 import { 
@@ -44,7 +44,7 @@ export class DocumentApplicationService {
     tags: string[] = [],
     metadata: Record<string, string> = {},
     userId: string
-  ): Promise<Result<Document, ApplicationError>> {
+  ): Promise<AppResult<Document>> {
     this.logger.info('Creating new document', { name, filename, userId });
     
     try {
@@ -52,7 +52,7 @@ export class DocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document creation', { userId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.userNotFound',
           'User not found',
           { userId }
@@ -63,7 +63,7 @@ export class DocumentApplicationService {
       const canCreate = this.userDomainService.canUserPerformAction(user, 'create', 'document');
       if (!canCreate) {
         this.logger.warn('User cannot create documents', { userId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.insufficientPermissions',
           'Insufficient permissions to create documents',
           { userId }
@@ -74,7 +74,7 @@ export class DocumentApplicationService {
       const documentResult = Document.create(name, filename, mimeType, size, tags, metadata);
       if (documentResult.isErr()) {
         this.logger.error('Failed to create document entity', { name, error: documentResult.unwrapErr() });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.entityCreation',
           documentResult.unwrapErr(),
           { name }
@@ -87,7 +87,7 @@ export class DocumentApplicationService {
       const nameValidation = this.documentDomainService.validateDocumentName(document);
       if (!nameValidation.isValid) {
         this.logger.warn('Invalid document name', { name, issues: nameValidation.issues });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.invalidDocumentName',
           'Invalid document name',
           { issues: nameValidation.issues }
@@ -111,10 +111,10 @@ export class DocumentApplicationService {
         name: savedDocument.name.value,
         userId 
       });
-      return Result.Ok(savedDocument);
+      return AppResult.Ok(savedDocument);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { name, userId });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.createDocument',
         error instanceof Error ? error.message : 'Failed to create document',
         { name, userId }
@@ -125,7 +125,7 @@ export class DocumentApplicationService {
   /**
    * Get document with access validation
    */
-  async getDocument(documentId: string, userId: string): Promise<Result<Document, ApplicationError>> {
+  async getDocument(documentId: string, userId: string): Promise<AppResult<Document>> {
     this.logger.info('Getting document', { documentId, userId });
     
     try {
@@ -133,7 +133,7 @@ export class DocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document access', { userId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.userNotFound',
           'User not found',
           { userId }
@@ -144,7 +144,7 @@ export class DocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found', { documentId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.documentNotFound',
           'Document not found',
           { documentId }
@@ -155,7 +155,7 @@ export class DocumentApplicationService {
       const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
       if (!accessValidation.canAccess) {
         this.logger.warn('Document access denied', { documentId, userId, reason: accessValidation.reason });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.accessDenied',
           'Access denied',
           { documentId, userId, reason: accessValidation.reason }
@@ -163,10 +163,10 @@ export class DocumentApplicationService {
       }
 
       this.logger.info('Document retrieved successfully', { documentId, userId });
-      return Result.Ok(document);
+      return AppResult.Ok(document);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.getDocument',
         error instanceof Error ? error.message : 'Failed to get document',
         { documentId, userId }
@@ -181,7 +181,7 @@ export class DocumentApplicationService {
     documentId: string, 
     newName: string, 
     userId: string
-  ): Promise<Result<Document, ApplicationError>> {
+  ): Promise<AppResult<Document>> {
     this.logger.info('Updating document name', { documentId, newName, userId });
     
     try {
@@ -189,7 +189,7 @@ export class DocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document update', { userId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.userNotFound',
           'User not found',
           { userId }
@@ -200,7 +200,7 @@ export class DocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for name update', { documentId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.documentNotFound',
           'Document not found',
           { documentId }
@@ -211,7 +211,7 @@ export class DocumentApplicationService {
       const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
       if (!accessValidation.permissions.canWrite) {
         this.logger.warn('Document write access denied', { documentId, userId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.writeAccessDenied',
           'Write access denied',
           { documentId, userId }
@@ -222,7 +222,7 @@ export class DocumentApplicationService {
       const updateResult = document.updateName(newName);
       if (updateResult.isErr()) {
         this.logger.error('Failed to update document name', { documentId, error: updateResult.unwrapErr() });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.nameUpdateFailed',
           updateResult.unwrapErr(),
           { documentId, newName }
@@ -235,7 +235,7 @@ export class DocumentApplicationService {
       const nameValidation = this.documentDomainService.validateDocumentName(updatedDocument);
       if (!nameValidation.isValid) {
         this.logger.warn('Invalid new document name', { documentId, issues: nameValidation.issues });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.invalidNewName',
           'Invalid document name',
           { issues: nameValidation.issues }
@@ -246,10 +246,10 @@ export class DocumentApplicationService {
       const savedDocument = await this.documentRepository.update(updatedDocument);
 
       this.logger.info('Document name updated successfully', { documentId, newName, userId });
-      return Result.Ok(savedDocument);
+      return AppResult.Ok(savedDocument);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.updateDocumentName',
         error instanceof Error ? error.message : 'Failed to update document name',
         { documentId, userId }
@@ -264,7 +264,7 @@ export class DocumentApplicationService {
     documentId: string, 
     tags: string[], 
     userId: string
-  ): Promise<Result<Document, ApplicationError>> {
+  ): Promise<AppResult<Document>> {
     this.logger.info('Adding tags to document', { documentId, tags, userId });
     
     try {
@@ -272,7 +272,7 @@ export class DocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document tag update', { userId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.userNotFound',
           'User not found',
           { userId }
@@ -283,7 +283,7 @@ export class DocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for tag update', { documentId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.documentNotFound',
           'Document not found',
           { documentId }
@@ -294,7 +294,7 @@ export class DocumentApplicationService {
       const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
       if (!accessValidation.permissions.canWrite) {
         this.logger.warn('Document write access denied for tag update', { documentId, userId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.writeAccessDenied',
           'Write access denied',
           { documentId, userId }
@@ -305,7 +305,7 @@ export class DocumentApplicationService {
       const updateResult = document.addTags(tags);
       if (updateResult.isErr()) {
         this.logger.error('Failed to add tags to document', { documentId, error: updateResult.unwrapErr() });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.tagUpdateFailed',
           updateResult.unwrapErr(),
           { documentId, tags }
@@ -318,10 +318,10 @@ export class DocumentApplicationService {
       const savedDocument = await this.documentRepository.update(updatedDocument);
 
       this.logger.info('Tags added to document successfully', { documentId, tags, userId });
-      return Result.Ok(savedDocument);
+      return AppResult.Ok(savedDocument);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.addTagsToDocument',
         error instanceof Error ? error.message : 'Failed to add tags to document',
         { documentId, userId }
@@ -336,7 +336,7 @@ export class DocumentApplicationService {
     documentId: string, 
     tags: string[], 
     userId: string
-  ): Promise<Result<Document, ApplicationError>> {
+  ): Promise<AppResult<Document>> {
     this.logger.info('Removing tags from document', { documentId, tags, userId });
     
     try {
@@ -344,7 +344,7 @@ export class DocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document tag removal', { userId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.userNotFound',
           'User not found',
           { userId }
@@ -355,7 +355,7 @@ export class DocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for tag removal', { documentId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.documentNotFound',
           'Document not found',
           { documentId }
@@ -366,7 +366,7 @@ export class DocumentApplicationService {
       const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
       if (!accessValidation.permissions.canWrite) {
         this.logger.warn('Document write access denied for tag removal', { documentId, userId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.writeAccessDenied',
           'Write access denied',
           { documentId, userId }
@@ -377,7 +377,7 @@ export class DocumentApplicationService {
       const updateResult = document.removeTags(tags);
       if (updateResult.isErr()) {
         this.logger.error('Failed to remove tags from document', { documentId, error: updateResult.unwrapErr() });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.tagRemovalFailed',
           updateResult.unwrapErr(),
           { documentId, tags }
@@ -390,10 +390,10 @@ export class DocumentApplicationService {
       const savedDocument = await this.documentRepository.update(updatedDocument);
 
       this.logger.info('Tags removed from document successfully', { documentId, tags, userId });
-      return Result.Ok(savedDocument);
+      return AppResult.Ok(savedDocument);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.removeTagsFromDocument',
         error instanceof Error ? error.message : 'Failed to remove tags from document',
         { documentId, userId }
@@ -408,7 +408,7 @@ export class DocumentApplicationService {
     documentId: string, 
     metadata: Record<string, string>, 
     userId: string
-  ): Promise<Result<Document, ApplicationError>> {
+  ): Promise<AppResult<Document>> {
     this.logger.info('Updating document metadata', { documentId, userId });
     
     try {
@@ -416,7 +416,7 @@ export class DocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document metadata update', { userId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.userNotFound',
           'User not found',
           { userId }
@@ -427,7 +427,7 @@ export class DocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for metadata update', { documentId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.documentNotFound',
           'Document not found',
           { documentId }
@@ -438,7 +438,7 @@ export class DocumentApplicationService {
       const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
       if (!accessValidation.permissions.canWrite) {
         this.logger.warn('Document write access denied for metadata update', { documentId, userId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.writeAccessDenied',
           'Write access denied',
           { documentId, userId }
@@ -449,7 +449,7 @@ export class DocumentApplicationService {
       const updateResult = document.updateMetadata(metadata);
       if (updateResult.isErr()) {
         this.logger.error('Failed to update document metadata', { documentId, error: updateResult.unwrapErr() });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.metadataUpdateFailed',
           updateResult.unwrapErr(),
           { documentId }
@@ -471,10 +471,10 @@ export class DocumentApplicationService {
       const savedDocument = await this.documentRepository.update(updatedDocument);
 
       this.logger.info('Document metadata updated successfully', { documentId, userId });
-      return Result.Ok(savedDocument);
+      return AppResult.Ok(savedDocument);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.updateDocumentMetadata',
         error instanceof Error ? error.message : 'Failed to update document metadata',
         { documentId, userId }
@@ -485,7 +485,7 @@ export class DocumentApplicationService {
   /**
    * Delete document with validation
    */
-  async deleteDocument(documentId: string, userId: string): Promise<Result<void, ApplicationError>> {
+  async deleteDocument(documentId: string, userId: string): Promise<AppResult<void>> {
     this.logger.info('Deleting document', { documentId, userId });
     
     try {
@@ -493,7 +493,7 @@ export class DocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document deletion', { userId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.userNotFound',
           'User not found',
           { userId }
@@ -504,7 +504,7 @@ export class DocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for deletion', { documentId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.documentNotFound',
           'Document not found',
           { documentId }
@@ -515,7 +515,7 @@ export class DocumentApplicationService {
       const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
       if (!accessValidation.permissions.canDelete) {
         this.logger.warn('Document delete access denied', { documentId, userId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.deleteAccessDenied',
           'Delete access denied',
           { documentId, userId }
@@ -526,9 +526,7 @@ export class DocumentApplicationService {
       const fileExistsResult = await this.fileService.fileExists(document.filePath);
       if (fileExistsResult.isOk() && fileExistsResult.unwrap()) {
         const deleteFileResult = await this.fileService.deleteFile(document.filePath);
-        if (deleteFileResult.isOk() && !deleteFileResult.unwrap()) {
-          this.logger.warn('Failed to delete file', { documentId, filePath: document.filePath });
-        } else if (deleteFileResult.isErr()) {
+        if (deleteFileResult.isErr()) {
           this.logger.error('Error deleting file', { 
             documentId, 
             filePath: document.filePath,
@@ -547,10 +545,10 @@ export class DocumentApplicationService {
       await this.documentRepository.delete(documentId);
 
       this.logger.info('Document deleted successfully', { documentId, userId });
-      return Result.Ok(undefined);
+      return AppResult.Ok(undefined);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.deleteDocument',
         error instanceof Error ? error.message : 'Failed to delete document',
         { documentId, userId }
@@ -561,14 +559,14 @@ export class DocumentApplicationService {
   /**
    * Get document by ID
    */
-  async getDocumentById(documentId: string): Promise<Result<Document, ApplicationError>> {
+  async getDocumentById(documentId: string): Promise<AppResult<Document>> {
     this.logger.info('Getting document by ID', { documentId });
     
     try {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found', { documentId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.documentNotFound',
           'Document not found',
           { documentId }
@@ -576,10 +574,10 @@ export class DocumentApplicationService {
       }
 
       this.logger.info('Document retrieved successfully', { documentId });
-      return Result.Ok(document);
+      return AppResult.Ok(document);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.getDocumentById',
         error instanceof Error ? error.message : 'Failed to get document',
         { documentId }
@@ -590,14 +588,14 @@ export class DocumentApplicationService {
   /**
    * Get document by name
    */
-  async getDocumentByName(name: string): Promise<Result<Document, ApplicationError>> {
+  async getDocumentByName(name: string): Promise<AppResult<Document>> {
     this.logger.info('Getting document by name', { name });
     
     try {
       const document = await this.documentRepository.findByName(name);
       if (!document) {
         this.logger.warn('Document not found', { name });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.documentNotFound',
           'Document not found',
           { name }
@@ -605,10 +603,10 @@ export class DocumentApplicationService {
       }
 
       this.logger.info('Document retrieved successfully', { name });
-      return Result.Ok(document);
+      return AppResult.Ok(document);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { name });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.getDocumentByName',
         error instanceof Error ? error.message : 'Failed to get document',
         { name }
@@ -632,7 +630,7 @@ export class DocumentApplicationService {
       fromDate?: string;
       toDate?: string;
     }
-  ): Promise<Result<Document[], ApplicationError>> {
+  ): Promise<AppResult<Document[]>> {
     this.logger.info('Getting documents with filters', { 
       page, 
       limit, 
@@ -681,10 +679,10 @@ export class DocumentApplicationService {
         limit,
         filtersApplied: Object.keys(filters || {}).length
       });
-      return Result.Ok(documents.data);
+      return AppResult.Ok(documents.data);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { page, limit, filters });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.getDocuments',
         error instanceof Error ? error.message : 'Failed to get documents',
         { page, limit, filters }
@@ -695,17 +693,17 @@ export class DocumentApplicationService {
   /**
    * Get documents by tags
    */
-  async getDocumentsByTags(tags: string[]): Promise<Result<Document[], ApplicationError>> {
+  async getDocumentsByTags(tags: string[]): Promise<AppResult<Document[]>> {
     this.logger.info('Getting documents by tags', { tags });
     
     try {
       const documents = await this.documentRepository.findByTags(tags);
       
-      this.logger.info('Documents retrieved successfully', { tags, count: documents.length });
-      return Result.Ok(documents);
+              this.logger.info('Documents retrieved successfully', { tags, count: documents.length });
+        return AppResult.Ok(documents);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { tags });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.getDocumentsByTags',
         error instanceof Error ? error.message : 'Failed to get documents by tags',
         { tags }
@@ -716,17 +714,17 @@ export class DocumentApplicationService {
   /**
    * Get documents by MIME type
    */
-  async getDocumentsByMimeType(mimeType: string): Promise<Result<Document[], ApplicationError>> {
+  async getDocumentsByMimeType(mimeType: string): Promise<AppResult<Document[]>> {
     this.logger.info('Getting documents by MIME type', { mimeType });
     
     try {
       const documents = await this.documentRepository.findByMimeType(mimeType);
       
-      this.logger.info('Documents retrieved successfully', { mimeType, count: documents.length });
-      return Result.Ok(documents);
+              this.logger.info('Documents retrieved successfully', { mimeType, count: documents.length });
+        return AppResult.Ok(documents);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { mimeType });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.getDocumentsByMimeType',
         error instanceof Error ? error.message : 'Failed to get documents by MIME type',
         { mimeType }
@@ -737,7 +735,7 @@ export class DocumentApplicationService {
   /**
    * Upload document
    */
-  async uploadDocument(file: Buffer, name: string, mimeType: string, userId: string, tags: string[] = [], metadata: Record<string, string> = {}): Promise<Result<Document, ApplicationError>> {
+  async uploadDocument(file: Buffer, name: string, mimeType: string, userId: string, tags: string[] = [], metadata: Record<string, string> = {}): Promise<AppResult<Document>> {
     this.logger.info('Uploading document', { name, mimeType, userId, tags, metadata });
     
     try {
@@ -745,7 +743,7 @@ export class DocumentApplicationService {
       const fileInfoResult = await this.fileService.saveFile(file, name, mimeType);
       if (fileInfoResult.isErr()) {
         this.logger.error('Failed to save file via file service', { name, error: fileInfoResult.unwrapErr().message });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.fileSave',
           'Failed to save file',
           { name }
@@ -758,7 +756,7 @@ export class DocumentApplicationService {
       const documentResult = Document.create(name, fileInfo.path, mimeType, fileInfo.size, tags, metadata);
       if (documentResult.isErr()) {
         this.logger.error('Failed to create document entity', { name, error: documentResult.unwrapErr() });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.entityCreation',
           documentResult.unwrapErr(),
           { name }
@@ -771,10 +769,10 @@ export class DocumentApplicationService {
       const savedDocument = await this.documentRepository.save(document);
 
       this.logger.info('Document uploaded successfully', { documentId: savedDocument.id, name: savedDocument.name.value });
-      return Result.Ok(savedDocument);
+      return AppResult.Ok(savedDocument);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { name });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.uploadDocument',
         error instanceof Error ? error.message : 'Failed to upload document',
         { name }
@@ -785,7 +783,7 @@ export class DocumentApplicationService {
   /**
    * Download document
    */
-  async downloadDocument(documentId: string, userId: string): Promise<Result<{ document: Document; file: Buffer }, ApplicationError>> {
+  async downloadDocument(documentId: string, userId: string): Promise<AppResult<{ document: Document; file: Buffer }>> {
     this.logger.info('Downloading document', { documentId, userId });
     
     try {
@@ -793,7 +791,7 @@ export class DocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for download', { documentId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.documentNotFound',
           'Document not found',
           { documentId }
@@ -804,7 +802,7 @@ export class DocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document download', { userId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.userNotFound',
           'User not found',
           { userId }
@@ -815,7 +813,7 @@ export class DocumentApplicationService {
       const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
       if (!accessValidation.canAccess) {
         this.logger.warn('Document access denied for download', { documentId, userId, reason: accessValidation.reason });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.accessDenied',
           'Access denied',
           { documentId, userId, reason: accessValidation.reason }
@@ -826,7 +824,7 @@ export class DocumentApplicationService {
       const fileResult = await this.fileService.getFile(document.filePath);
       if (fileResult.isErr()) {
         this.logger.error('Failed to get file from storage', { documentId, error: fileResult.unwrapErr().message });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.fileReadFailed',
           'Failed to read file from storage',
           { documentId, error: fileResult.unwrapErr().message }
@@ -835,10 +833,10 @@ export class DocumentApplicationService {
 
       const file = fileResult.unwrap();
       this.logger.info('Document downloaded successfully', { documentId, userId });
-      return Result.Ok({ document, file });
+      return AppResult.Ok({ document, file });
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.downloadDocument',
         error instanceof Error ? error.message : 'Failed to download document',
         { documentId, userId }
@@ -849,7 +847,7 @@ export class DocumentApplicationService {
   /**
    * Download document by token
    */
-  async downloadDocumentByToken(token: string): Promise<Result<{ document: Document; file: Buffer }, ApplicationError>> {
+  async downloadDocumentByToken(token: string): Promise<AppResult<{ document: Document; file: Buffer }>> {
     this.logger.info('Downloading document by token', { token });
     
     try {
@@ -861,7 +859,7 @@ export class DocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for token download', { documentId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.documentNotFound',
           'Document not found',
           { documentId }
@@ -872,7 +870,7 @@ export class DocumentApplicationService {
       const fileResult = await this.fileService.getFile(document.filePath);
       if (fileResult.isErr()) {
         this.logger.error('Failed to get file from storage', { documentId, error: fileResult.unwrapErr().message });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.fileReadFailed',
           'Failed to read file from storage',
           { documentId, error: fileResult.unwrapErr().message }
@@ -881,10 +879,10 @@ export class DocumentApplicationService {
 
       const file = fileResult.unwrap();
       this.logger.info('Document downloaded by token successfully', { documentId });
-      return Result.Ok({ document, file });
+      return AppResult.Ok({ document, file });
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { token });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.downloadDocumentByToken',
         error instanceof Error ? error.message : 'Failed to download document by token',
         { token }
@@ -895,7 +893,7 @@ export class DocumentApplicationService {
   /**
    * Generate download link
    */
-  async generateDownloadLink(documentId: string, expiresInMinutes: number = 60): Promise<Result<string, ApplicationError>> {
+  async generateDownloadLink(documentId: string, expiresInMinutes: number = 60): Promise<AppResult<string>> {
     this.logger.info('Generating download link', { documentId, expiresInMinutes });
     
     try {
@@ -903,7 +901,7 @@ export class DocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for link generation', { documentId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.documentNotFound',
           'Document not found',
           { documentId }
@@ -914,10 +912,10 @@ export class DocumentApplicationService {
       const token = this.generateToken(documentId, expiresInMinutes);
 
       this.logger.info('Download link generated successfully', { documentId });
-      return Result.Ok(token);
+      return AppResult.Ok(token);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.generateDownloadLink',
         error instanceof Error ? error.message : 'Failed to generate download link',
         { documentId }
@@ -928,7 +926,7 @@ export class DocumentApplicationService {
   /**
    * Replace tags in document
    */
-  async replaceTagsInDocument(documentId: string, tags: string[], userId: string): Promise<Result<Document, ApplicationError>> {
+  async replaceTagsInDocument(documentId: string, tags: string[], userId: string): Promise<AppResult<Document>> {
     this.logger.info('Replacing tags in document', { documentId, tags, userId });
     
     try {
@@ -936,7 +934,7 @@ export class DocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document tag replacement', { userId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.userNotFound',
           'User not found',
           { userId }
@@ -947,7 +945,7 @@ export class DocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for tag replacement', { documentId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.documentNotFound',
           'Document not found',
           { documentId }
@@ -958,7 +956,7 @@ export class DocumentApplicationService {
       const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
       if (!accessValidation.permissions.canWrite) {
         this.logger.warn('Document write access denied for tag replacement', { documentId, userId });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.writeAccessDenied',
           'Write access denied',
           { documentId, userId }
@@ -969,7 +967,7 @@ export class DocumentApplicationService {
       const updateResult = document.replaceTags(tags);
       if (updateResult.isErr()) {
         this.logger.error('Failed to replace tags in document', { documentId, error: updateResult.unwrapErr() });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'DocumentApplicationService.tagReplacementFailed',
           updateResult.unwrapErr(),
           { documentId, tags }
@@ -982,10 +980,10 @@ export class DocumentApplicationService {
       const savedDocument = await this.documentRepository.update(updatedDocument);
 
       this.logger.info('Tags replaced in document successfully', { documentId, tags, userId });
-      return Result.Ok(savedDocument);
+      return AppResult.Ok(savedDocument);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'DocumentApplicationService.replaceTagsInDocument',
         error instanceof Error ? error.message : 'Failed to replace tags in document',
         { documentId, userId }

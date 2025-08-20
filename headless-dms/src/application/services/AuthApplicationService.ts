@@ -1,5 +1,5 @@
 import { injectable, inject } from 'tsyringe';
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 import { User } from '../../domain/entities/User.js';
 import { 
   AuthDomainService, 
@@ -29,7 +29,7 @@ export class AuthApplicationService {
   /**
    * Authenticate user with comprehensive security validation
    */
-  async authenticateUser(email: string, password: string): Promise<Result<User, ApplicationError>> {
+  async authenticateUser(email: string, password: string): Promise<AppResult<User>> {
     this.logger.info('Authenticating user', { email });
     
     try {
@@ -37,7 +37,7 @@ export class AuthApplicationService {
       const user = await this.userRepository.findByEmail(email);
       if (!user) {
         this.logger.warn('User not found for authentication', { email });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'AuthApplicationService.userNotFound',
           'Invalid credentials',
           { email }
@@ -48,7 +48,7 @@ export class AuthApplicationService {
       const isValidPassword = await user.verifyPassword(password);
       if (!isValidPassword) {
         this.logger.warn('Invalid password for user', { email });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'AuthApplicationService.invalidPassword',
           'Invalid credentials',
           { email }
@@ -69,7 +69,7 @@ export class AuthApplicationService {
       const requiresAdditionalAuth = this.authDomainService.requiresAdditionalAuth(user, 'login');
       if (requiresAdditionalAuth) {
         this.logger.warn('Additional authentication required', { userId: user.id });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'AuthApplicationService.additionalAuthRequired',
           'Additional authentication required',
           { userId: user.id }
@@ -77,10 +77,10 @@ export class AuthApplicationService {
       }
 
       this.logger.info('User authenticated successfully', { userId: user.id, email });
-      return Result.Ok(user);
+      return AppResult.Ok(user);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'AuthApplicationService.authenticateUser',
         error instanceof Error ? error.message : 'Failed to authenticate user',
         { email }
@@ -91,14 +91,14 @@ export class AuthApplicationService {
   /**
    * Validate user credentials
    */
-  async validateUserCredentials(email: string, password: string): Promise<Result<boolean, ApplicationError>> {
+  async validateUserCredentials(email: string, password: string): Promise<AppResult<boolean>> {
     this.logger.info('Validating user credentials', { email });
     
     try {
       const user = await this.userRepository.findByEmail(email);
       if (!user) {
         this.logger.warn('User not found for credential validation', { email });
-        return Result.Err(new ApplicationError(
+        return AppResult.Err(new ApplicationError(
           'AuthApplicationService.userNotFound',
           'User not found',
           { email }
@@ -111,10 +111,10 @@ export class AuthApplicationService {
         email, 
         isValid 
       });
-      return Result.Ok(isValid);
+      return AppResult.Ok(isValid);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'AuthApplicationService.validateUserCredentials',
         error instanceof Error ? error.message : 'Failed to validate user credentials',
         { email }
