@@ -1,14 +1,14 @@
 // tests/services/document-service.test.ts
 import 'reflect-metadata';
 import { DocumentApplicationService } from '../../src/application/services/DocumentApplicationService.js';
-import { IDocumentRepository } from '../../src/application/interfaces/IDocumentRepository.js';
+import { IDocumentRepository } from '../../src/ports/output/IDocumentRepository.js';
 import { Document } from '../../src/domain/entities/Document.js';
 import { DocumentValidator } from '../../src/domain/validators/DocumentValidator.js';
 import { Result } from '@carbonteq/fp';
-import { ILogger } from '../../src/domain/interfaces/ILogger.js';
-import { IFileService } from '../../src/application/interfaces/IFileService.js';
-import { IUserRepository } from '../../src/application/interfaces/IUserRepository.js';
-import { FileError } from '../../src/application/errors/index.js';
+import { ILogger } from '../../src/ports/output/ILogger.js';
+import { IFileService } from '../../src/ports/output/IFileService.js';
+import { IUserRepository } from '../../src/ports/output/IUserRepository.js';
+import { FileError } from '../../src/shared/errors/index.js';
 
 // Mock repository for testing
 class MockDocumentRepository implements IDocumentRepository {

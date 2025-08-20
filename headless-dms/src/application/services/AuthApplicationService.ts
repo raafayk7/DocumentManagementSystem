@@ -11,9 +11,9 @@ import {
 import { 
   UserDomainService 
 } from '../../domain/services/UserDomainService.js';
-import type { IUserRepository } from '../interfaces/IUserRepository.js';
-import type { ILogger } from '../../domain/interfaces/ILogger.js';
-import { ApplicationError } from '../errors/ApplicationError.js';
+import type { IUserRepository } from '../../ports/output/IUserRepository.js';
+import type { ILogger } from '../../ports/output/ILogger.js';
+import { ApplicationError } from '../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class AuthApplicationService {

@@ -1,9 +1,9 @@
 import { injectable, inject } from 'tsyringe';
 import { Result } from '@carbonteq/fp';
 import { UserApplicationService } from '../../services/UserApplicationService.js';
-import type { ILogger } from '../../../domain/interfaces/ILogger.js';
-import type { CreateUserRequest, UserResponse } from '../../dto/user/index.js';
-import { ApplicationError } from '../../errors/ApplicationError.js';
+import type { ILogger } from '../../../ports/output/ILogger.js';
+import type { CreateUserRequest, UserResponse } from '../../../shared/dto/user/index.js';
+import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class CreateUserUseCase {

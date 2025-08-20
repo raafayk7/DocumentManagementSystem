@@ -1,8 +1,8 @@
 // tests/repositories/user-repository.test.ts
 import { Result } from '@carbonteq/fp';
 import { User } from '../../src/domain/entities/User.js';
-import { IUserRepository, UserFilterQuery } from '../../src/infrastructure/database/interfaces/user.repository.interface.js';
-import { PaginationInput, PaginationOutput } from '../../src/application/dto/common/pagination.dto.js';
+import { IUserRepository, UserFilterQuery } from '../../src/adapters/secondary/database/interfaces/user.repository.interface.js';
+import { PaginationInput, PaginationOutput } from '../../src/shared/dto/common/pagination.dto.js';
 
 // In-memory implementation for testing
 class InMemoryUserRepository implements IUserRepository {

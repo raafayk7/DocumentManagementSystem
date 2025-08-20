@@ -13,11 +13,11 @@ import {
   UserDomainService, 
   UserPermission 
 } from '../../domain/services/UserDomainService.js';
-import type { IDocumentRepository } from '../interfaces/IDocumentRepository.js';
-import type { IUserRepository } from '../interfaces/IUserRepository.js';
-import type { IFileService } from '../interfaces/IFileService.js';
-import type { ILogger } from '../../domain/interfaces/ILogger.js';
-import { ApplicationError } from '../errors/ApplicationError.js';
+import type { IDocumentRepository } from '../../ports/output/IDocumentRepository.js';
+import type { IUserRepository } from '../../ports/output/IUserRepository.js';
+import type { IFileService } from '../../ports/output/IFileService.js';
+import type { ILogger } from '../../ports/output/ILogger.js';
+import { ApplicationError } from '../../shared/errors/ApplicationError.js';
 import jwt from 'jsonwebtoken';
 
 @injectable()

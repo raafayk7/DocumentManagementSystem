@@ -1,11 +1,11 @@
 // tests/services/user-service.test.ts
 import 'reflect-metadata';
 import { UserApplicationService } from '../../src/application/services/UserApplicationService.js';
-import { IUserRepository } from '../../src/application/interfaces/IUserRepository.js';
+import { IUserRepository } from '../../src/ports/output/IUserRepository.js';
 import { User } from '../../src/domain/entities/User.js';
 import { UserValidator } from '../../src/domain/validators/UserValidator.js';
 import { Result } from '@carbonteq/fp';
-import { ILogger } from '../../src/domain/interfaces/ILogger.js';
+import { ILogger } from '../../src/ports/output/ILogger.js';
 
 // Mock repository for testing
 class MockUserRepository implements IUserRepository {

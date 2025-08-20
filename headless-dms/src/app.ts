@@ -1,6 +1,6 @@
 // src/app.ts - Pure entry point
 import 'reflect-metadata';
-import { bootstrap } from './infrastructure/bootstrap/index.js';
+import { bootstrap } from './adapters/secondary/bootstrap/index.js';
 
 // Start the application
 const start = async () => {
