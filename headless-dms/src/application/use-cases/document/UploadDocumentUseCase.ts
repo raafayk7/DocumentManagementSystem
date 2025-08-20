@@ -1,78 +1,69 @@
-import { inject, injectable } from "tsyringe";
-import { Result } from "@carbonteq/fp";
-import { DocumentApplicationService } from "../../services/DocumentApplicationService.js";
+import { injectable, inject } from 'tsyringe';
+import { AppResult } from '@carbonteq/hexapp';
+import { UploadDocumentRequest, UploadDocumentResponse } from '../../../shared/dto/document/index.js';
+import type { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import type { UploadDocumentRequest, UploadDocumentResponse } from "../../../shared/dto/document/index.js";
-import { ApplicationError } from "../../../shared/errors/ApplicationError.js";
-
+import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class UploadDocumentUseCase {
   constructor(
-    @inject("DocumentApplicationService") private documentApplicationService: DocumentApplicationService,
-    @inject("ILogger") private logger: ILogger,
+    @inject('IDocumentApplicationService') private documentApplicationService: IDocumentApplicationService,
+    @inject('ILogger') private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'UploadDocumentUseCase' });
   }
 
-  async execute(request: UploadDocumentRequest): Promise<Result<UploadDocumentResponse, ApplicationError>> {
-    this.logger.info('Document upload started', { filename: request.filename });
+  async execute(request: UploadDocumentRequest): Promise<AppResult<UploadDocumentResponse>> {
+    this.logger.info('Executing upload document use case', { 
+      name: request.name, 
+      mimeType: request.mimeType,
+      userId: request.userId 
+    });
 
     try {
-      // Delegate to DocumentApplicationService
       const documentResult = await this.documentApplicationService.uploadDocument(
         request.file,
-        request.name, // Use custom name from form field, not filename
+        request.name,
         request.mimeType,
         request.userId,
-        request.tags || [], // Pass tags from form field
-        request.metadata || {} // Pass metadata from form field
+        request.tags,
+        request.metadata
       );
       
       if (documentResult.isErr()) {
         this.logger.warn('Document upload failed', { 
-          filename: request.filename, 
+          name: request.name, 
+          mimeType: request.mimeType,
           error: documentResult.unwrapErr().message 
         });
-        return Result.Err(new ApplicationError(
-          'UploadDocumentUseCase.uploadFailed',
-          documentResult.unwrapErr().message,
-          { filename: request.filename }
+        return AppResult.Err(new ApplicationError(
+          'UploadDocumentUseCase.documentUploadFailed',
+          'Document upload failed',
+          { name: request.name, mimeType: request.mimeType }
         ));
       }
 
-      const savedDocument = documentResult.unwrap();
-      
-      // Log the uploaded document details
-      this.logger.info('Document uploaded successfully', { 
-        documentId: savedDocument.id, 
-        name: savedDocument.name.value,
-        tagsProvided: !!request.tags?.length,
-        metadataProvided: !!request.metadata && Object.keys(request.metadata).length > 0
-      });
-      
-      // Note: Tags and metadata can be updated separately using PATCH /documents/:id endpoints
-      if (request.tags?.length || (request.metadata && Object.keys(request.metadata).length > 0)) {
-        this.logger.info('Additional fields provided - use PATCH endpoints to update tags/metadata', {
-          documentId: savedDocument.id,
-          tags: request.tags,
-          metadata: request.metadata
-        });
-      }
-      
-      // Convert to response DTO
+      const document = documentResult.unwrap();
       const response: UploadDocumentResponse = {
         success: true,
-        message: 'Document uploaded successfully',
+        message: 'Document uploaded successfully'
       };
 
-      return Result.Ok(response);
+      this.logger.info('Document uploaded successfully', { 
+        documentId: document.id, 
+        name: document.name.value 
+      });
+      return AppResult.Ok(response);
     } catch (error) {
-      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { filename: request.filename });
-      return Result.Err(new ApplicationError(
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
+        name: request.name, 
+        mimeType: request.mimeType 
+      });
+      return AppResult.Err(new ApplicationError(
         'UploadDocumentUseCase.execute',
-        error instanceof Error ? error.message : 'Failed to upload document',
-        { filename: request.filename }
+        error instanceof Error ? error.message : 'Failed to execute upload document use case',
+        { name: request.name, mimeType: request.mimeType }
       ));
     }
   }

@@ -1,27 +1,26 @@
-import { inject, injectable } from "tsyringe";
-import { Result } from "@carbonteq/fp";
-import { DocumentApplicationService } from "../../services/DocumentApplicationService.js";
+import { injectable, inject } from 'tsyringe';
+import { AppResult } from '@carbonteq/hexapp';
+import { AddTagsToDocumentRequest, AddTagsToDocumentResponse } from '../../../shared/dto/document/index.js';
+import type { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import type { AddTagsToDocumentRequest, AddTagsToDocumentResponse } from "../../../shared/dto/document/index.js";
-import { ApplicationError } from "../../../shared/errors/ApplicationError.js";
+import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class AddTagsToDocumentUseCase {
   constructor(
-    @inject("DocumentApplicationService") private documentApplicationService: DocumentApplicationService,
-    @inject("ILogger") private logger: ILogger,
+    @inject('IDocumentApplicationService') private documentApplicationService: IDocumentApplicationService,
+    @inject('ILogger') private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'AddTagsToDocumentUseCase' });
   }
 
-  async execute(request: AddTagsToDocumentRequest): Promise<Result<AddTagsToDocumentResponse, ApplicationError>> {
-    this.logger.info('Adding tags to document', { 
+  async execute(request: AddTagsToDocumentRequest): Promise<AppResult<AddTagsToDocumentResponse>> {
+    this.logger.info('Executing add tags to document use case', { 
       documentId: request.documentId, 
       tags: request.tags 
     });
 
     try {
-      // Delegate to DocumentApplicationService
       const documentResult = await this.documentApplicationService.addTagsToDocument(
         request.documentId,
         request.tags,
@@ -29,31 +28,37 @@ export class AddTagsToDocumentUseCase {
       );
       
       if (documentResult.isErr()) {
-        this.logger.warn('Document tag addition failed', {
-          documentId: request.documentId,
-          error: documentResult.unwrapErr().message
+        this.logger.warn('Tag addition failed', { 
+          documentId: request.documentId, 
+          tags: request.tags,
+          error: documentResult.unwrapErr().message 
         });
-        return documentResult;
+        return AppResult.Err(new ApplicationError(
+          'AddTagsToDocumentUseCase.tagAdditionFailed',
+          'Tag addition failed',
+          { documentId: request.documentId, tags: request.tags }
+        ));
       }
 
-      const savedDocument = documentResult.unwrap();
-
-      // 4. Return response DTO
+      const document = documentResult.unwrap();
       const response: AddTagsToDocumentResponse = {
         success: true,
-        message: 'Tags added to document successfully',
+        message: 'Tags added successfully'
       };
 
-      this.logger.info('Tags added to document successfully', { 
+      this.logger.info('Tags added successfully', { 
+        documentId: document.id, 
+        addedTags: request.tags 
+      });
+      return AppResult.Ok(response);
+    } catch (error) {
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
         documentId: request.documentId, 
         tags: request.tags 
       });
-      return Result.Ok(response);
-    } catch (error) {
-      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId: request.documentId });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'AddTagsToDocumentUseCase.execute',
-        error instanceof Error ? error.message : 'Failed to add tags to document',
+        error instanceof Error ? error.message : 'Failed to execute add tags to document use case',
         { documentId: request.documentId, tags: request.tags }
       ));
     }

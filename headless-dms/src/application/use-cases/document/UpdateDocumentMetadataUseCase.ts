@@ -1,27 +1,26 @@
-import { inject, injectable } from "tsyringe";
-import { Result } from "@carbonteq/fp";
-import { DocumentApplicationService } from "../../services/DocumentApplicationService.js";
+import { injectable, inject } from 'tsyringe';
+import { AppResult } from '@carbonteq/hexapp';
+import { UpdateDocumentMetadataRequest, UpdateDocumentMetadataResponse } from '../../../shared/dto/document/index.js';
+import type { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import type { UpdateDocumentMetadataRequest, UpdateDocumentMetadataResponse } from "../../../shared/dto/document/index.js";
-import { ApplicationError } from "../../../shared/errors/ApplicationError.js";
+import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class UpdateDocumentMetadataUseCase {
   constructor(
-    @inject("DocumentApplicationService") private documentApplicationService: DocumentApplicationService,
-    @inject("ILogger") private logger: ILogger,
+    @inject('IDocumentApplicationService') private documentApplicationService: IDocumentApplicationService,
+    @inject('ILogger') private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'UpdateDocumentMetadataUseCase' });
   }
 
-  async execute(request: UpdateDocumentMetadataRequest): Promise<Result<UpdateDocumentMetadataResponse, ApplicationError>> {
-    this.logger.info('Updating document metadata', { 
+  async execute(request: UpdateDocumentMetadataRequest): Promise<AppResult<UpdateDocumentMetadataResponse>> {
+    this.logger.info('Executing update document metadata use case', { 
       documentId: request.documentId, 
       metadata: request.metadata 
     });
 
     try {
-      // Delegate to DocumentApplicationService
       const documentResult = await this.documentApplicationService.updateDocumentMetadata(
         request.documentId,
         request.metadata || {},
@@ -29,31 +28,37 @@ export class UpdateDocumentMetadataUseCase {
       );
       
       if (documentResult.isErr()) {
-        this.logger.warn('Document metadata update failed', {
-          documentId: request.documentId,
-          error: documentResult.unwrapErr().message
+        this.logger.warn('Document metadata update failed', { 
+          documentId: request.documentId, 
+          metadata: request.metadata,
+          error: documentResult.unwrapErr().message 
         });
-        return documentResult;
+        return AppResult.Err(new ApplicationError(
+          'UpdateDocumentMetadataUseCase.metadataUpdateFailed',
+          'Document metadata update failed',
+          { documentId: request.documentId, metadata: request.metadata }
+        ));
       }
 
-      const savedDocument = documentResult.unwrap();
-
-      // 4. Return response DTO
+      const document = documentResult.unwrap();
       const response: UpdateDocumentMetadataResponse = {
         success: true,
-        message: 'Document metadata updated successfully',
+        message: 'Document metadata updated successfully'
       };
 
       this.logger.info('Document metadata updated successfully', { 
+        documentId: document.id, 
+        metadata: request.metadata 
+      });
+      return AppResult.Ok(response);
+    } catch (error) {
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
         documentId: request.documentId, 
         metadata: request.metadata 
       });
-      return Result.Ok(response);
-    } catch (error) {
-      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId: request.documentId });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'UpdateDocumentMetadataUseCase.execute',
-        error instanceof Error ? error.message : 'Failed to update document metadata',
+        error instanceof Error ? error.message : 'Failed to execute update document metadata use case',
         { documentId: request.documentId, metadata: request.metadata }
       ));
     }

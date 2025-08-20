@@ -1,48 +1,61 @@
 import { injectable, inject } from 'tsyringe';
-import { Result } from '@carbonteq/fp';
-import { UserApplicationService } from '../../services/UserApplicationService.js';
+import { AppResult } from '@carbonteq/hexapp';
+import { DeleteUserRequest, DeleteUserResponse } from '../../../shared/dto/user/index.js';
+import type { IUserApplicationService } from '../../../ports/input/IUserApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import type { DeleteUserRequest, DeleteUserResponse } from '../../../shared/dto/user/index.js';
 import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class DeleteUserUseCase {
   constructor(
-    @inject('UserApplicationService') private userApplicationService: UserApplicationService,
-    @inject('ILogger') private logger: ILogger
+    @inject('IUserApplicationService') private userApplicationService: IUserApplicationService,
+    @inject('ILogger') private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'DeleteUserUseCase' });
   }
 
-  async execute(request: DeleteUserRequest): Promise<Result<DeleteUserResponse, ApplicationError>> {
-    this.logger.info('Removing user', { userId: request.userId });
+  async execute(request: DeleteUserRequest): Promise<AppResult<DeleteUserResponse>> {
+    this.logger.info('Deleting user', { 
+      currentUserId: request.currentUserId, 
+      targetUserId: request.userId 
+    });
 
     try {
-      // Delegate user deletion to UserApplicationService
-      const result = await this.userApplicationService.deleteUser(
-        request.currentUserId,
-        request.userId
-      );
-      
-      if (result.isErr()) {
-        this.logger.warn('User deletion failed', { 
-          userId: request.userId, 
-          error: result.unwrapErr().message 
+      const deleteResult = await this.userApplicationService.deleteUser(request.currentUserId, request.userId);
+
+      if (deleteResult.isErr()) {
+        this.logger.warn('Failed to delete user', { 
+          currentUserId: request.currentUserId, 
+          targetUserId: request.userId,
+          error: deleteResult.unwrapErr().message 
         });
-        return result;
+        return AppResult.Err(new ApplicationError(
+          'DeleteUserUseCase.userDeletionFailed',
+          'Failed to delete user',
+          { currentUserId: request.currentUserId, targetUserId: request.userId }
+        ));
       }
 
-      this.logger.info('User removed successfully', { userId: request.userId });
-      return Result.Ok({ 
-        success: true, 
-        message: 'User deleted successfully' 
+      const response: DeleteUserResponse = {
+        success: true,
+        message: 'User deleted successfully'
+      };
+      
+      this.logger.info('User deleted successfully', { 
+        currentUserId: request.currentUserId, 
+        targetUserId: request.userId 
       });
+      return AppResult.Ok(response);
     } catch (error) {
-      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { userId: request.userId });
-      return Result.Err(new ApplicationError(
-        'DeleteUserUseCase.execute',
-        error instanceof Error ? error.message : 'Failed to remove user',
-        { userId: request.userId }
+      this.logger.error('Unexpected error during user deletion', { 
+        currentUserId: request.currentUserId, 
+        targetUserId: request.userId,
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      return AppResult.Err(new ApplicationError(
+        'DeleteUserUseCase.unexpectedError',
+        'Unexpected error during user deletion',
+        { currentUserId: request.currentUserId, targetUserId: request.userId }
       ));
     }
   }

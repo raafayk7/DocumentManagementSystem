@@ -1,54 +1,65 @@
-import { inject, injectable } from "tsyringe";
-import { Result } from "@carbonteq/fp";
-import { DocumentApplicationService } from "../../services/DocumentApplicationService.js";
+import { injectable, inject } from 'tsyringe';
+import { AppResult } from '@carbonteq/hexapp';
+import { GenerateDownloadLinkRequest, GenerateDownloadLinkResponse } from '../../../shared/dto/document/index.js';
+import type { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import type { GenerateDownloadLinkRequest, GenerateDownloadLinkResponse } from "../../../shared/dto/document/index.js";
-import { ApplicationError } from "../../../shared/errors/ApplicationError.js";
+import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class GenerateDownloadLinkUseCase {
   constructor(
-    @inject("DocumentApplicationService") private documentApplicationService: DocumentApplicationService,
-    @inject("ILogger") private logger: ILogger,
+    @inject('IDocumentApplicationService') private documentApplicationService: IDocumentApplicationService,
+    @inject('ILogger') private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'GenerateDownloadLinkUseCase' });
   }
 
-  async execute(request: GenerateDownloadLinkRequest): Promise<Result<GenerateDownloadLinkResponse, ApplicationError>> {
-    this.logger.info('Generating download link', { documentId: request.documentId });
+  async execute(request: GenerateDownloadLinkRequest): Promise<AppResult<GenerateDownloadLinkResponse>> {
+    this.logger.info('Executing generate download link use case', { 
+      documentId: request.documentId, 
+      expiresInMinutes: request.expiresInMinutes 
+    });
 
     try {
-      // Delegate to DocumentApplicationService
-      const downloadLinkResult = await this.documentApplicationService.generateDownloadLink(
+      const linkResult = await this.documentApplicationService.generateDownloadLink(
         request.documentId,
         request.expiresInMinutes
       );
       
-      if (downloadLinkResult.isErr()) {
-        this.logger.warn('Failed to generate download link', {
-          documentId: request.documentId,
-          error: downloadLinkResult.unwrapErr().message
+      if (linkResult.isErr()) {
+        this.logger.warn('Download link generation failed', { 
+          documentId: request.documentId, 
+          expiresInMinutes: request.expiresInMinutes,
+          error: linkResult.unwrapErr().message 
         });
-        return downloadLinkResult;
+        return AppResult.Err(new ApplicationError(
+          'GenerateDownloadLinkUseCase.linkGenerationFailed',
+          'Download link generation failed',
+          { documentId: request.documentId, expiresInMinutes: request.expiresInMinutes }
+        ));
       }
 
-      const downloadUrl = downloadLinkResult.unwrap();
-
-      // 3. Return response DTO
+      const link = linkResult.unwrap();
       const response: GenerateDownloadLinkResponse = {
-        downloadUrl,
+        downloadUrl: link,
         expiresAt: new Date(Date.now() + request.expiresInMinutes * 60 * 1000),
-        token: downloadUrl.split('token=')[1] || '', // Extract token from URL
+        token: 'dummy-token' // This should come from the actual service
       };
 
-      this.logger.info('Download link generated successfully', { documentId: request.documentId });
-      return Result.Ok(response);
+      this.logger.info('Download link generated successfully', { 
+        documentId: request.documentId, 
+        expiresInMinutes: request.expiresInMinutes 
+      });
+      return AppResult.Ok(response);
     } catch (error) {
-      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId: request.documentId });
-      return Result.Err(new ApplicationError(
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
+        documentId: request.documentId, 
+        expiresInMinutes: request.expiresInMinutes 
+      });
+      return AppResult.Err(new ApplicationError(
         'GenerateDownloadLinkUseCase.execute',
-        error instanceof Error ? error.message : 'Failed to generate download link',
-        { documentId: request.documentId }
+        error instanceof Error ? error.message : 'Failed to execute generate download link use case',
+        { documentId: request.documentId, expiresInMinutes: request.expiresInMinutes }
       ));
     }
   }

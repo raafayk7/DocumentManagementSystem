@@ -1,88 +1,93 @@
 import { injectable, inject } from 'tsyringe';
-import { Result } from '@carbonteq/fp';
-import type { IUserRepository } from '../../../ports/output/IUserRepository.js';
+import { AppResult } from '@carbonteq/hexapp';
+import { GetUsersRequest, PaginatedUsersResponse } from '../../../shared/dto/user/index.js';
+import type { IUserApplicationService } from '../../../ports/input/IUserApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import type { GetUsersRequest, PaginatedUsersResponse } from '../../../shared/dto/user/index.js';
 import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class GetUsersUseCase {
   constructor(
-    @inject('IUserRepository') private userRepository: IUserRepository,
-    @inject('ILogger') private logger: ILogger
+    @inject('IUserApplicationService') private userApplicationService: IUserApplicationService,
+    @inject('ILogger') private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'GetUsersUseCase' });
   }
 
-  async execute(request: GetUsersRequest): Promise<Result<PaginatedUsersResponse, ApplicationError>> {
-    this.logger.info('Getting users', { 
+  async execute(request: GetUsersRequest): Promise<AppResult<PaginatedUsersResponse>> {
+    this.logger.info('Getting users with pagination', { 
       page: request.page, 
-      limit: request.limit, 
-      search: request.search,
-      email: request.email,
-      role: request.role,
-      sortBy: request.sortBy,
-      sortOrder: request.sortOrder
+      limit: request.limit,
+      filters: request 
     });
 
     try {
-      // Build filter query for repository
-      const filterQuery: any = {};
-      if (request.email) {
-        filterQuery.email = request.email;
-      }
-      if (request.role) {
-        filterQuery.role = request.role;
-      }
-
-      // Build pagination parameters for repository
-      const paginationParams = {
-        page: request.page,
-        limit: request.limit,
-        order: request.sortOrder,
-        sort: request.sortBy
-      };
-
-      // Use repository directly to get full pagination information
-      const usersResult = await this.userRepository.find(filterQuery, paginationParams);
-      
-      // Transform to response DTOs
-      const userDtos = usersResult.data.map(user => ({
-        id: user.id,
-        email: user.email.value,
-        role: user.role.value,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      }));
-
-      // Use the pagination metadata from repository
-      const response: PaginatedUsersResponse = {
-        users: userDtos,
-        pagination: usersResult.pagination,
-      };
-
-      this.logger.info('Users retrieved successfully', { 
-        count: userDtos.length,
-        page: request.page,
-        total: usersResult.pagination.total,
-        totalPages: usersResult.pagination.totalPages,
-        hasNext: usersResult.pagination.hasNext,
-        hasPrev: usersResult.pagination.hasPrev,
-        filtersApplied: {
+      const users = await this.userApplicationService.getUsers(
+        request.page,
+        request.limit,
+        request.sortBy,
+        request.sortOrder,
+        {
           search: request.search,
           email: request.email,
           role: request.role
         }
-      });
-      return Result.Ok(response);
-    } catch (error) {
-      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
+      );
+
+      if (users.isErr()) {
+        this.logger.warn('Failed to get users', { 
+          page: request.page, 
+          limit: request.limit,
+          error: users.unwrapErr().message 
+        });
+        return AppResult.Err(new ApplicationError(
+          'GetUsersUseCase.usersRetrievalFailed',
+          'Failed to retrieve users',
+          { page: request.page, limit: request.limit }
+        ));
+      }
+
+      const usersData = users.unwrap();
+      
+      // Apply pagination manually since the service returns all users
+      const startIndex = (request.page - 1) * request.limit;
+      const endIndex = startIndex + request.limit;
+      const paginatedUsers = usersData.slice(startIndex, endIndex);
+      
+      const response: PaginatedUsersResponse = {
+        users: paginatedUsers.map(user => ({
+          id: user.id,
+          email: user.email.value,
+          role: user.role.value,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt
+        })),
+        pagination: {
+          page: request.page,
+          limit: request.limit,
+          total: usersData.length,
+          totalPages: Math.ceil(usersData.length / request.limit),
+          hasNext: endIndex < usersData.length,
+          hasPrev: request.page > 1
+        }
+      };
+      
+      this.logger.info('Users retrieved successfully', { 
         page: request.page, 
-        limit: request.limit 
+        limit: request.limit,
+        totalUsers: usersData.length,
+        returnedUsers: paginatedUsers.length
       });
-      return Result.Err(new ApplicationError(
-        'GetUsersUseCase.execute',
-        error instanceof Error ? error.message : 'Failed to get users',
+      return AppResult.Ok(response);
+    } catch (error) {
+      this.logger.error('Unexpected error during users retrieval', { 
+        page: request.page, 
+        limit: request.limit,
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+      return AppResult.Err(new ApplicationError(
+        'GetUsersUseCase.unexpectedError',
+        'Unexpected error during users retrieval',
         { page: request.page, limit: request.limit }
       ));
     }

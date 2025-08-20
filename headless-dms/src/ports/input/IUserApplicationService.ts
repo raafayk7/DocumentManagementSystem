@@ -14,6 +14,11 @@ export interface IUserApplicationService {
   authenticateUser(email: string, password: string): Promise<AppResult<User>>;
 
   /**
+   * Validate user credentials
+   */
+  validateUserCredentials(email: string, password: string): Promise<AppResult<boolean>>;
+
+  /**
    * Change user password with validation
    */
   changeUserPassword(userId: string, currentPassword: string, newPassword: string): Promise<AppResult<User>>;

@@ -14,9 +14,10 @@ import {
 import type { IUserRepository } from '../../ports/output/IUserRepository.js';
 import type { ILogger } from '../../ports/output/ILogger.js';
 import { ApplicationError } from '../../shared/errors/ApplicationError.js';
+import type { IAuthApplicationService } from '../../ports/input/IAuthApplicationService.js';
 
 @injectable()
-export class AuthApplicationService {
+export class AuthApplicationService implements IAuthApplicationService {
   constructor(
     @inject("IUserRepository") private userRepository: IUserRepository,
     @inject("AuthDomainService") private authDomainService: AuthDomainService,

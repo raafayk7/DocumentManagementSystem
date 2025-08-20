@@ -15,9 +15,10 @@ import {
 import type { IUserRepository } from '../../ports/output/IUserRepository.js';
 import type { ILogger } from '../../ports/output/ILogger.js';
 import { ApplicationError } from '../../shared/errors/ApplicationError.js';
+import type { IUserApplicationService } from '../../ports/input/IUserApplicationService.js';
 
 @injectable()
-export class UserApplicationService {
+export class UserApplicationService implements IUserApplicationService {
   constructor(
     @inject("IUserRepository") private userRepository: IUserRepository,
     @inject("UserDomainService") private userDomainService: UserDomainService,
@@ -412,6 +413,40 @@ export class UserApplicationService {
         'UserApplicationService.getUsersByRole',
         error instanceof Error ? error.message : 'Failed to get users by role',
         { role }
+      ));
+    }
+  }
+
+  /**
+   * Validate user credentials
+   */
+  async validateUserCredentials(email: string, password: string): Promise<AppResult<boolean>> {
+    this.logger.info('Validating user credentials', { email });
+    
+    try {
+      const user = await this.userRepository.findByEmail(email);
+      if (!user) {
+        this.logger.warn('User not found for credential validation', { email });
+        return AppResult.Err(new ApplicationError(
+          'UserApplicationService.userNotFound',
+          'User not found',
+          { email }
+        ));
+      }
+
+      const isValid = await user.verifyPassword(password);
+      
+      this.logger.info('User credentials validated', { 
+        email, 
+        isValid 
+      });
+      return AppResult.Ok(isValid);
+    } catch (error) {
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email });
+      return AppResult.Err(new ApplicationError(
+        'UserApplicationService.validateUserCredentials',
+        error instanceof Error ? error.message : 'Failed to validate user credentials',
+        { email }
       ));
     }
   }

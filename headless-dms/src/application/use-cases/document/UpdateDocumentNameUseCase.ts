@@ -1,27 +1,26 @@
-import { inject, injectable } from "tsyringe";
-import { Result } from "@carbonteq/fp";
-import { DocumentApplicationService } from "../../services/DocumentApplicationService.js";
+import { injectable, inject } from 'tsyringe';
+import { AppResult } from '@carbonteq/hexapp';
+import { UpdateDocumentNameRequest, UpdateDocumentNameResponse } from '../../../shared/dto/document/index.js';
+import type { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import type { UpdateDocumentNameRequest, UpdateDocumentNameResponse } from "../../../shared/dto/document/index.js";
-import { ApplicationError } from "../../../shared/errors/ApplicationError.js";
+import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class UpdateDocumentNameUseCase {
   constructor(
-    @inject("DocumentApplicationService") private documentApplicationService: DocumentApplicationService,
-    @inject("ILogger") private logger: ILogger,
+    @inject('IDocumentApplicationService') private documentApplicationService: IDocumentApplicationService,
+    @inject('ILogger') private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'UpdateDocumentNameUseCase' });
   }
 
-  async execute(request: UpdateDocumentNameRequest): Promise<Result<UpdateDocumentNameResponse, ApplicationError>> {
-    this.logger.info('Updating document name', { 
+  async execute(request: UpdateDocumentNameRequest): Promise<AppResult<UpdateDocumentNameResponse>> {
+    this.logger.info('Executing update document name use case', { 
       documentId: request.documentId, 
-      newName: request.name 
+      name: request.name 
     });
 
     try {
-      // Delegate to DocumentApplicationService
       const documentResult = await this.documentApplicationService.updateDocumentName(
         request.documentId,
         request.name,
@@ -29,32 +28,38 @@ export class UpdateDocumentNameUseCase {
       );
       
       if (documentResult.isErr()) {
-        this.logger.warn('Document name update failed', {
-          documentId: request.documentId,
-          error: documentResult.unwrapErr().message
+        this.logger.warn('Document name update failed', { 
+          documentId: request.documentId, 
+          name: request.name,
+          error: documentResult.unwrapErr().message 
         });
-        return documentResult;
+        return AppResult.Err(new ApplicationError(
+          'UpdateDocumentNameUseCase.nameUpdateFailed',
+          'Document name update failed',
+          { documentId: request.documentId, name: request.name }
+        ));
       }
 
-      const savedDocument = documentResult.unwrap();
-
-      // 4. Return response DTO
+      const document = documentResult.unwrap();
       const response: UpdateDocumentNameResponse = {
         success: true,
-        message: 'Document name updated successfully',
+        message: 'Document name updated successfully'
       };
 
       this.logger.info('Document name updated successfully', { 
-        documentId: request.documentId, 
+        documentId: document.id, 
         newName: request.name 
       });
-      return Result.Ok(response);
+      return AppResult.Ok(response);
     } catch (error) {
-      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId: request.documentId });
-      return Result.Err(new ApplicationError(
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
+        documentId: request.documentId, 
+        name: request.name 
+      });
+      return AppResult.Err(new ApplicationError(
         'UpdateDocumentNameUseCase.execute',
-        error instanceof Error ? error.message : 'Failed to update document name',
-        { documentId: request.documentId, newName: request.name }
+        error instanceof Error ? error.message : 'Failed to execute update document name use case',
+        { documentId: request.documentId, name: request.name }
       ));
     }
   }

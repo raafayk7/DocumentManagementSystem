@@ -1,51 +1,51 @@
 import { injectable, inject } from 'tsyringe';
-import { Result } from '@carbonteq/fp';
-import { UserApplicationService } from '../../services/UserApplicationService.js';
+import { AppResult } from '@carbonteq/hexapp';
+import { ChangeUserPasswordRequest, ChangeUserPasswordResponse } from '../../../shared/dto/user/index.js';
+import type { IUserApplicationService } from '../../../ports/input/IUserApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import type { ChangeUserPasswordRequest, ChangeUserPasswordResponse } from '../../../shared/dto/user/index.js';
 import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class ChangeUserPasswordUseCase {
   constructor(
-    @inject('UserApplicationService') private userApplicationService: UserApplicationService,
-    @inject('ILogger') private logger: ILogger
+    @inject('IUserApplicationService') private userApplicationService: IUserApplicationService,
+    @inject('ILogger') private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'ChangeUserPasswordUseCase' });
   }
 
-  async execute(request: ChangeUserPasswordRequest): Promise<Result<ChangeUserPasswordResponse, ApplicationError>> {
-    this.logger.info('Changing user password', { userId: request.userId });
+  async execute(request: ChangeUserPasswordRequest): Promise<AppResult<ChangeUserPasswordResponse>> {
+    this.logger.info('Executing change user password use case', { userId: request.userId });
 
     try {
-      // Delegate password change to UserApplicationService
       const userResult = await this.userApplicationService.changeUserPassword(
-        request.userId,
-        request.currentPassword,
+        request.userId, 
+        request.currentPassword, 
         request.newPassword
       );
       
       if (userResult.isErr()) {
-        this.logger.warn('Password change failed', { 
-          userId: request.userId, 
-          error: userResult.unwrapErr().message 
-        });
-        return userResult;
+        this.logger.warn('User password change failed', { userId: request.userId });
+        return AppResult.Err(new ApplicationError(
+          'ChangeUserPasswordUseCase.passwordChangeFailed',
+          'Password change failed',
+          { userId: request.userId }
+        ));
       }
 
-      // Return response DTO
+      const user = userResult.unwrap();
       const response: ChangeUserPasswordResponse = {
         success: true,
-        message: 'Password changed successfully',
+        message: 'Password changed successfully'
       };
 
-      this.logger.info('User password changed successfully', { userId: request.userId });
-      return Result.Ok(response);
+      this.logger.info('User password changed successfully', { userId: user.id });
+      return AppResult.Ok(response);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { userId: request.userId });
-      return Result.Err(new ApplicationError(
+      return AppResult.Err(new ApplicationError(
         'ChangeUserPasswordUseCase.execute',
-        error instanceof Error ? error.message : 'Failed to change password',
+        error instanceof Error ? error.message : 'Failed to execute change user password use case',
         { userId: request.userId }
       ));
     }

@@ -18,10 +18,11 @@ import type { IUserRepository } from '../../ports/output/IUserRepository.js';
 import type { IFileService } from '../../ports/output/IFileService.js';
 import type { ILogger } from '../../ports/output/ILogger.js';
 import { ApplicationError } from '../../shared/errors/ApplicationError.js';
+import type { IDocumentApplicationService } from '../../ports/input/IDocumentApplicationService.js';
 import jwt from 'jsonwebtoken';
 
 @injectable()
-export class DocumentApplicationService {
+export class DocumentApplicationService implements IDocumentApplicationService {
   constructor(
     @inject("IDocumentRepository") private documentRepository: IDocumentRepository,
     @inject("IUserRepository") private userRepository: IUserRepository,
@@ -37,13 +38,13 @@ export class DocumentApplicationService {
    * Create a new document with validation
    */
   async createDocument(
+    userId: string,
     name: string,
     filename: string,
     mimeType: string,
     size: string,
     tags: string[] = [],
-    metadata: Record<string, string> = {},
-    userId: string
+    metadata: Record<string, string> = {}
   ): Promise<AppResult<Document>> {
     this.logger.info('Creating new document', { name, filename, userId });
     

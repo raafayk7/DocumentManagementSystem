@@ -1,65 +1,77 @@
 import { injectable, inject } from 'tsyringe';
-import { Result } from '@carbonteq/fp';
-import { DocumentApplicationService } from '../../services/DocumentApplicationService.js';
+import { AppResult } from '@carbonteq/hexapp';
+import { CreateDocumentRequest, DocumentResponse } from '../../../shared/dto/document/index.js';
+import type { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import type { CreateDocumentRequest, DocumentResponse } from '../../../shared/dto/document/index.js';
 import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class CreateDocumentUseCase {
   constructor(
-    @inject('DocumentApplicationService') private documentApplicationService: DocumentApplicationService,
-    @inject('ILogger') private logger: ILogger
+    @inject('IDocumentApplicationService') private documentApplicationService: IDocumentApplicationService,
+    @inject('ILogger') private logger: ILogger,
   ) {
     this.logger = this.logger.child({ useCase: 'CreateDocumentUseCase' });
   }
 
-  async execute(request: CreateDocumentRequest): Promise<Result<DocumentResponse, ApplicationError>> {
-    this.logger.info('Creating document', { name: request.name, size: request.size });
+  async execute(request: CreateDocumentRequest): Promise<AppResult<DocumentResponse>> {
+    this.logger.info('Executing create document use case', { 
+      name: request.name, 
+      filePath: request.filePath,
+      userId: request.userId 
+    });
 
     try {
-      // Delegate to DocumentApplicationService
       const documentResult = await this.documentApplicationService.createDocument(
         request.name,
         request.filePath,
         request.mimeType,
         request.size,
-        request.tags || [],
-        request.metadata || {},
-        request.userId
+        request.userId,
+        request.tags,
+        request.metadata
       );
       
       if (documentResult.isErr()) {
         this.logger.warn('Document creation failed', { 
           name: request.name, 
+          filePath: request.filePath,
           error: documentResult.unwrapErr().message 
         });
-        return documentResult;
+        return AppResult.Err(new ApplicationError(
+          'CreateDocumentUseCase.documentCreationFailed',
+          'Document creation failed',
+          { name: request.name, filePath: request.filePath }
+        ));
       }
 
-      const savedDocument = documentResult.unwrap();
-      
-      // 6. Return response DTO
+      const document = documentResult.unwrap();
       const response: DocumentResponse = {
-        id: savedDocument.id,
-        name: savedDocument.name.value,
-        filePath: savedDocument.filePath,
-        mimeType: savedDocument.mimeType.value,
-        size: savedDocument.size.bytes.toString(),
-        tags: savedDocument.tags,
-        metadata: savedDocument.metadata,
-        createdAt: savedDocument.createdAt,
-        updatedAt: savedDocument.updatedAt,
+        id: document.id,
+        name: document.name.value,
+        filePath: document.filePath,
+        mimeType: document.mimeType.value,
+        size: document.size.bytes.toString(),
+        createdAt: document.createdAt,
+        updatedAt: document.updatedAt,
+        tags: document.tags,
+        metadata: document.metadata
       };
 
-      this.logger.info('Document created successfully', { documentId: savedDocument.id, name: savedDocument.name.value });
-      return Result.Ok(response);
+      this.logger.info('Document created successfully', { 
+        documentId: document.id, 
+        name: document.name.value 
+      });
+      return AppResult.Ok(response);
     } catch (error) {
-      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { name: request.name });
-      return Result.Err(new ApplicationError(
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
+        name: request.name, 
+        filePath: request.filePath 
+      });
+      return AppResult.Err(new ApplicationError(
         'CreateDocumentUseCase.execute',
-        error instanceof Error ? error.message : 'Failed to create document',
-        { name: request.name, size: request.size }
+        error instanceof Error ? error.message : 'Failed to execute create document use case',
+        { name: request.name, filePath: request.filePath }
       ));
     }
   }
