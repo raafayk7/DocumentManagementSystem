@@ -1,0 +1,8 @@
+{
+  "extension": ["ts"],
+  "spec": "tests/**/*.test.ts",
+  "require": "tsx/esm",
+  "timeout": 5000,
+  "reporter": "spec",
+  "ui": "bdd"
+}
