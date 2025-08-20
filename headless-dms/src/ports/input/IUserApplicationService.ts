@@ -1,4 +1,4 @@
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 import { User } from '../../domain/entities/User.js';
 import { ApplicationError } from '../../shared/errors/ApplicationError.js';
 
@@ -6,32 +6,32 @@ export interface IUserApplicationService {
   /**
    * Create a new user with validation
    */
-  createUser(email: string, password: string, role?: 'user' | 'admin'): Promise<Result<User, ApplicationError>>;
+  createUser(email: string, password: string, role?: 'user' | 'admin'): Promise<AppResult<User>>;
 
   /**
    * Authenticate user with security validation
    */
-  authenticateUser(email: string, password: string): Promise<Result<User, ApplicationError>>;
+  authenticateUser(email: string, password: string): Promise<AppResult<User>>;
 
   /**
    * Change user password with validation
    */
-  changeUserPassword(userId: string, currentPassword: string, newPassword: string): Promise<Result<User, ApplicationError>>;
+  changeUserPassword(userId: string, currentPassword: string, newPassword: string): Promise<AppResult<User>>;
 
   /**
    * Change user role with permission validation
    */
-  changeUserRole(currentUserId: string, targetUserId: string, newRole: 'user' | 'admin'): Promise<Result<User, ApplicationError>>;
+  changeUserRole(currentUserId: string, targetUserId: string, newRole: 'user' | 'admin'): Promise<AppResult<User>>;
 
   /**
    * Get user by ID
    */
-  getUserById(userId: string): Promise<Result<User, ApplicationError>>;
+  getUserById(userId: string): Promise<AppResult<User>>;
 
   /**
    * Get user by email
    */
-  getUserByEmail(email: string): Promise<Result<User, ApplicationError>>;
+  getUserByEmail(email: string): Promise<AppResult<User>>;
 
   /**
    * Get users with enhanced filtering
@@ -46,15 +46,15 @@ export interface IUserApplicationService {
       email?: string;
       role?: 'user' | 'admin';
     }
-  ): Promise<Result<User[], ApplicationError>>;
+  ): Promise<AppResult<User[]>>;
 
   /**
    * Get users by role
    */
-  getUsersByRole(role: 'user' | 'admin'): Promise<Result<User[], ApplicationError>>;
+  getUsersByRole(role: 'user' | 'admin'): Promise<AppResult<User[]>>;
 
   /**
    * Delete user with validation
    */
-  deleteUser(currentUserId: string, targetUserId: string): Promise<Result<void, ApplicationError>>;
+  deleteUser(currentUserId: string, targetUserId: string): Promise<AppResult<void>>;
 }

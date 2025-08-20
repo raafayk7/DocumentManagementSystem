@@ -1,16 +1,11 @@
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
+import { FileInfo } from '../../shared/types/FileInfo.js';
 import { FileError } from '../../shared/errors/index.js';
-import type { FileInfo } from './IFileService.js';
 
 export interface IFileStorage {
-  saveFile(file: Buffer, filename: string): Promise<Result<string, FileError>>;
-  getFile(path: string): Promise<Result<Buffer, FileError>>;
-  deleteFile(path: string): Promise<Result<boolean, FileError>>;
-  fileExists(path: string): Promise<Result<boolean, FileError>>;
-  getFileSize(path: string): Promise<Result<number, FileError>>;
-  getFileMetadata(path: string): Promise<Result<{
-    size: number;
-    mimeType: string;
-    lastModified: Date;
-  }, FileError>>;
+  saveFile(file: Buffer, name: string, mimeType: string): Promise<AppResult<FileInfo>>;
+  getFile(filePath: string): Promise<AppResult<Buffer>>;
+  deleteFile(filePath: string): Promise<AppResult<boolean>>;
+  fileExists(filePath: string): Promise<AppResult<boolean>>;
+  getFileInfo(filePath: string): Promise<AppResult<FileInfo>>;
 } 
