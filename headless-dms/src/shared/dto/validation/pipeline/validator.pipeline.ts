@@ -44,7 +44,7 @@ export class ValidatorPipeline {
     if (technicalErrors.length === 0) {
       const roleResult = UserValidator.validateRole(input.role || 'user');
       if (roleResult.isErr()) {
-        businessErrors.push(roleResult.unwrapErr());
+        businessErrors.push(roleResult.unwrapErr().message);
       }
     }
 
@@ -107,17 +107,17 @@ export class ValidatorPipeline {
     if (technicalErrors.length === 0) {
       const nameResult = DocumentValidator.validateName(input.name);
       if (nameResult.isErr()) {
-        businessErrors.push(nameResult.unwrapErr());
+        businessErrors.push(nameResult.unwrapErr().message);
       }
 
       const fileSizeResult = DocumentValidator.validateFileSize(input.file.size);
       if (fileSizeResult.isErr()) {
-        businessErrors.push(fileSizeResult.unwrapErr());
+        businessErrors.push(fileSizeResult.unwrapErr().message);
       }
 
       const fileTypeResult = DocumentValidator.validateFileType(input.file.mimeType);
       if (fileTypeResult.isErr()) {
-        businessErrors.push(fileTypeResult.unwrapErr());
+        businessErrors.push(fileTypeResult.unwrapErr().message);
       }
     }
 

@@ -1,6 +1,6 @@
 // src/validation/pipeline/orchestrator.ts
 import { z } from 'zod';
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 import { InputValidator } from '../technical/input.validator.js';
 import { UserValidator } from '../../../../domain/validators/UserValidator.js';
 import { DocumentValidator } from '../../../../domain/validators/DocumentValidator.js';
@@ -93,7 +93,7 @@ export class ValidationOrchestrator {
     if (roleResult.isErr()) {
       const businessError: ValidationError = {
         field: 'role',
-        message: roleResult.unwrapErr(),
+        message: roleResult.unwrapErr().message,
         code: 'INVALID_USER_ROLE',
         type: 'business',
         severity: 'error'
@@ -111,7 +111,7 @@ export class ValidationOrchestrator {
       if (emailUniquenessResult.isErr()) {
         const businessError: ValidationError = {
           field: 'email',
-          message: emailUniquenessResult.unwrapErr(),
+          message: emailUniquenessResult.unwrapErr().message,
           code: 'EMAIL_ALREADY_EXISTS',
           type: 'business',
           severity: 'error'
@@ -236,7 +236,7 @@ export class ValidationOrchestrator {
     if (nameResult.isErr()) {
       const businessError: ValidationError = {
         field: 'name',
-        message: nameResult.unwrapErr(),
+        message: nameResult.unwrapErr().message,
         code: 'INVALID_DOCUMENT_NAME',
         type: 'business',
         severity: 'error'
@@ -249,7 +249,7 @@ export class ValidationOrchestrator {
     if (fileSizeResult.isErr()) {
       const businessError: ValidationError = {
         field: 'file',
-        message: fileSizeResult.unwrapErr(),
+        message: fileSizeResult.unwrapErr().message,
         code: 'FILE_SIZE_EXCEEDED',
         type: 'business',
         severity: 'error'
@@ -262,7 +262,7 @@ export class ValidationOrchestrator {
     if (fileTypeBusinessResult.isErr()) {
       const businessError: ValidationError = {
         field: 'file',
-        message: fileTypeBusinessResult.unwrapErr(),
+        message: fileTypeBusinessResult.unwrapErr().message,
         code: 'FILE_TYPE_NOT_ALLOWED',
         type: 'business',
         severity: 'error'
@@ -281,7 +281,7 @@ export class ValidationOrchestrator {
       if (nameUniquenessResult.isErr()) {
         const businessError: ValidationError = {
           field: 'name',
-          message: nameUniquenessResult.unwrapErr(),
+          message: nameUniquenessResult.unwrapErr().message,
           code: 'DOCUMENT_NAME_EXISTS',
           type: 'business',
           severity: 'error'
@@ -297,7 +297,7 @@ export class ValidationOrchestrator {
       if (permissionResult.isErr()) {
         const businessError: ValidationError = {
           field: 'permission',
-          message: permissionResult.unwrapErr(),
+          message: permissionResult.unwrapErr().message,
           code: 'INSUFFICIENT_PERMISSIONS',
           type: 'business',
           severity: 'error'
