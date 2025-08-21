@@ -1,5 +1,6 @@
 import { injectable } from 'tsyringe';
-import { IFileService, FileInfo } from '../interfaces/IFileService.js';
+import { IFileService } from '../../../ports/output/IFileService.js';
+import { FileInfo } from '../../../shared/types/index.js';
 import { Result } from '@carbonteq/fp';
 
 export interface MockFile {

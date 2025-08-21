@@ -4,6 +4,7 @@ export * from './DownloadDocumentUseCase.js';
 export * from './DownloadDocumentByTokenUseCase.js';
 export * from './GenerateDownloadLinkUseCase.js';
 export * from './GetDocumentsUseCase.js';
+export * from './GetDocumentByIdUseCase.js';
 export * from './UploadDocumentUseCase.js';
 export * from './UpdateDocumentNameUseCase.js';
 export * from './UpdateDocumentMetadataUseCase.js';

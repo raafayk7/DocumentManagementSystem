@@ -5,7 +5,6 @@ export * from './ChangeUserRoleRequest.js';
 export * from './DeleteUserRequest.js';
 export * from './GetUsersRequest.js';
 export * from './GetUserByIdRequest.js';
-export * from './GetUserByEmailRequest.js';
-export * from './GetUsersByRoleRequest.js';
+
 export * from './ValidateUserCredentialsRequest.js';
 export * from './UserResponse.js'; 

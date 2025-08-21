@@ -8,15 +8,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { injectable, inject } from 'tsyringe';
 import type { ILogger } from '../../../domain/interfaces/ILogger.js';
 import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 import { FileError } from '../../../shared/errors/index.js';
-
-interface FileInfo {
-  path: string;
-  name: string;
-  mimeType: string;
-  size: string;
-  fields: Record<string, string>;
-}
+import { FileInfo } from '../../../shared/types/index.js';
 
 @injectable()
 export class LocalFileService implements IFileService {
@@ -220,6 +214,53 @@ export class LocalFileService implements IFileService {
         error instanceof Error ? error.message : 'File reading failed',
         { filePath }
       ));
+    }
+  }
+
+  async generateDownloadLink(filePath: string, expiresIn: number = 60): Promise<AppResult<string>> {
+    this.logger.info('Generating download link', { filePath, expiresIn });
+    
+    try {
+      if (!fs.existsSync(filePath)) {
+        this.logger.error('File not found for download link generation', { filePath });
+        return AppResult.Err(new Error('File not found'));
+      }
+
+      // Generate a simple token-based link (in production, this would be more secure)
+      const token = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const downloadUrl = `/download/${token}?file=${encodeURIComponent(filePath)}&expires=${Date.now() + (expiresIn * 60 * 1000)}`;
+      
+      this.logger.info('Download link generated successfully', { filePath, downloadUrl });
+      return AppResult.Ok(downloadUrl);
+    } catch (error) {
+      this.logger.logError(error as Error, { filePath });
+      return AppResult.Err(new Error('Failed to generate download link'));
+    }
+  }
+
+  async getFileInfo(filePath: string): Promise<AppResult<FileInfo>> {
+    this.logger.info('Getting file info', { filePath });
+    
+    try {
+      if (!fs.existsSync(filePath)) {
+        this.logger.error('File not found for info retrieval', { filePath });
+        return AppResult.Err(new Error('File not found'));
+      }
+
+      const stat = fs.statSync(filePath);
+      const fileInfo: FileInfo = {
+        path: filePath,
+        name: path.basename(filePath),
+        mimeType: 'application/octet-stream', // Default MIME type
+        size: stat.size.toString(),
+        fields: {}
+      };
+      
+      this.logger.info('File info retrieved successfully', { filePath, fileInfo });
+      return AppResult.Ok(fileInfo);
+    } catch (error) {
+      this.logger.logError(error as Error, { filePath });
+      return AppResult.Err(new Error('Failed to get file info'));
     }
   }
 } 
