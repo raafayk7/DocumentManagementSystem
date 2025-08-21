@@ -1,42 +1,31 @@
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, BaseEntity, UUID } from '@carbonteq/hexapp';
 import * as bcrypt from 'bcrypt';
 import { Email } from '../value-objects/Email.js';
 import { Password } from '../value-objects/Password.js';
 import { UserRole } from '../value-objects/UserRole.js';
 
 export interface UserProps {
-  id: string;
   email: Email;
   passwordHash: string;
   role: UserRole;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
-export class User {
-  private readonly _id: string;
+export class User extends BaseEntity {
   private readonly _email: Email;
   private readonly _passwordHash: string;
   private readonly _role: UserRole;
-  private readonly _createdAt: Date;
-  private readonly _updatedAt: Date;
 
   private constructor(props: UserProps) {
-    this._id = props.id;
+    super();
     this._email = props.email;
     this._passwordHash = props.passwordHash;
     this._role = props.role;
-    this._createdAt = props.createdAt;
-    this._updatedAt = props.updatedAt;
   }
 
   // Getters (read-only access)
-  get id(): string { return this._id; }
   get email(): Email { return this._email; }
   get passwordHash(): string { return this._passwordHash; }
   get role(): UserRole { return this._role; }
-  get createdAt(): Date { return this._createdAt; }
-  get updatedAt(): Date { return this._updatedAt; }
 
   // Factory method for creating new users
   static async create(email: string, password: string, role: string): Promise<AppResult<User>> {
@@ -62,12 +51,9 @@ export class User {
     const passwordHash = await User.hashPassword(password);
 
     const userProps: UserProps = {
-      id: crypto.randomUUID(),
       email: emailResult.unwrap(),
       passwordHash,
-      role: roleResult.unwrap(),
-      createdAt: new Date(),
-      updatedAt: new Date()
+      role: roleResult.unwrap()
     };
 
     return AppResult.Ok(new User(userProps));
@@ -94,16 +80,20 @@ export class User {
       return AppResult.Err(roleResult.unwrapErr());
     }
 
-    const userProps: UserProps = {
-      id: props.id,
+    const user = new User({
       email: emailResult.unwrap(),
       passwordHash: props.passwordHash,
-      role: roleResult.unwrap(),
+      role: roleResult.unwrap()
+    });
+
+    // Set the base properties from repository data
+    user._fromSerialized({
+      id: props.id,
       createdAt: props.createdAt,
       updatedAt: props.updatedAt
-    };
+    });
 
-    return AppResult.Ok(new User(userProps));
+    return AppResult.Ok(user);
   }
 
   // Password hashing using bcrypt
@@ -121,15 +111,16 @@ export class User {
 
     const newPasswordHash = await User.hashPassword(newPassword);
     const updatedProps: UserProps = {
-      id: this._id,
       email: this._email,
       passwordHash: newPasswordHash,
-      role: this._role,
-      createdAt: this._createdAt,
-      updatedAt: new Date()
+      role: this._role
     };
 
-    return AppResult.Ok(new User(updatedProps));
+    const updatedUser = new User(updatedProps);
+    updatedUser._copyBaseProps(this);
+    updatedUser.markUpdated();
+
+    return AppResult.Ok(updatedUser);
   }
 
   changeRole(newRole: string): AppResult<User> {
@@ -140,15 +131,16 @@ export class User {
     }
 
     const updatedProps: UserProps = {
-      id: this._id,
       email: this._email,
       passwordHash: this._passwordHash,
-      role: roleResult.unwrap(),
-      createdAt: this._createdAt,
-      updatedAt: new Date()
+      role: roleResult.unwrap()
     };
 
-    return AppResult.Ok(new User(updatedProps));
+    const updatedUser = new User(updatedProps);
+    updatedUser._copyBaseProps(this);
+    updatedUser.markUpdated();
+
+    return AppResult.Ok(updatedUser);
   }
 
   changeEmail(newEmail: string): AppResult<User> {
@@ -159,15 +151,16 @@ export class User {
     }
 
     const updatedProps: UserProps = {
-      id: this._id,
       email: emailResult.unwrap(),
       passwordHash: this._passwordHash,
-      role: this._role,
-      createdAt: this._createdAt,
-      updatedAt: new Date()
+      role: this._role
     };
 
-    return AppResult.Ok(new User(updatedProps));
+    const updatedUser = new User(updatedProps);
+    updatedUser._copyBaseProps(this);
+    updatedUser.markUpdated();
+
+    return AppResult.Ok(updatedUser);
   }
 
   // Business rule: Password verification
@@ -187,7 +180,7 @@ export class User {
   isAccountOlderThan(days: number): boolean {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
-    return this._createdAt < cutoffDate;
+    return this.createdAt < cutoffDate;
   }
 
   // Convert to plain object for repository
@@ -200,12 +193,22 @@ export class User {
     updatedAt: Date;
   } {
     return {
-      id: this._id,
+      id: this.id,
       email: this._email.value,
       passwordHash: this._passwordHash,
       role: this._role.value,
-      createdAt: this._createdAt,
-      updatedAt: this._updatedAt
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt
+    };
+  }
+
+  // Implement serialize method for hexapp BaseEntity
+  serialize() {
+    return {
+      ...super._serialize(),
+      email: this._email.value,
+      passwordHash: this._passwordHash,
+      role: this._role.value
     };
   }
 } 

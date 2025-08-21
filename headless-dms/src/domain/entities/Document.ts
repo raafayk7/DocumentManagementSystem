@@ -1,53 +1,42 @@
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, BaseEntity, UUID } from '@carbonteq/hexapp';
 import { DocumentName } from '../value-objects/DocumentName.js';
 import { MimeType } from '../value-objects/MimeType.js';
 import { FileSize } from '../value-objects/FileSize.js';
 
 export interface DocumentProps {
-  id: string;
   name: DocumentName;
   filePath: string;
   mimeType: MimeType;
   size: FileSize;
   tags: string[];
   metadata: Record<string, string>;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
-export class Document {
-  private readonly _id: string;
+export class Document extends BaseEntity {
   private readonly _name: DocumentName;
   private readonly _filePath: string;
   private readonly _mimeType: MimeType;
   private readonly _size: FileSize;
   private readonly _tags: string[];
   private readonly _metadata: Record<string, string>;
-  private readonly _createdAt: Date;
-  private readonly _updatedAt: Date;
 
   private constructor(props: DocumentProps) {
-    this._id = props.id;
+    super();
     this._name = props.name;
     this._filePath = props.filePath;
     this._mimeType = props.mimeType;
     this._size = props.size;
     this._tags = props.tags;
     this._metadata = props.metadata;
-    this._createdAt = props.createdAt;
-    this._updatedAt = props.updatedAt;
   }
 
   // Getters (read-only access)
-  get id(): string { return this._id; }
   get name(): DocumentName { return this._name; }
   get filePath(): string { return this._filePath; }
   get mimeType(): MimeType { return this._mimeType; }
   get size(): FileSize { return this._size; }
   get tags(): string[] { return [...this._tags]; } // Return copy to prevent mutation
   get metadata(): Record<string, string> { return { ...this._metadata }; } // Return copy
-  get createdAt(): Date { return this._createdAt; }
-  get updatedAt(): Date { return this._updatedAt; }
 
   // Factory method for creating new documents
   static create(
@@ -94,15 +83,12 @@ export class Document {
     }
 
     const documentProps: DocumentProps = {
-      id: crypto.randomUUID(),
       name: nameResult.unwrap(),
       filePath,
       mimeType: mimeTypeResult.unwrap(),
       size: sizeResult.unwrap(),
       tags: cleanTags.unwrap(),
-      metadata: cleanMetadata.unwrap(),
-      createdAt: new Date(),
-      updatedAt: new Date()
+      metadata: cleanMetadata.unwrap()
     };
 
     return AppResult.Ok(new Document(documentProps));
@@ -138,19 +124,23 @@ export class Document {
       return AppResult.Err(sizeResult.unwrapErr());
     }
 
-    const documentProps: DocumentProps = {
-      id: props.id,
+    const document = new Document({
       name: nameResult.unwrap(),
       filePath: props.filePath,
       mimeType: mimeTypeResult.unwrap(),
       size: sizeResult.unwrap(),
       tags: props.tags,
-      metadata: props.metadata,
+      metadata: props.metadata
+    });
+
+    // Set the base properties from repository data
+    document._fromSerialized({
+      id: props.id,
       createdAt: props.createdAt,
       updatedAt: props.updatedAt
-    };
+    });
 
-    return AppResult.Ok(new Document(documentProps));
+    return AppResult.Ok(document);
   }
 
   // Factory method for creating from file upload
@@ -266,18 +256,19 @@ export class Document {
     }
 
     const updatedProps: DocumentProps = {
-      id: this._id,
       name: nameResult.unwrap(),
       filePath: this._filePath,
       mimeType: this._mimeType,
       size: this._size,
       tags: this._tags,
-      metadata: this._metadata,
-      createdAt: this._createdAt,
-      updatedAt: new Date()
+      metadata: this._metadata
     };
 
-    return AppResult.Ok(new Document(updatedProps));
+    const updatedDocument = new Document(updatedProps);
+    updatedDocument._copyBaseProps(this);
+    updatedDocument.markUpdated();
+
+    return AppResult.Ok(updatedDocument);
   }
 
   addTags(newTags: string[]): AppResult<Document> {
@@ -290,18 +281,19 @@ export class Document {
     const uniqueTags = [...new Set(allTags)]; // Remove duplicates
 
     const updatedProps: DocumentProps = {
-      id: this._id,
       name: this._name,
       filePath: this._filePath,
       mimeType: this._mimeType,
       size: this._size,
       tags: uniqueTags,
-      metadata: this._metadata,
-      createdAt: this._createdAt,
-      updatedAt: new Date()
+      metadata: this._metadata
     };
 
-    return AppResult.Ok(new Document(updatedProps));
+    const updatedDocument = new Document(updatedProps);
+    updatedDocument._copyBaseProps(this);
+    updatedDocument.markUpdated();
+
+    return AppResult.Ok(updatedDocument);
   }
 
   removeTags(tagsToRemove: string[]): AppResult<Document> {
@@ -309,18 +301,19 @@ export class Document {
     const remainingTags = this._tags.filter(tag => !tagsToRemoveSet.has(tag));
 
     const updatedProps: DocumentProps = {
-      id: this._id,
       name: this._name,
       filePath: this._filePath,
       mimeType: this._mimeType,
       size: this._size,
       tags: remainingTags,
-      metadata: this._metadata,
-      createdAt: this._createdAt,
-      updatedAt: new Date()
+      metadata: this._metadata
     };
 
-    return AppResult.Ok(new Document(updatedProps));
+    const updatedDocument = new Document(updatedProps);
+    updatedDocument._copyBaseProps(this);
+    updatedDocument.markUpdated();
+
+    return AppResult.Ok(updatedDocument);
   }
 
   replaceTags(newTags: string[]): AppResult<Document> {
@@ -330,18 +323,19 @@ export class Document {
     }
 
     const updatedProps: DocumentProps = {
-      id: this._id,
       name: this._name,
       filePath: this._filePath,
       mimeType: this._mimeType,
       size: this._size,
       tags: cleanTags.unwrap(),
-      metadata: this._metadata,
-      createdAt: this._createdAt,
-      updatedAt: new Date()
+      metadata: this._metadata
     };
 
-    return AppResult.Ok(new Document(updatedProps));
+    const updatedDocument = new Document(updatedProps);
+    updatedDocument._copyBaseProps(this);
+    updatedDocument.markUpdated();
+
+    return AppResult.Ok(updatedDocument);
   }
 
   updateMetadata(newMetadata: Record<string, string>): AppResult<Document> {
@@ -351,18 +345,19 @@ export class Document {
     }
 
     const updatedProps: DocumentProps = {
-      id: this._id,
       name: this._name,
       filePath: this._filePath,
       mimeType: this._mimeType,
       size: this._size,
       tags: this._tags,
-      metadata: cleanMetadata.unwrap(),
-      createdAt: this._createdAt,
-      updatedAt: new Date()
+      metadata: cleanMetadata.unwrap()
     };
 
-    return AppResult.Ok(new Document(updatedProps));
+    const updatedDocument = new Document(updatedProps);
+    updatedDocument._copyBaseProps(this);
+    updatedDocument.markUpdated();
+
+    return AppResult.Ok(updatedDocument);
   }
 
   updateFileInfo(newFilePath: string, newMimeType: string, newSize: string): AppResult<Document> {
@@ -383,18 +378,19 @@ export class Document {
     }
 
     const updatedProps: DocumentProps = {
-      id: this._id,
       name: this._name,
       filePath: newFilePath,
       mimeType: mimeTypeResult.unwrap(),
       size: sizeResult.unwrap(),
       tags: this._tags,
-      metadata: this._metadata,
-      createdAt: this._createdAt,
-      updatedAt: new Date()
+      metadata: this._metadata
     };
 
-    return AppResult.Ok(new Document(updatedProps));
+    const updatedDocument = new Document(updatedProps);
+    updatedDocument._copyBaseProps(this);
+    updatedDocument.markUpdated();
+
+    return AppResult.Ok(updatedDocument);
   }
 
   // Business rules
@@ -433,7 +429,7 @@ export class Document {
   isRecentlyUpdated(hours: number = 24): boolean {
     const cutoffTime = new Date();
     cutoffTime.setHours(cutoffTime.getHours() - hours);
-    return this._updatedAt > cutoffTime;
+    return this.updatedAt > cutoffTime;
   }
 
   // Convert to plain object for repository
@@ -449,15 +445,28 @@ export class Document {
     updatedAt: Date;
   } {
     return {
-      id: this._id,
+      id: this.id,
       name: this._name.value,
       filePath: this._filePath,
       mimeType: this._mimeType.value,
       size: this._size.bytes.toString(),
       tags: this._tags,
       metadata: this._metadata,
-      createdAt: this._createdAt,
-      updatedAt: this._updatedAt
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt
+    };
+  }
+
+  // Implement serialize method for hexapp BaseEntity
+  serialize() {
+    return {
+      ...super._serialize(),
+      name: this._name.value,
+      filePath: this._filePath,
+      mimeType: this._mimeType.value,
+      size: this._size.bytes.toString(),
+      tags: this._tags,
+      metadata: this._metadata
     };
   }
 } 
