@@ -1,5 +1,5 @@
 import { injectable, inject } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import { User } from '../../domain/entities/User.js';
 import { 
   AuthDomainService, 
@@ -13,7 +13,6 @@ import {
 } from '../../domain/services/UserDomainService.js';
 import type { IUserRepository } from '../../ports/output/IUserRepository.js';
 import type { ILogger } from '../../ports/output/ILogger.js';
-import { ApplicationError } from '../../shared/errors/ApplicationError.js';
 import type { IAuthApplicationService } from '../../ports/input/IAuthApplicationService.js';
 
 @injectable()
@@ -38,10 +37,8 @@ export class AuthApplicationService implements IAuthApplicationService {
       const user = await this.userRepository.findByEmail(email);
       if (!user) {
         this.logger.warn('User not found for authentication', { email });
-        return AppResult.Err(new ApplicationError(
-          'AuthApplicationService.userNotFound',
-          'Invalid credentials',
-          { email }
+        return AppResult.Err(AppError.Unauthorized(
+          `Invalid credentials for email: ${email}`
         ));
       }
 
@@ -49,10 +46,8 @@ export class AuthApplicationService implements IAuthApplicationService {
       const isValidPassword = await user.verifyPassword(password);
       if (!isValidPassword) {
         this.logger.warn('Invalid password for user', { email });
-        return AppResult.Err(new ApplicationError(
-          'AuthApplicationService.invalidPassword',
-          'Invalid credentials',
-          { email }
+        return AppResult.Err(AppError.Unauthorized(
+          `Invalid credentials for email: ${email}`
         ));
       }
 
@@ -70,10 +65,8 @@ export class AuthApplicationService implements IAuthApplicationService {
       const requiresAdditionalAuth = this.authDomainService.requiresAdditionalAuth(user, 'login');
       if (requiresAdditionalAuth) {
         this.logger.warn('Additional authentication required', { userId: user.id });
-        return AppResult.Err(new ApplicationError(
-          'AuthApplicationService.additionalAuthRequired',
-          'Additional authentication required',
-          { userId: user.id }
+        return AppResult.Err(AppError.Unauthorized(
+          `Additional authentication required for user: ${user.id}`
         ));
       }
 
@@ -81,10 +74,8 @@ export class AuthApplicationService implements IAuthApplicationService {
       return AppResult.Ok(user);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email });
-      return AppResult.Err(new ApplicationError(
-        'AuthApplicationService.authenticateUser',
-        error instanceof Error ? error.message : 'Failed to authenticate user',
-        { email }
+      return AppResult.Err(AppError.Generic(
+        `Failed to authenticate user with email: ${email}`
       ));
     }
   }
@@ -99,10 +90,8 @@ export class AuthApplicationService implements IAuthApplicationService {
       const user = await this.userRepository.findByEmail(email);
       if (!user) {
         this.logger.warn('User not found for credential validation', { email });
-        return AppResult.Err(new ApplicationError(
-          'AuthApplicationService.userNotFound',
-          'User not found',
-          { email }
+        return AppResult.Err(AppError.NotFound(
+          `User not found with email: ${email}`
         ));
       }
 
@@ -115,10 +104,8 @@ export class AuthApplicationService implements IAuthApplicationService {
       return AppResult.Ok(isValid);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email });
-      return AppResult.Err(new ApplicationError(
-        'AuthApplicationService.validateUserCredentials',
-        error instanceof Error ? error.message : 'Failed to validate user credentials',
-        { email }
+      return AppResult.Err(AppError.Generic(
+        `Failed to validate user credentials with email: ${email}`
       ));
     }
   }

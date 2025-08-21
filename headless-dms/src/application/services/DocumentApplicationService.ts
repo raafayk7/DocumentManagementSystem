@@ -1,5 +1,5 @@
 import { injectable, inject } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
+import { AppError, AppResult } from '@carbonteq/hexapp';
 import { Document } from '../../domain/entities/Document.js';
 import { User } from '../../domain/entities/User.js';
 import { 
@@ -17,7 +17,7 @@ import type { IDocumentRepository } from '../../ports/output/IDocumentRepository
 import type { IUserRepository } from '../../ports/output/IUserRepository.js';
 import type { IFileService } from '../../ports/output/IFileService.js';
 import type { ILogger } from '../../ports/output/ILogger.js';
-import { ApplicationError } from '../../shared/errors/ApplicationError.js';
+// import { ApplicationError } from '../../shared/errors/ApplicationError.js';
 import type { IDocumentApplicationService } from '../../ports/input/IDocumentApplicationService.js';
 import jwt from 'jsonwebtoken';
 
@@ -53,10 +53,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document creation', { userId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.userNotFound',
-          'User not found',
-          { userId }
+        return AppResult.Err(AppError.NotFound(
+          `User not found with id: ${userId}`
         ));
       }
 
@@ -64,10 +62,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const canCreate = this.userDomainService.canUserPerformAction(user, 'create', 'document');
       if (!canCreate) {
         this.logger.warn('User cannot create documents', { userId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.insufficientPermissions',
-          'Insufficient permissions to create documents',
-          { userId }
+        return AppResult.Err(AppError.Unauthorized(
+          `User with id: ${userId} does not have sufficient permissions to create documents`
         ));
       }
 
@@ -75,10 +71,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const documentResult = Document.create(name, filename, mimeType, size, tags, metadata);
       if (documentResult.isErr()) {
         this.logger.error('Failed to create document entity', { name, error: documentResult.unwrapErr() });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.entityCreation',
-          documentResult.unwrapErr(),
-          { name }
+        return AppResult.Err(AppError.Generic(
+          `Failed to create document entity with name: ${name}`
         ));
       }
 
@@ -88,10 +82,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const nameValidation = this.documentDomainService.validateDocumentName(document);
       if (!nameValidation.isValid) {
         this.logger.warn('Invalid document name', { name, issues: nameValidation.issues });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.invalidDocumentName',
-          'Invalid document name',
-          { issues: nameValidation.issues }
+        return AppResult.Err(AppError.Generic(
+          `Invalid document name: ${name}`
         ));
       }
 
@@ -115,10 +107,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       return AppResult.Ok(savedDocument);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { name, userId });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.createDocument',
-        error instanceof Error ? error.message : 'Failed to create document',
-        { name, userId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to create document with name: ${name}`
       ));
     }
   }
@@ -134,10 +124,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document access', { userId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.userNotFound',
-          'User not found',
-          { userId }
+        return AppResult.Err(AppError.NotFound(
+          `User not found with id: ${userId}`
         ));
       }
 
@@ -145,10 +133,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found', { documentId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.documentNotFound',
-          'Document not found',
-          { documentId }
+        return AppResult.Err(AppError.NotFound(
+          `Document not found with id: ${documentId}`
         ));
       }
 
@@ -156,10 +142,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
       if (!accessValidation.canAccess) {
         this.logger.warn('Document access denied', { documentId, userId, reason: accessValidation.reason });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.accessDenied',
-          'Access denied',
-          { documentId, userId, reason: accessValidation.reason }
+        return AppResult.Err(AppError.Unauthorized(
+          `Access denied for document with id: ${documentId}`
         ));
       }
 
@@ -167,10 +151,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       return AppResult.Ok(document);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.getDocument',
-        error instanceof Error ? error.message : 'Failed to get document',
-        { documentId, userId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to get document with id: ${documentId}`
       ));
     }
   }
@@ -190,10 +172,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document update', { userId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.userNotFound',
-          'User not found',
-          { userId }
+        return AppResult.Err(AppError.NotFound(
+          `User not found with id: ${userId}`
         ));
       }
 
@@ -201,10 +181,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for name update', { documentId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.documentNotFound',
-          'Document not found',
-          { documentId }
+        return AppResult.Err(AppError.NotFound(
+          `Document not found with id: ${documentId}`
         ));
       }
 
@@ -212,10 +190,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
       if (!accessValidation.permissions.canWrite) {
         this.logger.warn('Document write access denied', { documentId, userId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.writeAccessDenied',
-          'Write access denied',
-          { documentId, userId }
+        return AppResult.Err(AppError.Unauthorized(
+          `Write access denied for document with id: ${documentId}`
         ));
       }
 
@@ -223,10 +199,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const updateResult = document.updateName(newName);
       if (updateResult.isErr()) {
         this.logger.error('Failed to update document name', { documentId, error: updateResult.unwrapErr() });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.nameUpdateFailed',
-          updateResult.unwrapErr(),
-          { documentId, newName }
+        return AppResult.Err(AppError.Generic(
+          `Failed to update document name with id: ${documentId}`
         ));
       }
 
@@ -236,10 +210,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const nameValidation = this.documentDomainService.validateDocumentName(updatedDocument);
       if (!nameValidation.isValid) {
         this.logger.warn('Invalid new document name', { documentId, issues: nameValidation.issues });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.invalidNewName',
-          'Invalid document name',
-          { issues: nameValidation.issues }
+        return AppResult.Err(AppError.Generic(
+          `Invalid new document name: ${newName}`
         ));
       }
 
@@ -250,10 +222,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       return AppResult.Ok(savedDocument);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.updateDocumentName',
-        error instanceof Error ? error.message : 'Failed to update document name',
-        { documentId, userId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to update document name with id: ${documentId}`
       ));
     }
   }
@@ -273,10 +243,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document tag update', { userId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.userNotFound',
-          'User not found',
-          { userId }
+        return AppResult.Err(AppError.NotFound(
+          `User not found with id: ${userId}`
         ));
       }
 
@@ -284,10 +252,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for tag update', { documentId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.documentNotFound',
-          'Document not found',
-          { documentId }
+        return AppResult.Err(AppError.NotFound(
+          `Document not found with id: ${documentId}`
         ));
       }
 
@@ -295,10 +261,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
       if (!accessValidation.permissions.canWrite) {
         this.logger.warn('Document write access denied for tag update', { documentId, userId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.writeAccessDenied',
-          'Write access denied',
-          { documentId, userId }
+        return AppResult.Err(AppError.Unauthorized(
+          `Write access denied for document with id: ${documentId}`
         ));
       }
 
@@ -306,10 +270,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const updateResult = document.addTags(tags);
       if (updateResult.isErr()) {
         this.logger.error('Failed to add tags to document', { documentId, error: updateResult.unwrapErr() });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.tagUpdateFailed',
-          updateResult.unwrapErr(),
-          { documentId, tags }
+        return AppResult.Err(AppError.Generic(
+          `Failed to add tags to document with id: ${documentId}`
         ));
       }
 
@@ -322,10 +284,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       return AppResult.Ok(savedDocument);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.addTagsToDocument',
-        error instanceof Error ? error.message : 'Failed to add tags to document',
-        { documentId, userId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to add tags to document with id: ${documentId}`
       ));
     }
   }
@@ -345,10 +305,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document tag removal', { userId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.userNotFound',
-          'User not found',
-          { userId }
+        return AppResult.Err(AppError.NotFound(
+          `User not found with id: ${userId}`
         ));
       }
 
@@ -356,10 +314,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for tag removal', { documentId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.documentNotFound',
-          'Document not found',
-          { documentId }
+        return AppResult.Err(AppError.NotFound(
+          `Document not found with id: ${documentId}`
         ));
       }
 
@@ -367,10 +323,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
       if (!accessValidation.permissions.canWrite) {
         this.logger.warn('Document write access denied for tag removal', { documentId, userId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.writeAccessDenied',
-          'Write access denied',
-          { documentId, userId }
+        return AppResult.Err(AppError.Unauthorized(
+          `Write access denied for document with id: ${documentId}`
         ));
       }
 
@@ -378,10 +332,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const updateResult = document.removeTags(tags);
       if (updateResult.isErr()) {
         this.logger.error('Failed to remove tags from document', { documentId, error: updateResult.unwrapErr() });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.tagRemovalFailed',
-          updateResult.unwrapErr(),
-          { documentId, tags }
+        return AppResult.Err(AppError.Generic(
+          `Failed to remove tags from document with id: ${documentId}`
         ));
       }
 
@@ -394,10 +346,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       return AppResult.Ok(savedDocument);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.removeTagsFromDocument',
-        error instanceof Error ? error.message : 'Failed to remove tags from document',
-        { documentId, userId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to remove tags from document with id: ${documentId}`
       ));
     }
   }
@@ -417,10 +367,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document metadata update', { userId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.userNotFound',
-          'User not found',
-          { userId }
+        return AppResult.Err(AppError.NotFound(
+          `User not found with id: ${userId}`
         ));
       }
 
@@ -428,10 +376,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for metadata update', { documentId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.documentNotFound',
-          'Document not found',
-          { documentId }
+        return AppResult.Err(AppError.NotFound(
+          `Document not found with id: ${documentId}`
         ));
       }
 
@@ -439,10 +385,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
       if (!accessValidation.permissions.canWrite) {
         this.logger.warn('Document write access denied for metadata update', { documentId, userId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.writeAccessDenied',
-          'Write access denied',
-          { documentId, userId }
+        return AppResult.Err(AppError.Unauthorized(
+          `Write access denied for document with id: ${documentId}`
         ));
       }
 
@@ -450,10 +394,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const updateResult = document.updateMetadata(metadata);
       if (updateResult.isErr()) {
         this.logger.error('Failed to update document metadata', { documentId, error: updateResult.unwrapErr() });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.metadataUpdateFailed',
-          updateResult.unwrapErr(),
-          { documentId }
+        return AppResult.Err(AppError.Generic(
+          `Failed to update document metadata with id: ${documentId}`
         ));
       }
 
@@ -475,10 +417,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       return AppResult.Ok(savedDocument);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.updateDocumentMetadata',
-        error instanceof Error ? error.message : 'Failed to update document metadata',
-        { documentId, userId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to update document metadata with id: ${documentId}`
       ));
     }
   }
@@ -494,10 +434,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document deletion', { userId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.userNotFound',
-          'User not found',
-          { userId }
+        return AppResult.Err(AppError.NotFound(
+          `User not found with id: ${userId}`
         ));
       }
 
@@ -505,10 +443,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for deletion', { documentId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.documentNotFound',
-          'Document not found',
-          { documentId }
+        return AppResult.Err(AppError.NotFound(
+          `Document not found with id: ${documentId}`
         ));
       }
 
@@ -516,10 +452,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
       if (!accessValidation.permissions.canDelete) {
         this.logger.warn('Document delete access denied', { documentId, userId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.deleteAccessDenied',
-          'Delete access denied',
-          { documentId, userId }
+        return AppResult.Err(AppError.Unauthorized(
+          `Delete access denied for document with id: ${documentId}`
         ));
       }
 
@@ -549,10 +483,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       return AppResult.Ok(undefined);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.deleteDocument',
-        error instanceof Error ? error.message : 'Failed to delete document',
-        { documentId, userId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to delete document with id: ${documentId}`
       ));
     }
   }
@@ -567,10 +499,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found', { documentId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.documentNotFound',
-          'Document not found',
-          { documentId }
+        return AppResult.Err(AppError.NotFound(
+          `Document not found with id: ${documentId}`
         ));
       }
 
@@ -578,10 +508,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       return AppResult.Ok(document);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.getDocumentById',
-        error instanceof Error ? error.message : 'Failed to get document',
-        { documentId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to get document with id: ${documentId}`
       ));
     }
   }
@@ -596,10 +524,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const document = await this.documentRepository.findByName(name);
       if (!document) {
         this.logger.warn('Document not found', { name });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.documentNotFound',
-          'Document not found',
-          { name }
+        return AppResult.Err(AppError.NotFound(
+          `Document not found with name: ${name}`
         ));
       }
 
@@ -607,10 +533,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       return AppResult.Ok(document);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { name });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.getDocumentByName',
-        error instanceof Error ? error.message : 'Failed to get document',
-        { name }
+      return AppResult.Err(AppError.Generic(
+        `Failed to get document with name: ${name}`
       ));
     }
   }
@@ -683,10 +607,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       return AppResult.Ok(documents.data);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { page, limit, filters });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.getDocuments',
-        error instanceof Error ? error.message : 'Failed to get documents',
-        { page, limit, filters }
+      return AppResult.Err(AppError.Generic(
+        `Failed to get documents with page: ${page}, limit: ${limit}, filters: ${JSON.stringify(filters)}`
       ));
     }
   }
@@ -704,10 +626,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
         return AppResult.Ok(documents);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { tags });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.getDocumentsByTags',
-        error instanceof Error ? error.message : 'Failed to get documents by tags',
-        { tags }
+      return AppResult.Err(AppError.Generic(
+        `Failed to get documents by tags: ${tags}`
       ));
     }
   }
@@ -725,10 +645,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
         return AppResult.Ok(documents);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { mimeType });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.getDocumentsByMimeType',
-        error instanceof Error ? error.message : 'Failed to get documents by MIME type',
-        { mimeType }
+      return AppResult.Err(AppError.Generic(
+        `Failed to get documents by MIME type: ${mimeType}`
       ));
     }
   }
@@ -744,10 +662,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const fileInfoResult = await this.fileService.saveFile(file, name, mimeType);
       if (fileInfoResult.isErr()) {
         this.logger.error('Failed to save file via file service', { name, error: fileInfoResult.unwrapErr().message });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.fileSave',
-          'Failed to save file',
-          { name }
+        return AppResult.Err(AppError.Generic(
+          `Failed to save file: ${name}`
         ));
       }
 
@@ -757,10 +673,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const documentResult = Document.create(name, fileInfo.path, mimeType, fileInfo.size, tags, metadata);
       if (documentResult.isErr()) {
         this.logger.error('Failed to create document entity', { name, error: documentResult.unwrapErr() });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.entityCreation',
-          documentResult.unwrapErr(),
-          { name }
+        return AppResult.Err(AppError.Generic(
+          `Failed to create document entity: ${name}`
         ));
       }
 
@@ -773,10 +687,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       return AppResult.Ok(savedDocument);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { name });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.uploadDocument',
-        error instanceof Error ? error.message : 'Failed to upload document',
-        { name }
+      return AppResult.Err(AppError.Generic(
+        `Failed to upload document: ${name}`
       ));
     }
   }
@@ -792,10 +704,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for download', { documentId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.documentNotFound',
-          'Document not found',
-          { documentId }
+        return AppResult.Err(AppError.NotFound(
+          `Document not found with id: ${documentId}`
         ));
       }
 
@@ -803,10 +713,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document download', { userId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.userNotFound',
-          'User not found',
-          { userId }
+        return AppResult.Err(AppError.NotFound(
+          `User not found with id: ${userId}`
         ));
       }
 
@@ -814,10 +722,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
       if (!accessValidation.canAccess) {
         this.logger.warn('Document access denied for download', { documentId, userId, reason: accessValidation.reason });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.accessDenied',
-          'Access denied',
-          { documentId, userId, reason: accessValidation.reason }
+        return AppResult.Err(AppError.Unauthorized(
+          `Access denied for document with id: ${documentId} and user with id: ${userId}`
         ));
       }
 
@@ -825,10 +731,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const fileResult = await this.fileService.getFile(document.filePath);
       if (fileResult.isErr()) {
         this.logger.error('Failed to get file from storage', { documentId, error: fileResult.unwrapErr().message });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.fileReadFailed',
-          'Failed to read file from storage',
-          { documentId, error: fileResult.unwrapErr().message }
+        return AppResult.Err(AppError.Generic(
+          `Failed to read file from storage: ${documentId}`
         ));
       }
 
@@ -837,10 +741,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       return AppResult.Ok({ document, file });
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.downloadDocument',
-        error instanceof Error ? error.message : 'Failed to download document',
-        { documentId, userId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to download document: ${documentId}`
       ));
     }
   }
@@ -860,10 +762,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for token download', { documentId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.documentNotFound',
-          'Document not found',
-          { documentId }
+        return AppResult.Err(AppError.NotFound(
+          `Document not found with id: ${documentId}`
         ));
       }
 
@@ -871,10 +771,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const fileResult = await this.fileService.getFile(document.filePath);
       if (fileResult.isErr()) {
         this.logger.error('Failed to get file from storage', { documentId, error: fileResult.unwrapErr().message });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.fileReadFailed',
-          'Failed to read file from storage',
-          { documentId, error: fileResult.unwrapErr().message }
+        return AppResult.Err(AppError.Generic(
+          `Failed to read file from storage: ${documentId}`
         ));
       }
 
@@ -883,10 +781,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       return AppResult.Ok({ document, file });
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { token });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.downloadDocumentByToken',
-        error instanceof Error ? error.message : 'Failed to download document by token',
-        { token }
+      return AppResult.Err(AppError.Generic(
+        `Failed to download document by token: ${token}`
       ));
     }
   }
@@ -902,10 +798,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for link generation', { documentId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.documentNotFound',
-          'Document not found',
-          { documentId }
+        return AppResult.Err(AppError.NotFound(
+          `Document not found with id: ${documentId}`
         ));
       }
 
@@ -916,10 +810,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       return AppResult.Ok(token);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.generateDownloadLink',
-        error instanceof Error ? error.message : 'Failed to generate download link',
-        { documentId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to generate download link: ${documentId}`
       ));
     }
   }
@@ -935,10 +827,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for document tag replacement', { userId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.userNotFound',
-          'User not found',
-          { userId }
+        return AppResult.Err(AppError.NotFound(
+          `User not found with id: ${userId}`
         ));
       }
 
@@ -946,10 +836,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const document = await this.documentRepository.findById(documentId);
       if (!document) {
         this.logger.warn('Document not found for tag replacement', { documentId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.documentNotFound',
-          'Document not found',
-          { documentId }
+        return AppResult.Err(AppError.NotFound(
+          `Document not found with id: ${documentId}`
         ));
       }
 
@@ -957,10 +845,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
       if (!accessValidation.permissions.canWrite) {
         this.logger.warn('Document write access denied for tag replacement', { documentId, userId });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.writeAccessDenied',
-          'Write access denied',
-          { documentId, userId }
+        return AppResult.Err(AppError.Unauthorized(
+          `Write access denied for document with id: ${documentId}`
         ));
       }
 
@@ -968,10 +854,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       const updateResult = document.replaceTags(tags);
       if (updateResult.isErr()) {
         this.logger.error('Failed to replace tags in document', { documentId, error: updateResult.unwrapErr() });
-        return AppResult.Err(new ApplicationError(
-          'DocumentApplicationService.tagReplacementFailed',
-          updateResult.unwrapErr(),
-          { documentId, tags }
+        return AppResult.Err(AppError.Generic(
+          `Failed to replace tags in document with id: ${documentId}`
         ));
       }
 
@@ -984,10 +868,8 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       return AppResult.Ok(savedDocument);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
-      return AppResult.Err(new ApplicationError(
-        'DocumentApplicationService.replaceTagsInDocument',
-        error instanceof Error ? error.message : 'Failed to replace tags in document',
-        { documentId, userId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to replace tags in document with id: ${documentId}`
       ));
     }
   }

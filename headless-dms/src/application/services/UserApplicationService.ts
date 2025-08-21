@@ -1,5 +1,5 @@
 import { injectable, inject } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
+import { AppError, AppResult } from '@carbonteq/hexapp';
 import { User } from '../../domain/entities/User.js';
 import { 
   UserDomainService, 
@@ -14,7 +14,7 @@ import {
 } from '../../domain/services/AuthDomainService.js';
 import type { IUserRepository } from '../../ports/output/IUserRepository.js';
 import type { ILogger } from '../../ports/output/ILogger.js';
-import { ApplicationError } from '../../shared/errors/ApplicationError.js';
+// import { ApplicationError } from '../../shared/errors/ApplicationError.js';
 import type { IUserApplicationService } from '../../ports/input/IUserApplicationService.js';
 
 @injectable()
@@ -39,10 +39,8 @@ export class UserApplicationService implements IUserApplicationService {
       const passwordValidation = this.authDomainService.validatePasswordStrength(password);
       if (passwordValidation.level === 'weak') {
         this.logger.warn('Weak password detected', { email, score: passwordValidation.score });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.weakPassword',
-          'Password does not meet security requirements',
-          { issues: passwordValidation.issues }
+        return AppResult.Err(AppError.Generic(
+          `Password does not meet security requirements for user with email: ${email}`
         ));
       }
 
@@ -50,10 +48,8 @@ export class UserApplicationService implements IUserApplicationService {
       const existingUser = await this.userRepository.findByEmail(email);
       if (existingUser) {
         this.logger.warn('User already exists', { email });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.userExists',
-          'User with this email already exists',
-          { email }
+        return AppResult.Err(AppError.Generic(
+          `User with this email already exists: ${email}`
         ));
       }
 
@@ -61,10 +57,8 @@ export class UserApplicationService implements IUserApplicationService {
       const userResult = await User.create(email, password, role);
       if (userResult.isErr()) {
         this.logger.error('Failed to create user entity', { email, error: userResult.unwrapErr() });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.entityCreation',
-          userResult.unwrapErr(),
-          { email }
+        return AppResult.Err(AppError.Generic(
+          `Failed to create user entity with email: ${email}`
         ));
       }
 
@@ -86,10 +80,8 @@ export class UserApplicationService implements IUserApplicationService {
       return AppResult.Ok(savedUser);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email });
-      return AppResult.Err(new ApplicationError(
-        'UserApplicationService.createUser',
-        error instanceof Error ? error.message : 'Failed to create user',
-        { email }
+      return AppResult.Err(AppError.Generic(
+        `Failed to create user with email: ${email}`
       ));
     }
   }
@@ -105,10 +97,8 @@ export class UserApplicationService implements IUserApplicationService {
       const user = await this.userRepository.findByEmail(email);
       if (!user) {
         this.logger.warn('User not found for authentication', { email });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.userNotFound',
-          'Invalid credentials',
-          { email }
+        return AppResult.Err(AppError.NotFound(
+          `User not found with email: ${email}`
         ));
       }
 
@@ -116,10 +106,8 @@ export class UserApplicationService implements IUserApplicationService {
       const isValidPassword = await user.verifyPassword(password);
       if (!isValidPassword) {
         this.logger.warn('Invalid password for user', { email });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.invalidPassword',
-          'Invalid credentials',
-          { email }
+        return AppResult.Err(AppError.Unauthorized(
+          `Invalid password for user with email: ${email}`
         ));
       }
 
@@ -136,10 +124,8 @@ export class UserApplicationService implements IUserApplicationService {
       return AppResult.Ok(user);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email });
-      return AppResult.Err(new ApplicationError(
-        'UserApplicationService.authenticateUser',
-        error instanceof Error ? error.message : 'Failed to authenticate user',
-        { email }
+      return AppResult.Err(AppError.Generic(
+        `Failed to authenticate user with email: ${email}`
       ));
     }
   }
@@ -155,10 +141,8 @@ export class UserApplicationService implements IUserApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found for password change', { userId });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.userNotFound',
-          'User not found',
-          { userId }
+        return AppResult.Err(AppError.NotFound(
+          `User not found with id: ${userId}`
         ));
       }
 
@@ -166,10 +150,8 @@ export class UserApplicationService implements IUserApplicationService {
       const isValidCurrentPassword = await user.verifyPassword(currentPassword);
       if (!isValidCurrentPassword) {
         this.logger.warn('Invalid current password', { userId });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.invalidCurrentPassword',
-          'Current password is incorrect',
-          { userId }
+        return AppResult.Err(AppError.Unauthorized(
+          `Current password is incorrect for user with id: ${userId}`
         ));
       }
 
@@ -177,10 +159,8 @@ export class UserApplicationService implements IUserApplicationService {
       const passwordValidation = this.authDomainService.validatePasswordStrength(newPassword);
       if (passwordValidation.level === 'weak') {
         this.logger.warn('Weak new password', { userId, score: passwordValidation.score });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.weakNewPassword',
-          'New password does not meet security requirements',
-          { issues: passwordValidation.issues }
+        return AppResult.Err(AppError.Generic(
+          `New password does not meet security requirements for user with id: ${userId}`
         ));
       }
 
@@ -188,10 +168,8 @@ export class UserApplicationService implements IUserApplicationService {
       const changePasswordResult = await user.changePassword(newPassword);
       if (changePasswordResult.isErr()) {
         this.logger.error('Failed to change password', { userId, error: changePasswordResult.unwrapErr() });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.passwordChangeFailed',
-          changePasswordResult.unwrapErr(),
-          { userId }
+        return AppResult.Err(AppError.Generic(
+          `Failed to change password for user with id: ${userId}`
         ));
       }
 
@@ -202,10 +180,8 @@ export class UserApplicationService implements IUserApplicationService {
       return AppResult.Ok(savedUser);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { userId });
-      return AppResult.Err(new ApplicationError(
-        'UserApplicationService.changeUserPassword',
-        error instanceof Error ? error.message : 'Failed to change password',
-        { userId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to change password for user with id: ${userId}`
       ));
     }
   }
@@ -221,10 +197,8 @@ export class UserApplicationService implements IUserApplicationService {
       const currentUser = await this.userRepository.findById(currentUserId);
       if (!currentUser) {
         this.logger.warn('Current user not found', { currentUserId });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.currentUserNotFound',
-          'Current user not found',
-          { currentUserId }
+        return AppResult.Err(AppError.NotFound(
+          `Current user not found with id: ${currentUserId}`
         ));
       }
 
@@ -232,10 +206,8 @@ export class UserApplicationService implements IUserApplicationService {
       const targetUser = await this.userRepository.findById(targetUserId);
       if (!targetUser) {
         this.logger.warn('Target user not found', { targetUserId });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.targetUserNotFound',
-          'Target user not found',
-          { targetUserId }
+        return AppResult.Err(AppError.NotFound(
+          `Target user not found with id: ${targetUserId}`
         ));
       }
 
@@ -243,10 +215,8 @@ export class UserApplicationService implements IUserApplicationService {
       const canChangeRole = this.userDomainService.canUserChangeRole(currentUser, targetUser, newRole);
       if (!canChangeRole) {
         this.logger.warn('Role change not permitted', { currentUserId, targetUserId, newRole });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.roleChangeNotPermitted',
-          'Role change not permitted',
-          { currentUserId, targetUserId, newRole }
+        return AppResult.Err(AppError.Unauthorized(
+          `Role change not permitted for user with id: ${targetUserId}`
         ));
       }
 
@@ -254,10 +224,8 @@ export class UserApplicationService implements IUserApplicationService {
       const changeRoleResult = targetUser.changeRole(newRole);
       if (changeRoleResult.isErr()) {
         this.logger.error('Failed to change role', { targetUserId, error: changeRoleResult.unwrapErr() });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.roleChangeFailed',
-          changeRoleResult.unwrapErr(),
-          { targetUserId, newRole }
+        return AppResult.Err(AppError.Generic(
+          `Failed to change role for user with id: ${targetUserId}`
         ));
       }
 
@@ -268,10 +236,8 @@ export class UserApplicationService implements IUserApplicationService {
       return AppResult.Ok(savedUser);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { currentUserId, targetUserId });
-      return AppResult.Err(new ApplicationError(
-        'UserApplicationService.changeUserRole',
-        error instanceof Error ? error.message : 'Failed to change user role',
-        { currentUserId, targetUserId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to change user role for user with id: ${targetUserId}`
       ));
     }
   }
@@ -286,10 +252,8 @@ export class UserApplicationService implements IUserApplicationService {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('User not found', { userId });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.userNotFound',
-          'User not found',
-          { userId }
+        return AppResult.Err(AppError.NotFound(
+          `User not found with id: ${userId}`
         ));
       }
 
@@ -297,10 +261,8 @@ export class UserApplicationService implements IUserApplicationService {
       return AppResult.Ok(user);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { userId });
-      return AppResult.Err(new ApplicationError(
-        'UserApplicationService.getUserById',
-        error instanceof Error ? error.message : 'Failed to get user',
-        { userId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to get user with id: ${userId}`
       ));
     }
   }
@@ -315,10 +277,8 @@ export class UserApplicationService implements IUserApplicationService {
       const user = await this.userRepository.findByEmail(email);
       if (!user) {
         this.logger.warn('User not found', { email });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.userNotFound',
-          'User not found',
-          { email }
+        return AppResult.Err(AppError.NotFound(
+          `User not found with email: ${email}`
         ));
       }
 
@@ -326,10 +286,8 @@ export class UserApplicationService implements IUserApplicationService {
       return AppResult.Ok(user);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email });
-      return AppResult.Err(new ApplicationError(
-        'UserApplicationService.getUserByEmail',
-        error instanceof Error ? error.message : 'Failed to get user',
-        { email }
+      return AppResult.Err(AppError.Generic(
+        `Failed to get user with email: ${email}`
       ));
     }
   }
@@ -388,10 +346,8 @@ export class UserApplicationService implements IUserApplicationService {
       return AppResult.Ok(usersResult.data);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { page, limit, filters });
-      return AppResult.Err(new ApplicationError(
-        'UserApplicationService.getUsers',
-        error instanceof Error ? error.message : 'Failed to get users',
-        { page, limit, filters }
+      return AppResult.Err(AppError.Generic(
+        `Failed to get users with page: ${page}, limit: ${limit}, filters: ${JSON.stringify(filters)}`
       ));
     }
   }
@@ -409,10 +365,8 @@ export class UserApplicationService implements IUserApplicationService {
       return AppResult.Ok(users);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { role });
-      return AppResult.Err(new ApplicationError(
-        'UserApplicationService.getUsersByRole',
-        error instanceof Error ? error.message : 'Failed to get users by role',
-        { role }
+      return AppResult.Err(AppError.Generic(
+        `Failed to get users by role: ${role}`
       ));
     }
   }
@@ -427,10 +381,8 @@ export class UserApplicationService implements IUserApplicationService {
       const user = await this.userRepository.findByEmail(email);
       if (!user) {
         this.logger.warn('User not found for credential validation', { email });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.userNotFound',
-          'User not found',
-          { email }
+        return AppResult.Err(AppError.NotFound(
+          `User not found with email: ${email}`
         ));
       }
 
@@ -443,10 +395,8 @@ export class UserApplicationService implements IUserApplicationService {
       return AppResult.Ok(isValid);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email });
-      return AppResult.Err(new ApplicationError(
-        'UserApplicationService.validateUserCredentials',
-        error instanceof Error ? error.message : 'Failed to validate user credentials',
-        { email }
+      return AppResult.Err(AppError.Generic(
+        `Failed to validate user credentials with email: ${email}`
       ));
     }
   }
@@ -462,10 +412,8 @@ export class UserApplicationService implements IUserApplicationService {
       const currentUser = await this.userRepository.findById(currentUserId);
       if (!currentUser) {
         this.logger.warn('Current user not found for deletion', { currentUserId });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.currentUserNotFound',
-          'Current user not found',
-          { currentUserId }
+        return AppResult.Err(AppError.NotFound(
+          `Current user not found with id: ${currentUserId}`
         ));
       }
 
@@ -473,10 +421,8 @@ export class UserApplicationService implements IUserApplicationService {
       const targetUser = await this.userRepository.findById(targetUserId);
       if (!targetUser) {
         this.logger.warn('Target user not found for deletion', { targetUserId });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.targetUserNotFound',
-          'Target user not found',
-          { targetUserId }
+        return AppResult.Err(AppError.NotFound(
+          `Target user not found with id: ${targetUserId}`
         ));
       }
 
@@ -484,20 +430,16 @@ export class UserApplicationService implements IUserApplicationService {
       const canDelete = this.userDomainService.canUserPerformAction(currentUser, 'delete', 'user');
       if (!canDelete) {
         this.logger.warn('User deletion not permitted', { currentUserId, targetUserId });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.deletionNotPermitted',
-          'User deletion not permitted',
-          { currentUserId, targetUserId }
+        return AppResult.Err(AppError.Unauthorized(
+          `User deletion not permitted for user with id: ${targetUserId}`
         ));
       }
 
       // Prevent self-deletion
       if (currentUserId === targetUserId) {
         this.logger.warn('Attempted self-deletion', { userId: currentUserId });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.selfDeletionNotAllowed',
-          'Self-deletion is not allowed',
-          { userId: currentUserId }
+        return AppResult.Err(AppError.Unauthorized(
+          `Self-deletion is not allowed for user with id: ${currentUserId}`
         ));
       }
 
@@ -505,10 +447,8 @@ export class UserApplicationService implements IUserApplicationService {
       const deleted = await this.userRepository.delete(targetUserId);
       if (!deleted) {
         this.logger.warn('Failed to delete user', { targetUserId });
-        return AppResult.Err(new ApplicationError(
-          'UserApplicationService.deleteFailed',
-          'Failed to delete user',
-          { targetUserId }
+        return AppResult.Err(AppError.Generic(
+          `Failed to delete user with id: ${targetUserId}`
         ));
       }
 
@@ -516,10 +456,8 @@ export class UserApplicationService implements IUserApplicationService {
       return AppResult.Ok(undefined);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { currentUserId, targetUserId });
-      return AppResult.Err(new ApplicationError(
-        'UserApplicationService.deleteUser',
-        error instanceof Error ? error.message : 'Failed to delete user',
-        { currentUserId, targetUserId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to delete user with id: ${targetUserId}`
       ));
     }
   }
