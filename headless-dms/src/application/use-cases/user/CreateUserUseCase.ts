@@ -1,9 +1,8 @@
 import { injectable, inject } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
-import { CreateUserRequest, UserResponse } from '../../../shared/dto/user/index.js';
+import { AppResult, AppError } from '@carbonteq/hexapp';
+import { CreateUserRequest, CreateUserResponse } from '../../../shared/dto/user/index.js';
 import type { IUserApplicationService } from '../../../ports/input/IUserApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class CreateUserUseCase {
@@ -14,27 +13,25 @@ export class CreateUserUseCase {
     this.logger = this.logger.child({ useCase: 'CreateUserUseCase' });
   }
 
-  async execute(request: CreateUserRequest): Promise<AppResult<UserResponse>> {
+  async execute(request: CreateUserRequest): Promise<AppResult<CreateUserResponse>> {
     this.logger.info('Executing create user use case', { email: request.email });
 
     try {
       const userResult = await this.userApplicationService.createUser(
-        request.email, 
-        request.password, 
+        request.email,
+        request.password,
         request.role
       );
       
       if (userResult.isErr()) {
         this.logger.warn('User creation failed', { email: request.email });
-        return AppResult.Err(new ApplicationError(
-          'CreateUserUseCase.userCreationFailed',
-          'User creation failed',
-          { email: request.email }
+        return AppResult.Err(AppError.InvalidData(
+          `User creation failed for email: ${request.email}`
         ));
       }
 
       const user = userResult.unwrap();
-      const response: UserResponse = {
+      const response: CreateUserResponse = {
         id: user.id,
         email: user.email.value,
         role: user.role.value,
@@ -46,10 +43,8 @@ export class CreateUserUseCase {
       return AppResult.Ok(response);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email: request.email });
-      return AppResult.Err(new ApplicationError(
-        'CreateUserUseCase.execute',
-        error instanceof Error ? error.message : 'Failed to execute create user use case',
-        { email: request.email }
+      return AppResult.Err(AppError.Generic(
+        `Failed to execute create user use case for email: ${request.email}`
       ));
     }
   }

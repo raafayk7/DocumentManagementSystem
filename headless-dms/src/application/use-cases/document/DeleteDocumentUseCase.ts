@@ -1,9 +1,8 @@
 import { injectable, inject } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import { DeleteDocumentRequest, DeleteDocumentResponse } from '../../../shared/dto/document/index.js';
 import type { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class DeleteDocumentUseCase {
@@ -16,7 +15,7 @@ export class DeleteDocumentUseCase {
 
   async execute(request: DeleteDocumentRequest): Promise<AppResult<DeleteDocumentResponse>> {
     this.logger.info('Executing delete document use case', { 
-      documentId: request.documentId, 
+      documentId: request.documentId,
       userId: request.userId 
     });
 
@@ -28,36 +27,30 @@ export class DeleteDocumentUseCase {
       
       if (deleteResult.isErr()) {
         this.logger.warn('Document deletion failed', { 
-          documentId: request.documentId, 
-          userId: request.userId,
-          error: deleteResult.unwrapErr().message 
+          documentId: request.documentId,
+          userId: request.userId 
         });
-        return AppResult.Err(new ApplicationError(
-          'DeleteDocumentUseCase.documentDeletionFailed',
-          'Document deletion failed',
-          { documentId: request.documentId, userId: request.userId }
+        return AppResult.Err(AppError.InvalidOperation(
+          `Document deletion failed for document ID: ${request.documentId}`
         ));
       }
 
       const response: DeleteDocumentResponse = {
-        success: true,
-        message: 'Document deleted successfully'
+        message: `Document with ID ${request.documentId} deleted successfully`
       };
 
       this.logger.info('Document deleted successfully', { 
-        documentId: request.documentId, 
+        documentId: request.documentId,
         userId: request.userId 
       });
       return AppResult.Ok(response);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
-        documentId: request.documentId, 
+        documentId: request.documentId,
         userId: request.userId 
       });
-      return AppResult.Err(new ApplicationError(
-        'DeleteDocumentUseCase.execute',
-        error instanceof Error ? error.message : 'Failed to execute delete document use case',
-        { documentId: request.documentId, userId: request.userId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to execute delete document use case for document ID: ${request.documentId}`
       ));
     }
   }

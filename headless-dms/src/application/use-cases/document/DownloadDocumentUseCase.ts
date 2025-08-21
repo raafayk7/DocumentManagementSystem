@@ -1,9 +1,8 @@
 import { injectable, inject } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import { DownloadDocumentRequest, DownloadDocumentResponse } from '../../../shared/dto/document/index.js';
 import type { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class DownloadDocumentUseCase {
@@ -16,7 +15,7 @@ export class DownloadDocumentUseCase {
 
   async execute(request: DownloadDocumentRequest): Promise<AppResult<DownloadDocumentResponse>> {
     this.logger.info('Executing download document use case', { 
-      documentId: request.documentId, 
+      documentId: request.documentId,
       userId: request.userId 
     });
 
@@ -28,39 +27,45 @@ export class DownloadDocumentUseCase {
       
       if (downloadResult.isErr()) {
         this.logger.warn('Document download failed', { 
-          documentId: request.documentId, 
-          userId: request.userId,
-          error: downloadResult.unwrapErr().message 
+          documentId: request.documentId,
+          userId: request.userId 
         });
-        return AppResult.Err(new ApplicationError(
-          'DownloadDocumentUseCase.documentDownloadFailed',
-          'Document download failed',
-          { documentId: request.documentId, userId: request.userId }
+        return AppResult.Err(AppError.InvalidOperation(
+          `Document download failed for document ID: ${request.documentId}`
         ));
       }
 
-      const { document, file } = downloadResult.unwrap();
+      const downloadInfo = downloadResult.unwrap();
       const response: DownloadDocumentResponse = {
-        filePath: document.filePath,
-        filename: document.name.value,
-        mimeType: document.mimeType.value,
-        size: document.size.bytes
+        document: {
+          id: downloadInfo.document.id,
+          name: downloadInfo.document.name.value,
+          filePath: downloadInfo.document.filePath,
+          mimeType: downloadInfo.document.mimeType.value,
+          size: downloadInfo.document.size.bytes.toString(),
+          tags: downloadInfo.document.tags,
+          metadata: downloadInfo.document.metadata,
+          userId: downloadInfo.document.userId,
+          createdAt: downloadInfo.document.createdAt,
+          updatedAt: downloadInfo.document.updatedAt
+        },
+        file: downloadInfo.file,
+        message: 'Document downloaded successfully'
       };
 
       this.logger.info('Document downloaded successfully', { 
-        documentId: document.id, 
-        userId: request.userId 
+        documentId: request.documentId,
+        userId: request.userId,
+        fileSize: downloadInfo.file.length 
       });
       return AppResult.Ok(response);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
-        documentId: request.documentId, 
+        documentId: request.documentId,
         userId: request.userId 
       });
-      return AppResult.Err(new ApplicationError(
-        'DownloadDocumentUseCase.execute',
-        error instanceof Error ? error.message : 'Failed to execute download document use case',
-        { documentId: request.documentId, userId: request.userId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to execute download document use case for document ID: ${request.documentId}`
       ));
     }
   }

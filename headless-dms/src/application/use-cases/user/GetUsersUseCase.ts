@@ -1,9 +1,8 @@
 import { injectable, inject } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
-import { GetUsersRequest, PaginatedUsersResponse } from '../../../shared/dto/user/index.js';
+import { AppResult, AppError } from '@carbonteq/hexapp';
+import { GetUsersRequest, GetUsersResponse } from '../../../shared/dto/user/index.js';
 import type { IUserApplicationService } from '../../../ports/input/IUserApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class GetUsersUseCase {
@@ -14,81 +13,61 @@ export class GetUsersUseCase {
     this.logger = this.logger.child({ useCase: 'GetUsersUseCase' });
   }
 
-  async execute(request: GetUsersRequest): Promise<AppResult<PaginatedUsersResponse>> {
-    this.logger.info('Getting users with pagination', { 
+  async execute(request: GetUsersRequest): Promise<AppResult<GetUsersResponse>> {
+    this.logger.info('Executing get users use case', { 
       page: request.page, 
       limit: request.limit,
-      filters: request 
+      role: request.role,
+      email: request.email
     });
 
     try {
-      const users = await this.userApplicationService.getUsers(
+      const usersResult = await this.userApplicationService.getUsers(
         request.page,
         request.limit,
-        request.sortBy,
-        request.sortOrder,
-        {
-          search: request.search,
-          email: request.email,
-          role: request.role
-        }
+        request.role,
+        request.email
       );
-
-      if (users.isErr()) {
-        this.logger.warn('Failed to get users', { 
+      
+      if (usersResult.isErr()) {
+        this.logger.warn('Users retrieval failed', { 
           page: request.page, 
           limit: request.limit,
-          error: users.unwrapErr().message 
+          role: request.role,
+          email: request.email
         });
-        return AppResult.Err(new ApplicationError(
-          'GetUsersUseCase.usersRetrievalFailed',
-          'Failed to retrieve users',
-          { page: request.page, limit: request.limit }
+        return AppResult.Err(AppError.InvalidOperation(
+          `Users retrieval failed with page: ${request.page}, limit: ${request.limit}`
         ));
       }
 
-      const usersData = users.unwrap();
-      
-      // Apply pagination manually since the service returns all users
-      const startIndex = (request.page - 1) * request.limit;
-      const endIndex = startIndex + request.limit;
-      const paginatedUsers = usersData.slice(startIndex, endIndex);
-      
-      const response: PaginatedUsersResponse = {
-        users: paginatedUsers.map(user => ({
+      const users = usersResult.unwrap();
+      const response: GetUsersResponse = {
+        users: users.users.map(user => ({
           id: user.id,
           email: user.email.value,
           role: user.role.value,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt
         })),
-        pagination: {
-          page: request.page,
-          limit: request.limit,
-          total: usersData.length,
-          totalPages: Math.ceil(usersData.length / request.limit),
-          hasNext: endIndex < usersData.length,
-          hasPrev: request.page > 1
-        }
+        pagination: users.pagination
       };
-      
+
       this.logger.info('Users retrieved successfully', { 
+        userCount: users.users.length, 
         page: request.page, 
-        limit: request.limit,
-        totalUsers: usersData.length,
-        returnedUsers: paginatedUsers.length
+        limit: request.limit 
       });
       return AppResult.Ok(response);
     } catch (error) {
-      this.logger.error('Unexpected error during users retrieval', { 
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
         page: request.page, 
         limit: request.limit,
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        role: request.role,
+        email: request.email
       });
-      return AppResult.Err(new ApplicationError(
-        'GetUsersUseCase.unexpectedError',
-        'Unexpected error during users retrieval',
-        { page: request.page, limit: request.limit }
+      return AppResult.Err(AppError.Generic(
+        `Failed to execute get users use case with page: ${request.page}, limit: ${request.limit}`
       ));
     }
   }

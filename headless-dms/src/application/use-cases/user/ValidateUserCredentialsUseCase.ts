@@ -1,9 +1,8 @@
 import { injectable, inject } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import { ValidateUserCredentialsRequest, ValidateUserCredentialsResponse } from '../../../shared/dto/user/index.js';
 import type { IUserApplicationService } from '../../../ports/input/IUserApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class ValidateUserCredentialsUseCase {
@@ -15,38 +14,36 @@ export class ValidateUserCredentialsUseCase {
   }
 
   async execute(request: ValidateUserCredentialsRequest): Promise<AppResult<ValidateUserCredentialsResponse>> {
-    this.logger.info('Validating user credentials', { email: request.email });
+    this.logger.info('Executing validate user credentials use case', { email: request.email });
 
     try {
-      const isValid = await this.userApplicationService.validateUserCredentials(request.email, request.password);
+      const validationResult = await this.userApplicationService.validateUserCredentials(
+        request.email,
+        request.password
+      );
       
-      if (isValid.isErr()) {
-        this.logger.warn('Failed to validate user credentials', { email: request.email, error: isValid.unwrapErr().message });
-        return AppResult.Err(new ApplicationError(
-          'ValidateUserCredentialsUseCase.validationFailed',
-          'Failed to validate user credentials',
-          { email: request.email }
+      if (validationResult.isErr()) {
+        this.logger.warn('User credentials validation failed', { email: request.email });
+        return AppResult.Err(AppError.Unauthorized(
+          `Credentials validation failed for email: ${request.email}`
         ));
       }
 
-      // For now, we'll return a simple response since we don't have the full user data
-      // The DTO expects { isValid: boolean, user: UserResponse } but we only have isValid
+      const isValid = validationResult.unwrap();
       const response: ValidateUserCredentialsResponse = {
-        isValid: isValid.unwrap(),
-        user: null as any // This is a temporary fix - ideally we'd return the user data
+        isValid,
+        message: isValid ? 'Credentials are valid' : 'Credentials are invalid'
       };
-      
-      this.logger.info('User credentials validated successfully', { email: request.email, isValid: response.isValid });
+
+      this.logger.info('User credentials validation completed', { 
+        email: request.email, 
+        isValid 
+      });
       return AppResult.Ok(response);
     } catch (error) {
-      this.logger.error('Unexpected error during credential validation', { 
-        email: request.email, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      });
-      return AppResult.Err(new ApplicationError(
-        'ValidateUserCredentialsUseCase.unexpectedError',
-        'Unexpected error during credential validation',
-        { email: request.email }
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email: request.email });
+      return AppResult.Err(AppError.Generic(
+        `Failed to execute validate user credentials use case for email: ${request.email}`
       ));
     }
   }

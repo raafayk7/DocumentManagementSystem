@@ -1,9 +1,8 @@
 import { injectable, inject } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import { ChangeUserRoleRequest, ChangeUserRoleResponse } from '../../../shared/dto/user/index.js';
 import type { IUserApplicationService } from '../../../ports/input/IUserApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class ChangeUserRoleUseCase {
@@ -15,54 +14,52 @@ export class ChangeUserRoleUseCase {
   }
 
   async execute(request: ChangeUserRoleRequest): Promise<AppResult<ChangeUserRoleResponse>> {
-    this.logger.info('Changing user role', { 
+    this.logger.info('Executing change user role use case', { 
       currentUserId: request.currentUserId, 
-      targetUserId: request.userId, 
+      userId: request.userId, 
       newRole: request.newRole 
     });
 
     try {
-      const updatedUser = await this.userApplicationService.changeUserRole(
+      const userResult = await this.userApplicationService.changeUserRole(
         request.currentUserId,
         request.userId,
         request.newRole
       );
-
-      if (updatedUser.isErr()) {
-        this.logger.warn('Failed to change user role', { 
+      
+      if (userResult.isErr()) {
+        this.logger.warn('User role change failed', { 
           currentUserId: request.currentUserId, 
-          targetUserId: request.userId, 
-          error: updatedUser.unwrapErr().message 
+          userId: request.userId, 
+          newRole: request.newRole 
         });
-        return AppResult.Err(new ApplicationError(
-          'ChangeUserRoleUseCase.roleChangeFailed',
-          'Failed to change user role',
-          { currentUserId: request.currentUserId, targetUserId: request.userId, newRole: request.newRole }
+        return AppResult.Err(AppError.InvalidOperation(
+          `User role change failed for user ID: ${request.userId} to role: ${request.newRole}`
         ));
       }
 
-      const user = updatedUser.unwrap();
+      const user = userResult.unwrap();
       const response: ChangeUserRoleResponse = {
-        success: true,
-        message: 'User role changed successfully'
+        id: user.id,
+        email: user.email.value,
+        role: user.role.value,
+        message: `User role changed successfully to ${request.newRole}`
       };
-      
+
       this.logger.info('User role changed successfully', { 
-        currentUserId: request.currentUserId, 
-        targetUserId: request.userId, 
+        userId: user.id, 
+        oldRole: user.role.value, 
         newRole: request.newRole 
       });
       return AppResult.Ok(response);
     } catch (error) {
-      this.logger.error('Unexpected error during role change', { 
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
         currentUserId: request.currentUserId, 
-        targetUserId: request.userId, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        userId: request.userId, 
+        newRole: request.newRole 
       });
-      return AppResult.Err(new ApplicationError(
-        'ChangeUserRoleUseCase.unexpectedError',
-        'Unexpected error during role change',
-        { currentUserId: request.currentUserId, targetUserId: request.userId, newRole: request.newRole }
+      return AppResult.Err(AppError.Generic(
+        `Failed to execute change user role use case for user ID: ${request.userId}`
       ));
     }
   }

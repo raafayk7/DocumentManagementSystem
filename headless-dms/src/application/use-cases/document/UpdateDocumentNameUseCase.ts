@@ -1,9 +1,8 @@
 import { injectable, inject } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import { UpdateDocumentNameRequest, UpdateDocumentNameResponse } from '../../../shared/dto/document/index.js';
 import type { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class UpdateDocumentNameUseCase {
@@ -17,49 +16,49 @@ export class UpdateDocumentNameUseCase {
   async execute(request: UpdateDocumentNameRequest): Promise<AppResult<UpdateDocumentNameResponse>> {
     this.logger.info('Executing update document name use case', { 
       documentId: request.documentId, 
-      name: request.name 
+      newName: request.newName,
+      userId: request.userId 
     });
 
     try {
-      const documentResult = await this.documentApplicationService.updateDocumentName(
+      const nameUpdateResult = await this.documentApplicationService.updateDocumentName(
         request.documentId,
-        request.name,
+        request.newName,
         request.userId
       );
       
-      if (documentResult.isErr()) {
+      if (nameUpdateResult.isErr()) {
         this.logger.warn('Document name update failed', { 
           documentId: request.documentId, 
-          name: request.name,
-          error: documentResult.unwrapErr().message 
+          newName: request.newName,
+          userId: request.userId 
         });
-        return AppResult.Err(new ApplicationError(
-          'UpdateDocumentNameUseCase.nameUpdateFailed',
-          'Document name update failed',
-          { documentId: request.documentId, name: request.name }
+        return AppResult.Err(AppError.InvalidOperation(
+          `Document name update failed for document ID: ${request.documentId} to name: ${request.newName}`
         ));
       }
 
-      const document = documentResult.unwrap();
+      const document = nameUpdateResult.unwrap();
       const response: UpdateDocumentNameResponse = {
-        success: true,
-        message: 'Document name updated successfully'
+        id: document.id,
+        name: document.name.value,
+        message: `Document name updated successfully to: ${request.newName}`
       };
 
       this.logger.info('Document name updated successfully', { 
         documentId: document.id, 
-        newName: request.name 
+        oldName: document.name.value,
+        newName: request.newName 
       });
       return AppResult.Ok(response);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
         documentId: request.documentId, 
-        name: request.name 
+        newName: request.newName,
+        userId: request.userId 
       });
-      return AppResult.Err(new ApplicationError(
-        'UpdateDocumentNameUseCase.execute',
-        error instanceof Error ? error.message : 'Failed to execute update document name use case',
-        { documentId: request.documentId, name: request.name }
+      return AppResult.Err(AppError.Generic(
+        `Failed to execute update document name use case for document ID: ${request.documentId}`
       ));
     }
   }

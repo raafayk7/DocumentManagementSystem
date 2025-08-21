@@ -1,9 +1,8 @@
 import { injectable, inject } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import { DeleteUserRequest, DeleteUserResponse } from '../../../shared/dto/user/index.js';
 import type { IUserApplicationService } from '../../../ports/input/IUserApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class DeleteUserUseCase {
@@ -15,47 +14,43 @@ export class DeleteUserUseCase {
   }
 
   async execute(request: DeleteUserRequest): Promise<AppResult<DeleteUserResponse>> {
-    this.logger.info('Deleting user', { 
+    this.logger.info('Executing delete user use case', { 
       currentUserId: request.currentUserId, 
-      targetUserId: request.userId 
+      userId: request.userId 
     });
 
     try {
-      const deleteResult = await this.userApplicationService.deleteUser(request.currentUserId, request.userId);
-
+      const deleteResult = await this.userApplicationService.deleteUser(
+        request.currentUserId,
+        request.userId
+      );
+      
       if (deleteResult.isErr()) {
-        this.logger.warn('Failed to delete user', { 
+        this.logger.warn('User deletion failed', { 
           currentUserId: request.currentUserId, 
-          targetUserId: request.userId,
-          error: deleteResult.unwrapErr().message 
+          userId: request.userId 
         });
-        return AppResult.Err(new ApplicationError(
-          'DeleteUserUseCase.userDeletionFailed',
-          'Failed to delete user',
-          { currentUserId: request.currentUserId, targetUserId: request.userId }
+        return AppResult.Err(AppError.InvalidOperation(
+          `User deletion failed for user ID: ${request.userId}`
         ));
       }
 
       const response: DeleteUserResponse = {
-        success: true,
-        message: 'User deleted successfully'
+        message: `User with ID ${request.userId} deleted successfully`
       };
-      
+
       this.logger.info('User deleted successfully', { 
         currentUserId: request.currentUserId, 
-        targetUserId: request.userId 
+        userId: request.userId 
       });
       return AppResult.Ok(response);
     } catch (error) {
-      this.logger.error('Unexpected error during user deletion', { 
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
         currentUserId: request.currentUserId, 
-        targetUserId: request.userId,
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        userId: request.userId 
       });
-      return AppResult.Err(new ApplicationError(
-        'DeleteUserUseCase.unexpectedError',
-        'Unexpected error during user deletion',
-        { currentUserId: request.currentUserId, targetUserId: request.userId }
+      return AppResult.Err(AppError.Generic(
+        `Failed to execute delete user use case for user ID: ${request.userId}`
       ));
     }
   }

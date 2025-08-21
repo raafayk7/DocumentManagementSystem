@@ -1,9 +1,8 @@
 import { injectable, inject } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import { RemoveTagsFromDocumentRequest, RemoveTagsFromDocumentResponse } from '../../../shared/dto/document/index.js';
 import type { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class RemoveTagsFromDocumentUseCase {
@@ -17,49 +16,49 @@ export class RemoveTagsFromDocumentUseCase {
   async execute(request: RemoveTagsFromDocumentRequest): Promise<AppResult<RemoveTagsFromDocumentResponse>> {
     this.logger.info('Executing remove tags from document use case', { 
       documentId: request.documentId, 
-      tags: request.tags 
+      tags: request.tags,
+      userId: request.userId 
     });
 
     try {
-      const documentResult = await this.documentApplicationService.removeTagsFromDocument(
+      const removeTagsResult = await this.documentApplicationService.removeTagsFromDocument(
         request.documentId,
         request.tags,
         request.userId
       );
       
-      if (documentResult.isErr()) {
-        this.logger.warn('Tag removal failed', { 
+      if (removeTagsResult.isErr()) {
+        this.logger.warn('Document tags removal failed', { 
           documentId: request.documentId, 
           tags: request.tags,
-          error: documentResult.unwrapErr().message 
+          userId: request.userId 
         });
-        return AppResult.Err(new ApplicationError(
-          'RemoveTagsFromDocumentUseCase.tagRemovalFailed',
-          'Tag removal failed',
-          { documentId: request.documentId, tags: request.tags }
+        return AppResult.Err(AppError.InvalidOperation(
+          `Document tags removal failed for document ID: ${request.documentId} with tags: ${request.tags.join(', ')}`
         ));
       }
 
-      const document = documentResult.unwrap();
+      const document = removeTagsResult.unwrap();
       const response: RemoveTagsFromDocumentResponse = {
-        success: true,
-        message: 'Tags removed successfully'
+        id: document.id,
+        tags: document.tags,
+        message: `Tags removed successfully from document: ${request.tags.join(', ')}`
       };
 
-      this.logger.info('Tags removed successfully', { 
+      this.logger.info('Document tags removed successfully', { 
         documentId: document.id, 
-        removedTags: request.tags 
+        removedTags: request.tags,
+        remainingTags: document.tags.length 
       });
       return AppResult.Ok(response);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
         documentId: request.documentId, 
-        tags: request.tags 
+        tags: request.tags,
+        userId: request.userId 
       });
-      return AppResult.Err(new ApplicationError(
-        'RemoveTagsFromDocumentUseCase.execute',
-        error instanceof Error ? error.message : 'Failed to execute remove tags from document use case',
-        { documentId: request.documentId, tags: request.tags }
+      return AppResult.Err(AppError.Generic(
+        `Failed to execute remove tags from document use case for document ID: ${request.documentId}`
       ));
     }
   }

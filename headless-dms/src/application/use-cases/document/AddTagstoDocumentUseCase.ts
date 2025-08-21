@@ -1,9 +1,8 @@
 import { injectable, inject } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import { AddTagsToDocumentRequest, AddTagsToDocumentResponse } from '../../../shared/dto/document/index.js';
 import type { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class AddTagsToDocumentUseCase {
@@ -17,49 +16,49 @@ export class AddTagsToDocumentUseCase {
   async execute(request: AddTagsToDocumentRequest): Promise<AppResult<AddTagsToDocumentResponse>> {
     this.logger.info('Executing add tags to document use case', { 
       documentId: request.documentId, 
-      tags: request.tags 
+      tags: request.tags,
+      userId: request.userId 
     });
 
     try {
-      const documentResult = await this.documentApplicationService.addTagsToDocument(
+      const addTagsResult = await this.documentApplicationService.addTagsToDocument(
         request.documentId,
         request.tags,
         request.userId
       );
       
-      if (documentResult.isErr()) {
-        this.logger.warn('Tag addition failed', { 
+      if (addTagsResult.isErr()) {
+        this.logger.warn('Document tags addition failed', { 
           documentId: request.documentId, 
           tags: request.tags,
-          error: documentResult.unwrapErr().message 
+          userId: request.userId 
         });
-        return AppResult.Err(new ApplicationError(
-          'AddTagsToDocumentUseCase.tagAdditionFailed',
-          'Tag addition failed',
-          { documentId: request.documentId, tags: request.tags }
+        return AppResult.Err(AppError.InvalidOperation(
+          `Document tags addition failed for document ID: ${request.documentId} with tags: ${request.tags.join(', ')}`
         ));
       }
 
-      const document = documentResult.unwrap();
+      const document = addTagsResult.unwrap();
       const response: AddTagsToDocumentResponse = {
-        success: true,
-        message: 'Tags added successfully'
+        id: document.id,
+        tags: document.tags,
+        message: `Tags added successfully to document: ${request.tags.join(', ')}`
       };
 
-      this.logger.info('Tags added successfully', { 
+      this.logger.info('Document tags added successfully', { 
         documentId: document.id, 
-        addedTags: request.tags 
+        addedTags: request.tags,
+        totalTags: document.tags.length 
       });
       return AppResult.Ok(response);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
         documentId: request.documentId, 
-        tags: request.tags 
+        tags: request.tags,
+        userId: request.userId 
       });
-      return AppResult.Err(new ApplicationError(
-        'AddTagsToDocumentUseCase.execute',
-        error instanceof Error ? error.message : 'Failed to execute add tags to document use case',
-        { documentId: request.documentId, tags: request.tags }
+      return AppResult.Err(AppError.Generic(
+        `Failed to execute add tags to document use case for document ID: ${request.documentId}`
       ));
     }
   }

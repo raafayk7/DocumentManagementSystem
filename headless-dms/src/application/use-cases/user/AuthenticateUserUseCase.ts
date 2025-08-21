@@ -1,9 +1,8 @@
 import { injectable, inject } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import { AuthenticateUserRequest, AuthenticateUserResponse } from '../../../shared/dto/user/index.js';
 import type { IUserApplicationService } from '../../../ports/input/IUserApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import { ApplicationError } from '../../../shared/errors/ApplicationError.js';
 
 @injectable()
 export class AuthenticateUserUseCase {
@@ -22,10 +21,8 @@ export class AuthenticateUserUseCase {
       
       if (userResult.isErr()) {
         this.logger.warn('User authentication failed', { email: request.email });
-        return AppResult.Err(new ApplicationError(
-          'AuthenticateUserUseCase.authenticationFailed',
-          'Authentication failed',
-          { email: request.email }
+        return AppResult.Err(AppError.Unauthorized(
+          `Authentication failed for email: ${request.email}`
         ));
       }
 
@@ -46,10 +43,8 @@ export class AuthenticateUserUseCase {
       return AppResult.Ok(response);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email: request.email });
-      return AppResult.Err(new ApplicationError(
-        'AuthenticateUserUseCase.execute',
-        error instanceof Error ? error.message : 'Failed to execute authenticate user use case',
-        { email: request.email }
+      return AppResult.Err(AppError.Generic(
+        `Failed to execute authenticate user use case for email: ${request.email}`
       ));
     }
   }
