@@ -32,7 +32,6 @@ export class ValidateUserCredentialsUseCase {
       const isValid = validationResult.unwrap();
       const response: ValidateUserCredentialsResponse = {
         isValid,
-        message: isValid ? 'Credentials are valid' : 'Credentials are invalid'
       };
 
       this.logger.info('User credentials validation completed', { 

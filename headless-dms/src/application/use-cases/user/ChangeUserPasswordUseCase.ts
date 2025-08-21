@@ -31,6 +31,7 @@ export class ChangeUserPasswordUseCase {
       }
 
       const response: ChangeUserPasswordResponse = {
+        success: true,
         message: 'Password changed successfully'
       };
 

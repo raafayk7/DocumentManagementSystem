@@ -28,11 +28,13 @@ export class GetUserByIdUseCase {
 
       const user = userResult.unwrap();
       const response: GetUserByIdResponse = {
-        id: user.id,
-        email: user.email.value,
-        role: user.role.value,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt
+        user: {
+          id: user.id,
+          email: user.email.value,
+          role: user.role.value,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt
+        }
       };
 
       this.logger.info('User retrieved successfully', { userId: user.id, email: user.email.value });

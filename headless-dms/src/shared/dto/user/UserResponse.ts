@@ -60,6 +60,20 @@ export const GetUserByIdResponseSchema = z.object({
   user: UserResponseSchema,
 });
 
+export const GetUsersResponseSchema = z.object({
+  users: z.array(UserResponseSchema),
+  pagination: z.object({
+    page: z.number(),
+    limit: z.number(),
+    total: z.number(),
+    totalPages: z.number(),
+    hasNext: z.boolean(),
+    hasPrev: z.boolean(),
+  }),
+});
+
+export type GetUsersResponse = z.infer<typeof GetUsersResponseSchema>;
+
 export type GetUserByIdResponse = z.infer<typeof GetUserByIdResponseSchema>;
 
 export const GetUserByEmailResponseSchema = z.object({
@@ -79,7 +93,7 @@ export type GetUsersByRoleResponse = z.infer<typeof GetUsersByRoleResponseSchema
 // For credential validation responses
 export const ValidateUserCredentialsResponseSchema = z.object({
   isValid: z.boolean(),
-  user: UserResponseSchema,
+  user: UserResponseSchema.optional(),
 });
 
 export type ValidateUserCredentialsResponse = z.infer<typeof ValidateUserCredentialsResponseSchema>;

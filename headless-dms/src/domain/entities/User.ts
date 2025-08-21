@@ -43,19 +43,19 @@ export class User {
     // Validate email using Email value object
     const emailResult = Email.create(email);
     if (emailResult.isErr()) {
-      return AppResult.Err(new Error(emailResult.unwrapErr().message));
+      return AppResult.Err(emailResult.unwrapErr());
     }
 
     // Validate password using Password value object
     const passwordResult = Password.create(password);
     if (passwordResult.isErr()) {
-      return AppResult.Err(new Error(passwordResult.unwrapErr().message));
+      return AppResult.Err(passwordResult.unwrapErr());
     }
 
     // Validate role using UserRole value object
     const roleResult = UserRole.create(role);
     if (roleResult.isErr()) {
-      return AppResult.Err(new Error(roleResult.unwrapErr().message));
+      return AppResult.Err(roleResult.unwrapErr());
     }
 
     // Hash password
@@ -85,13 +85,13 @@ export class User {
     // Validate email
     const emailResult = Email.create(props.email);
     if (emailResult.isErr()) {
-      return AppResult.Err(new Error(`Invalid email in repository data: ${emailResult.unwrapErr()}`));
+      return AppResult.Err(emailResult.unwrapErr());
     }
 
     // Validate role
     const roleResult = UserRole.create(props.role);
     if (roleResult.isErr()) {
-      return AppResult.Err(new Error(`Invalid role in repository data: ${roleResult.unwrapErr()}`));
+      return AppResult.Err(roleResult.unwrapErr());
     }
 
     const userProps: UserProps = {
@@ -116,7 +116,7 @@ export class User {
     // Validate new password using Password value object
     const passwordResult = Password.create(newPassword);
     if (passwordResult.isErr()) {
-      return AppResult.Err(new Error(passwordResult.unwrapErr().message));
+      return AppResult.Err(passwordResult.unwrapErr());
     }
 
     const newPasswordHash = await User.hashPassword(newPassword);
@@ -136,7 +136,7 @@ export class User {
     // Validate new role using UserRole value object
     const roleResult = UserRole.create(newRole);
     if (roleResult.isErr()) {
-      return AppResult.Err(new Error(roleResult.unwrapErr().message));
+      return AppResult.Err(roleResult.unwrapErr());
     }
 
     const updatedProps: UserProps = {
@@ -155,7 +155,7 @@ export class User {
     // Validate new email using Email value object
     const emailResult = Email.create(newEmail);
     if (emailResult.isErr()) {
-      return AppResult.Err(new Error(emailResult.unwrapErr().message));
+      return AppResult.Err(emailResult.unwrapErr());
     }
 
     const updatedProps: UserProps = {

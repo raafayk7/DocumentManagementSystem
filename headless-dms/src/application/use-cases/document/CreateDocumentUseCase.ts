@@ -1,6 +1,6 @@
 import { injectable, inject } from 'tsyringe';
 import { AppResult, AppError } from '@carbonteq/hexapp';
-import { CreateDocumentRequest, CreateDocumentResponse } from '../../../shared/dto/document/index.js';
+import { CreateDocumentRequest, DocumentResponse } from '../../../shared/dto/document/index.js';
 import type { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
 
@@ -13,7 +13,7 @@ export class CreateDocumentUseCase {
     this.logger = this.logger.child({ useCase: 'CreateDocumentUseCase' });
   }
 
-  async execute(request: CreateDocumentRequest): Promise<AppResult<CreateDocumentResponse>> {
+  async execute(request: CreateDocumentRequest): Promise<AppResult<DocumentResponse>> {
     this.logger.info('Executing create document use case', { 
       name: request.name, 
       filePath: request.filePath,
@@ -26,7 +26,7 @@ export class CreateDocumentUseCase {
         request.filePath,
         request.mimeType,
         request.size,
-        request.tags,
+        request.tags || [],
         request.metadata,
         request.userId
       );
@@ -43,7 +43,7 @@ export class CreateDocumentUseCase {
       }
 
       const document = documentResult.unwrap();
-      const response: CreateDocumentResponse = {
+      const response: DocumentResponse = {
         id: document.id,
         name: document.name.value,
         filePath: document.filePath,
@@ -51,7 +51,6 @@ export class CreateDocumentUseCase {
         size: document.size.bytes.toString(),
         tags: document.tags,
         metadata: document.metadata,
-        userId: document.userId,
         createdAt: document.createdAt,
         updatedAt: document.updatedAt
       };
@@ -59,7 +58,7 @@ export class CreateDocumentUseCase {
       this.logger.info('Document created successfully', { 
         documentId: document.id, 
         name: document.name.value,
-        userId: document.userId 
+        userId: request.userId 
       });
       return AppResult.Ok(response);
     } catch (error) {

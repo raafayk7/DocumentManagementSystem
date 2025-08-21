@@ -1,6 +1,6 @@
 import { injectable, inject } from 'tsyringe';
 import { AppResult, AppError } from '@carbonteq/hexapp';
-import { CreateUserRequest, CreateUserResponse } from '../../../shared/dto/user/index.js';
+import { CreateUserRequest, UserResponse } from '../../../shared/dto/user/index.js';
 import type { IUserApplicationService } from '../../../ports/input/IUserApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
 
@@ -13,7 +13,7 @@ export class CreateUserUseCase {
     this.logger = this.logger.child({ useCase: 'CreateUserUseCase' });
   }
 
-  async execute(request: CreateUserRequest): Promise<AppResult<CreateUserResponse>> {
+  async execute(request: CreateUserRequest): Promise<AppResult<UserResponse>> {
     this.logger.info('Executing create user use case', { email: request.email });
 
     try {
@@ -31,7 +31,7 @@ export class CreateUserUseCase {
       }
 
       const user = userResult.unwrap();
-      const response: CreateUserResponse = {
+      const response: UserResponse = {
         id: user.id,
         email: user.email.value,
         role: user.role.value,

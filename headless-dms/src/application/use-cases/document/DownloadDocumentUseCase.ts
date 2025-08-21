@@ -37,20 +37,11 @@ export class DownloadDocumentUseCase {
 
       const downloadInfo = downloadResult.unwrap();
       const response: DownloadDocumentResponse = {
-        document: {
-          id: downloadInfo.document.id,
-          name: downloadInfo.document.name.value,
+          filename: downloadInfo.document.name.value,
           filePath: downloadInfo.document.filePath,
           mimeType: downloadInfo.document.mimeType.value,
-          size: downloadInfo.document.size.bytes.toString(),
-          tags: downloadInfo.document.tags,
-          metadata: downloadInfo.document.metadata,
-          userId: downloadInfo.document.userId,
-          createdAt: downloadInfo.document.createdAt,
-          updatedAt: downloadInfo.document.updatedAt
-        },
-        file: downloadInfo.file,
-        message: 'Document downloaded successfully'
+          size: downloadInfo.document.size.bytes,
+        // message: 'Document downloaded successfully'
       };
 
       this.logger.info('Document downloaded successfully', { 

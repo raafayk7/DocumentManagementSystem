@@ -16,45 +16,44 @@ export class UpdateDocumentNameUseCase {
   async execute(request: UpdateDocumentNameRequest): Promise<AppResult<UpdateDocumentNameResponse>> {
     this.logger.info('Executing update document name use case', { 
       documentId: request.documentId, 
-      newName: request.newName,
+      newName: request.name,
       userId: request.userId 
     });
 
     try {
       const nameUpdateResult = await this.documentApplicationService.updateDocumentName(
         request.documentId,
-        request.newName,
+        request.name,
         request.userId
       );
       
       if (nameUpdateResult.isErr()) {
         this.logger.warn('Document name update failed', { 
           documentId: request.documentId, 
-          newName: request.newName,
+          newName: request.name,
           userId: request.userId 
         });
         return AppResult.Err(AppError.InvalidOperation(
-          `Document name update failed for document ID: ${request.documentId} to name: ${request.newName}`
+          `Document name update failed for document ID: ${request.documentId} to name: ${request.name}`
         ));
       }
 
       const document = nameUpdateResult.unwrap();
       const response: UpdateDocumentNameResponse = {
-        id: document.id,
-        name: document.name.value,
-        message: `Document name updated successfully to: ${request.newName}`
+        success: true,
+        message: `Document name updated successfully to: ${request.name}`
       };
 
       this.logger.info('Document name updated successfully', { 
         documentId: document.id, 
         oldName: document.name.value,
-        newName: request.newName 
+        newName: request.name 
       });
       return AppResult.Ok(response);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
         documentId: request.documentId, 
-        newName: request.newName,
+        newName: request.name,
         userId: request.userId 
       });
       return AppResult.Err(AppError.Generic(

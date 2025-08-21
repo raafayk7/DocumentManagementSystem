@@ -123,19 +123,19 @@ export class Document {
     // Validate name
     const nameResult = DocumentName.create(props.name);
     if (nameResult.isErr()) {
-      return AppResult.Err(new Error(`Invalid name in repository data: ${nameResult.unwrapErr()}`));
+      return AppResult.Err(nameResult.unwrapErr());
     }
 
     // Validate MIME type
     const mimeTypeResult = MimeType.create(props.mimeType);
     if (mimeTypeResult.isErr()) {
-      return AppResult.Err(new Error(`Invalid MIME type in repository data: ${mimeTypeResult.unwrapErr()}`));
+      return AppResult.Err(mimeTypeResult.unwrapErr());
     }
 
     // Validate size
     const sizeResult = FileSize.fromBytes(parseInt(props.size));
     if (sizeResult.isErr()) {
-      return AppResult.Err(new Error(`Invalid size in repository data: ${sizeResult.unwrapErr()}`));
+      return AppResult.Err(sizeResult.unwrapErr());
     }
 
     const documentProps: DocumentProps = {

@@ -22,7 +22,6 @@ export class GetDocumentByIdUseCase {
     try {
       const documentResult = await this.documentApplicationService.getDocumentById(
         request.documentId,
-        'dummy-user-id' // TODO: Get from request when available
       );
       
       if (documentResult.isErr()) {
@@ -34,16 +33,19 @@ export class GetDocumentByIdUseCase {
 
       const document = documentResult.unwrap();
       const response: GetDocumentByIdResponse = {
-        id: document.id,
-        name: document.name.value,
-        filePath: document.filePath,
-        mimeType: document.mimeType.value,
-        size: document.size.bytes.toString(),
-        tags: document.tags,
-        metadata: document.metadata,
-        userId: document.userId,
-        createdAt: document.createdAt,
-        updatedAt: document.updatedAt
+        document:{
+          id: document.id,
+          name: document.name.value,
+          filePath: document.filePath,
+          mimeType: document.mimeType.value,
+          size: document.size.bytes.toString(),
+          tags: document.tags,
+          metadata: document.metadata,
+          createdAt: document.createdAt,
+          updatedAt: document.updatedAt
+        }
+        
+        
       };
 
       this.logger.info('Document retrieved successfully', { 

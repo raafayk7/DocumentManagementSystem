@@ -1,6 +1,6 @@
 import { injectable, inject } from 'tsyringe';
 import { AppResult, AppError } from '@carbonteq/hexapp';
-import { ReplaceTagsInDocumentRequest, ReplaceTagsInDocumentResponse } from '../../../shared/dto/document/index.js';
+import { ReplaceTagsinDocumentRequest, ReplaceTagsinDocumentResponse } from '../../../shared/dto/document/index.js';
 import type { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
 
@@ -13,7 +13,7 @@ export class ReplaceTagsInDocumentUseCase {
     this.logger = this.logger.child({ useCase: 'ReplaceTagsInDocumentUseCase' });
   }
 
-  async execute(request: ReplaceTagsInDocumentRequest): Promise<AppResult<ReplaceTagsInDocumentResponse>> {
+  async execute(request: ReplaceTagsinDocumentRequest): Promise<AppResult<ReplaceTagsinDocumentResponse>> {
     this.logger.info('Executing replace tags in document use case', { 
       documentId: request.documentId, 
       tags: request.tags,
@@ -39,9 +39,8 @@ export class ReplaceTagsInDocumentUseCase {
       }
 
       const document = replaceTagsResult.unwrap();
-      const response: ReplaceTagsInDocumentResponse = {
-        id: document.id,
-        tags: document.tags,
+      const response: ReplaceTagsinDocumentResponse = {
+        success: true,
         message: `Tags replaced successfully in document: ${request.tags.join(', ')}`
       };
 

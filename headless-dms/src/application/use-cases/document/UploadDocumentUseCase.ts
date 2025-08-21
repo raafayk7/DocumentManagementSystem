@@ -16,7 +16,7 @@ export class UploadDocumentUseCase {
   async execute(request: UploadDocumentRequest): Promise<AppResult<UploadDocumentResponse>> {
     this.logger.info('Executing upload document use case', { 
       name: request.name, 
-      filePath: request.filePath,
+      filePath: request.filename,
       mimeType: request.mimeType,
       size: request.size,
       userId: request.userId 
@@ -26,9 +26,9 @@ export class UploadDocumentUseCase {
       const documentResult = await this.documentApplicationService.createDocument(
         request.userId,
         request.name,
-        request.filePath,
+        request.filename,
         request.mimeType,
-        request.size,
+        request.size.toString(),
         request.tags,
         request.metadata
       );
@@ -36,42 +36,33 @@ export class UploadDocumentUseCase {
       if (documentResult.isErr()) {
         this.logger.warn('Document upload failed', { 
           name: request.name, 
-          filePath: request.filePath,
+          filePath: request.filename,
           userId: request.userId 
         });
         return AppResult.Err(AppError.InvalidData(
-          `Document upload failed for name: ${request.name}, filePath: ${request.filePath}`
+          `Document upload failed for name: ${request.name}, filePath: ${request.filename}`
         ));
       }
 
       const document = documentResult.unwrap();
       const response: UploadDocumentResponse = {
-        id: document.id,
-        name: document.name.value,
-        filePath: document.filePath,
-        mimeType: document.mimeType.value,
-        size: document.size.bytes.toString(),
-        tags: document.tags,
-        metadata: document.metadata,
-        userId: document.userId,
-        createdAt: document.createdAt,
-        updatedAt: document.updatedAt
+        success: true,
+        message: 'Document uploaded successfully'
       };
 
       this.logger.info('Document uploaded successfully', { 
-        documentId: document.id, 
-        name: document.name.value,
-        userId: document.userId 
+        name: request.name, 
+        userId: request.userId 
       });
       return AppResult.Ok(response);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
         name: request.name, 
-        filePath: request.filePath,
+        filePath: request.filename,
         userId: request.userId 
       });
       return AppResult.Err(AppError.Generic(
-        `Failed to execute upload document use case for name: ${request.name}, filePath: ${request.filePath}`
+        `Failed to execute upload document use case for name: ${request.name}, filePath: ${request.filename}`
       ));
     }
   }

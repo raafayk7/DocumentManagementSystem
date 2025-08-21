@@ -3,6 +3,7 @@ import { AppResult, AppError } from '@carbonteq/hexapp';
 import { GetUsersRequest, GetUsersResponse } from '../../../shared/dto/user/index.js';
 import type { IUserApplicationService } from '../../../ports/input/IUserApplicationService.js';
 import type { ILogger } from '../../../ports/output/ILogger.js';
+import { calculatePaginationMetadata } from '../../../shared/dto/common/pagination.dto.js';
 
 @injectable()
 export class GetUsersUseCase {
@@ -25,8 +26,7 @@ export class GetUsersUseCase {
       const usersResult = await this.userApplicationService.getUsers(
         request.page,
         request.limit,
-        request.role,
-        request.email
+        request.role
       );
       
       if (usersResult.isErr()) {
@@ -43,18 +43,18 @@ export class GetUsersUseCase {
 
       const users = usersResult.unwrap();
       const response: GetUsersResponse = {
-        users: users.users.map(user => ({
+        users: users.map(user => ({
           id: user.id,
           email: user.email.value,
           role: user.role.value,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt
         })),
-        pagination: users.pagination
+        pagination: calculatePaginationMetadata(request.page, request.limit, users.length)
       };
 
       this.logger.info('Users retrieved successfully', { 
-        userCount: users.users.length, 
+        userCount: users.length, 
         page: request.page, 
         limit: request.limit 
       });

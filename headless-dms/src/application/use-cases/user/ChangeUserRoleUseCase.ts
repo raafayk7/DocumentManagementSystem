@@ -40,9 +40,7 @@ export class ChangeUserRoleUseCase {
 
       const user = userResult.unwrap();
       const response: ChangeUserRoleResponse = {
-        id: user.id,
-        email: user.email.value,
-        role: user.role.value,
+        success: true,
         message: `User role changed successfully to ${request.newRole}`
       };
 

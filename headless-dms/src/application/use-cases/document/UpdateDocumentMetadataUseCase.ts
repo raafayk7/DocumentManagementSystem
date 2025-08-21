@@ -23,7 +23,7 @@ export class UpdateDocumentMetadataUseCase {
     try {
       const metadataUpdateResult = await this.documentApplicationService.updateDocumentMetadata(
         request.documentId,
-        request.metadata,
+        request.metadata || {},
         request.userId
       );
       
@@ -40,14 +40,13 @@ export class UpdateDocumentMetadataUseCase {
 
       const document = metadataUpdateResult.unwrap();
       const response: UpdateDocumentMetadataResponse = {
-        id: document.id,
-        metadata: document.metadata,
+        success: true,
         message: 'Document metadata updated successfully'
       };
 
       this.logger.info('Document metadata updated successfully', { 
         documentId: document.id, 
-        metadataKeys: Object.keys(request.metadata),
+        metadataKeys: Object.keys(request.metadata || {}),
         totalMetadataKeys: Object.keys(document.metadata).length 
       });
       return AppResult.Ok(response);

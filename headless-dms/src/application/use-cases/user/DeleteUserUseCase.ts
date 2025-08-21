@@ -36,6 +36,7 @@ export class DeleteUserUseCase {
       }
 
       const response: DeleteUserResponse = {
+        success: true,
         message: `User with ID ${request.userId} deleted successfully`
       };
 

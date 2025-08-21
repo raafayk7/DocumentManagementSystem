@@ -36,6 +36,7 @@ export class DeleteDocumentUseCase {
       }
 
       const response: DeleteDocumentResponse = {
+        success: true,
         message: `Document with ID ${request.documentId} deleted successfully`
       };
 

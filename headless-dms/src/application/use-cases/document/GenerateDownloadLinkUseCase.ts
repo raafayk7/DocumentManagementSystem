@@ -16,19 +16,22 @@ export class GenerateDownloadLinkUseCase {
   async execute(request: GenerateDownloadLinkRequest): Promise<AppResult<GenerateDownloadLinkResponse>> {
     this.logger.info('Executing generate download link use case', { 
       documentId: request.documentId,
-      userId: request.userId 
+      // userId: request.userId 
+      expiresInMinutes: request.expiresInMinutes
     });
 
     try {
       const downloadLinkResult = await this.documentApplicationService.generateDownloadLink(
         request.documentId,
-        request.userId
+        // request.userId
+        request.expiresInMinutes
       );
       
       if (downloadLinkResult.isErr()) {
         this.logger.warn('Download link generation failed', { 
           documentId: request.documentId,
-          userId: request.userId 
+          // userId: request.userId 
+          expiresInMinutes: request.expiresInMinutes
         });
         return AppResult.Err(AppError.InvalidOperation(
           `Download link generation failed for document ID: ${request.documentId}`
@@ -37,21 +40,22 @@ export class GenerateDownloadLinkUseCase {
 
       const downloadInfo = downloadLinkResult.unwrap();
       const response: GenerateDownloadLinkResponse = {
-        downloadUrl: downloadInfo.downloadUrl,
-        expiresAt: downloadInfo.expiresAt,
-        message: 'Download link generated successfully'
+        downloadUrl: '',
+        expiresAt: new Date(Date.now() + request.expiresInMinutes * 60000),
+        token: downloadInfo
+        // message: 'Download link generated successfully'
       };
 
       this.logger.info('Download link generated successfully', { 
         documentId: request.documentId,
-        userId: request.userId,
-        expiresAt: downloadInfo.expiresAt 
+        // userId: request.userId,
+        expiresAt: response.expiresAt
       });
       return AppResult.Ok(response);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
         documentId: request.documentId,
-        userId: request.userId 
+        // userId: request.userId 
       });
       return AppResult.Err(AppError.Generic(
         `Failed to execute generate download link use case for document ID: ${request.documentId}`

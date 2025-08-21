@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-export const GetDocumentsByIdRequestSchema = z.object({
+export const GetDocumentByIdRequestSchema = z.object({
     documentId: z.string().uuid('Invalid document ID'),
 });
 
-export type GetDocumentsByIdRequest = z.infer<typeof GetDocumentsByIdRequestSchema>;
+export type GetDocumentByIdRequest = z.infer<typeof GetDocumentByIdRequestSchema>;
 

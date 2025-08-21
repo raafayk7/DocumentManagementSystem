@@ -40,8 +40,7 @@ export class AddTagsToDocumentUseCase {
 
       const document = addTagsResult.unwrap();
       const response: AddTagsToDocumentResponse = {
-        id: document.id,
-        tags: document.tags,
+        success: true,
         message: `Tags added successfully to document: ${request.tags.join(', ')}`
       };
 

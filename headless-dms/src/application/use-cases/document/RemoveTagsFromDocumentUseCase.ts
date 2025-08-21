@@ -40,8 +40,7 @@ export class RemoveTagsFromDocumentUseCase {
 
       const document = removeTagsResult.unwrap();
       const response: RemoveTagsFromDocumentResponse = {
-        id: document.id,
-        tags: document.tags,
+        success: true,
         message: `Tags removed successfully from document: ${request.tags.join(', ')}`
       };
 

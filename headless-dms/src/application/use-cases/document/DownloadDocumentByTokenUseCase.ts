@@ -42,12 +42,12 @@ export class DownloadDocumentByTokenUseCase {
           size: downloadInfo.document.size.bytes.toString(),
           tags: downloadInfo.document.tags,
           metadata: downloadInfo.document.metadata,
-          userId: downloadInfo.document.userId,
+          // userId: downloadInfo.document.userId,
           createdAt: downloadInfo.document.createdAt,
           updatedAt: downloadInfo.document.updatedAt
         },
         file: downloadInfo.file,
-        message: 'Document downloaded successfully by token'
+        // message: 'Document downloaded successfully by token'
       };
 
       this.logger.info('Document downloaded successfully by token', { 
