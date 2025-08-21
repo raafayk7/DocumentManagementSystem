@@ -1,6 +1,5 @@
 import { AppResult } from '@carbonteq/hexapp';
 import { User } from '../../domain/entities/User.js';
-import { ApplicationError } from '../../shared/errors/ApplicationError.js';
 
 export interface IAuthApplicationService {
   /**

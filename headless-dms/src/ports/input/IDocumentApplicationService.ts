@@ -1,6 +1,5 @@
 import { AppResult } from '@carbonteq/hexapp';
 import { Document } from '../../domain/entities/Document.js';
-import { ApplicationError } from '../../shared/errors/ApplicationError.js';
 
 export interface IDocumentApplicationService {
   /**
