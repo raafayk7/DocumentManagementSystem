@@ -4,7 +4,8 @@ import { User } from '../../../domain/entities/User.js';
 import { PaginationInput, PaginationOutput } from '../../../shared/dto/common/pagination.dto.js';
 import { UserFilterQuery } from '../../../ports/output/IUserRepository.js';
 import { Email } from '../../../domain/value-objects/Email.js';
-
+import { RepositoryResult } from '@carbonteq/hexapp';
+import { Result } from '@carbonteq/fp';
 
 @injectable()
 export class MockUserRepository implements IUserRepository {
@@ -16,6 +17,32 @@ export class MockUserRepository implements IUserRepository {
     this.seedMockData();
   }
 
+  // Required abstract methods from BaseRepository<User>
+  async insert(user: User): Promise<RepositoryResult<User, any>> {
+    try {
+      if (this.users.has(user.id)) {
+        return Result.Err(new Error(`User with ID ${user.id} already exists`));
+      }
+      this.users.set(user.id, user);
+      return Result.Ok(user);
+    } catch (error) {
+      return Result.Err(new Error(`Failed to insert user: ${error}`));
+    }
+  }
+
+  async update(user: User): Promise<RepositoryResult<User, any>> {
+    try {
+      if (!this.users.has(user.id)) {
+        return Result.Err(new Error(`User with ID ${user.id} not found`));
+      }
+      this.users.set(user.id, user);
+      return Result.Ok(user);
+    } catch (error) {
+      return Result.Err(new Error(`Failed to update user: ${error}`));
+    }
+  }
+
+  // Existing custom methods (preserved for backward compatibility)
   async findById(id: string): Promise<User | null> {
     return this.users.get(id) || null;
   }
@@ -87,8 +114,8 @@ export class MockUserRepository implements IUserRepository {
     return result.data.length > 0;
   }
 
-  async count(query: UserFilterQuery): Promise<number> {
-    const result = await this.find(query, { page: 1, limit: Number.MAX_SAFE_INTEGER, order: 'asc', sort: 'createdAt' });
+  async count(query?: UserFilterQuery): Promise<number> {
+    const result = await this.find(query || {}, { page: 1, limit: Number.MAX_SAFE_INTEGER, order: 'asc', sort: 'createdAt' });
     return result.data.length;
   }
 
@@ -97,14 +124,6 @@ export class MockUserRepository implements IUserRepository {
     //   user.id = `mock-user-${this.nextId++}`;
     // }
     // this.users.set(user.id, user);
-    return user;
-  }
-
-  async update(user: User): Promise<User> {
-    if (!user.id || !this.users.has(user.id)) {
-      throw new Error('User not found for update');
-    }
-    this.users.set(user.id, user);
     return user;
   }
 

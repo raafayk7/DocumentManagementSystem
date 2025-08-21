@@ -3,6 +3,8 @@ import { IDocumentRepository } from '../../../ports/output/IDocumentRepository.j
 import { Document } from '../../../domain/entities/Document.js';
 import { PaginationInput, PaginationOutput } from '../../../shared/dto/common/pagination.dto.js';
 import { DocumentFilterQuery } from '../../../ports/output/IDocumentRepository.js';
+import { RepositoryResult } from '@carbonteq/hexapp';
+import { Result } from '@carbonteq/fp';
 
 @injectable()
 export class MockDocumentRepository implements IDocumentRepository {
@@ -14,6 +16,32 @@ export class MockDocumentRepository implements IDocumentRepository {
     this.seedMockData();
   }
 
+  // Required abstract methods from BaseRepository<Document>
+  async insert(document: Document): Promise<RepositoryResult<Document, any>> {
+    try {
+      if (this.documents.has(document.id)) {
+        return Result.Err(new Error(`Document with ID ${document.id} already exists`));
+      }
+      this.documents.set(document.id, document);
+      return Result.Ok(document);
+    } catch (error) {
+      return Result.Err(new Error(`Failed to insert document: ${error}`));
+    }
+  }
+
+  async update(document: Document): Promise<RepositoryResult<Document, any>> {
+    try {
+      if (!this.documents.has(document.id)) {
+        return Result.Err(new Error(`Document with ID ${document.id} not found`));
+      }
+      this.documents.set(document.id, document);
+      return Result.Ok(document);
+    } catch (error) {
+      return Result.Err(new Error(`Failed to update document: ${error}`));
+    }
+  }
+
+  // Existing custom methods (preserved for backward compatibility)
   async findById(id: string): Promise<Document | null> {
     return this.documents.get(id) || null;
   }
@@ -99,14 +127,6 @@ export class MockDocumentRepository implements IDocumentRepository {
     return document;
   }
 
-  async update(document: Document): Promise<Document> {
-    if (!document.id || !this.documents.has(document.id)) {
-      throw new Error('Document not found for update');
-    }
-    this.documents.set(document.id, document);
-    return document;
-  }
-
   async delete(id: string): Promise<boolean> {
     if (!this.documents.has(id)) {
       console.error('Document not found for deletion', id);
@@ -172,5 +192,4 @@ export class MockDocumentRepository implements IDocumentRepository {
     }
     return this.save(document);
   }
-
 }

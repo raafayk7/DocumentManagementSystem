@@ -7,9 +7,83 @@ import { eq, and } from 'drizzle-orm';
 import { injectable } from 'tsyringe';
 import { PaginationInput, PaginationOutput, calculatePaginationMetadata } from '../../../../shared/dto/common/pagination.dto.js';
 import { sql } from 'drizzle-orm';
+import { RepositoryResult } from '@carbonteq/hexapp';
+import { Result } from '@carbonteq/fp';
 
 @injectable()
 export class DrizzleUserRepository implements IUserRepository {
+  // Required abstract methods from BaseRepository<User>
+  async insert(user: User): Promise<RepositoryResult<User, any>> {
+    try {
+      const userData = user.toRepository();
+      
+      // Check if user already exists
+      const existing = await db.select().from(users).where(eq(users.id, userData.id)).execute();
+      if (existing.length > 0) {
+        return Result.Err(new Error(`User with ID ${userData.id} already exists`));
+      }
+
+      const newUsers = await db.insert(users).values({
+        id: userData.id,
+        email: userData.email,
+        passwordHash: userData.passwordHash,
+        role: userData.role,
+      })
+      .returning()
+      .execute();
+      
+      if (newUsers.length === 0) {
+        return Result.Err(new Error('Failed to create user'));
+      }
+      
+      const createdUser = User.fromRepository({
+        ...newUsers[0],
+        role: newUsers[0].role as 'user' | 'admin'
+      }).unwrap();
+      
+      return Result.Ok(createdUser);
+    } catch (error) {
+      return Result.Err(new Error(`Failed to insert user: ${error}`));
+    }
+  }
+
+  async update(user: User): Promise<RepositoryResult<User, any>> {
+    try {
+      const userData = user.toRepository();
+      
+      // Check if user exists
+      const existing = await db.select().from(users).where(eq(users.id, userData.id)).execute();
+      if (existing.length === 0) {
+        return Result.Err(new Error(`User with ID ${userData.id} not found`));
+      }
+
+      const updatedUsers = await db.update(users)
+        .set({
+          email: userData.email,
+          passwordHash: userData.passwordHash,
+          role: userData.role,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, userData.id))
+        .returning()
+        .execute();
+      
+      if (updatedUsers.length === 0) {
+        return Result.Err(new Error('Failed to update user'));
+      }
+      
+      const updatedUser = User.fromRepository({
+        ...updatedUsers[0],
+        role: updatedUsers[0].role as 'user' | 'admin'
+      }).unwrap();
+      
+      return Result.Ok(updatedUser);
+    } catch (error) {
+      return Result.Err(new Error(`Failed to update user: ${error}`));
+    }
+  }
+
+  // Existing custom methods (preserved for backward compatibility)
   async saveUser(user: User): Promise<User> {
     const userData = user.toRepository();
     

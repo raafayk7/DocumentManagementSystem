@@ -8,9 +8,93 @@ import fs from 'fs';
 import { injectable } from 'tsyringe';
 import { PaginationInput, PaginationOutput, calculatePaginationMetadata } from '../../../../shared/dto/common/pagination.dto.js';
 import { Document } from '../../../../domain/entities/Document.js';
+import { RepositoryResult } from '@carbonteq/hexapp';
+import { Result } from '@carbonteq/fp';
 
 @injectable()
 export class DrizzleDocumentRepository implements IDocumentRepository {
+  // Required abstract methods from BaseRepository<Document>
+  async insert(document: Document): Promise<RepositoryResult<Document, any>> {
+    try {
+      const documentData = document.toRepository();
+      
+      // Check if document already exists
+      const existing = await db.select().from(documents).where(eq(documents.id, documentData.id)).execute();
+      if (existing.length > 0) {
+        return Result.Err(new Error(`Document with ID ${documentData.id} already exists`));
+      }
+      
+      const newDocuments = await db.insert(documents).values({
+        id: documentData.id,
+        name: documentData.name,
+        filePath: documentData.filePath,
+        mimeType: documentData.mimeType,
+        size: documentData.size,
+        tags: documentData.tags,
+        metadata: documentData.metadata,
+      })
+      .returning()
+      .execute();
+      
+      if (newDocuments.length === 0) {
+        return Result.Err(new Error('Failed to create document'));
+      }
+      
+      const savedData = newDocuments[0];
+      const createdDocument = Document.fromRepository({
+        ...savedData,
+        tags: savedData.tags as string[],
+        metadata: savedData.metadata as Record<string, string>,
+      }).unwrap();
+      
+      return Result.Ok(createdDocument);
+    } catch (error) {
+      return Result.Err(new Error(`Failed to insert document: ${error}`));
+    }
+  }
+
+  async update(document: Document): Promise<RepositoryResult<Document, any>> {
+    try {
+      const documentData = document.toRepository();
+      
+      // Check if document exists
+      const existing = await db.select().from(documents).where(eq(documents.id, documentData.id)).execute();
+      if (existing.length === 0) {
+        return Result.Err(new Error(`Document with ID ${documentData.id} not found`));
+      }
+      
+      const updatedDocuments = await db.update(documents)
+        .set({
+          name: documentData.name,
+          filePath: documentData.filePath,
+          mimeType: documentData.mimeType,
+          size: documentData.size,
+          tags: documentData.tags,
+          metadata: documentData.metadata,
+          updatedAt: new Date()
+        })
+        .where(eq(documents.id, documentData.id))
+        .returning()
+        .execute();
+
+      if (updatedDocuments.length === 0) {
+        return Result.Err(new Error('Failed to update document'));
+      }
+
+      const updatedData = updatedDocuments[0];
+      const updatedDocument = Document.fromRepository({
+        ...updatedData,
+        tags: updatedData.tags as string[],
+        metadata: updatedData.metadata as Record<string, string>,
+      }).unwrap();
+      
+      return Result.Ok(updatedDocument);
+    } catch (error) {
+      return Result.Err(new Error(`Failed to update document: ${error}`));
+    }
+  }
+
+  // Existing custom methods (preserved for backward compatibility)
   async save(document: Document): Promise<Document> {
     const documentData = document.toRepository();
     
@@ -329,36 +413,6 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       tags: doc.tags as string[],
       metadata: doc.metadata as Record<string, string>,
     }).unwrap());
-  }
-
-  async update(document: Document): Promise<Document> {
-    const documentData = document.toRepository();
-    
-    const updatedDocuments = await db.update(documents)
-      .set({
-        name: documentData.name,
-        filePath: documentData.filePath,
-        mimeType: documentData.mimeType,
-        size: documentData.size,
-        tags: documentData.tags,
-        metadata: documentData.metadata,
-        updatedAt: new Date()
-      })
-      .where(eq(documents.id, documentData.id))
-      .returning()
-      .execute();
-
-    if (updatedDocuments.length === 0) {
-      throw new Error('Failed to update document');
-    }
-
-    const updatedData = updatedDocuments[0];
-    
-    return Document.fromRepository({
-      ...updatedData,
-      tags: updatedData.tags as string[],
-      metadata: updatedData.metadata as Record<string, string>,
-    }).unwrap();
   }
 
   async delete(id: string): Promise<boolean> {

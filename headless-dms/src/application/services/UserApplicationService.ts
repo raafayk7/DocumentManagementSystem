@@ -1,5 +1,6 @@
 import { injectable, inject } from 'tsyringe';
 import { AppError, AppResult } from '@carbonteq/hexapp';
+import { matchRes } from '@carbonteq/fp';
 import { User } from '../../domain/entities/User.js';
 import { 
   UserDomainService, 
@@ -64,20 +65,30 @@ export class UserApplicationService implements IUserApplicationService {
 
       const user = userResult.unwrap();
       
-      // Save user
-      const savedUser = await this.userRepository.saveUser(user);
+      // Save user using insert (new user)
+      const saveResult = await this.userRepository.insert(user);
       
-      // Validate user state after creation
-      const stateValidation = this.userDomainService.validateUserState(savedUser);
-      if (!stateValidation.isValid) {
-        this.logger.warn('User state validation issues', { 
-          userId: savedUser.id, 
-          issues: stateValidation.issues 
-        });
-      }
+      return matchRes(saveResult, {
+        Ok: (savedUser) => {
+          // Validate user state after creation
+          const stateValidation = this.userDomainService.validateUserState(savedUser);
+          if (!stateValidation.isValid) {
+            this.logger.warn('User state validation issues', { 
+              userId: savedUser.id, 
+              issues: stateValidation.issues 
+            });
+          }
 
-      this.logger.info('User created successfully', { userId: savedUser.id, email });
-      return AppResult.Ok(savedUser);
+          this.logger.info('User created successfully', { userId: savedUser.id, email });
+          return AppResult.Ok(savedUser);
+        },
+        Err: (error) => {
+          this.logger.error('Failed to save user', { email, error: error.message });
+          return AppResult.Err(AppError.Generic(
+            `Failed to save user with email: ${email}`
+          ));
+        }
+      });
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email });
       return AppResult.Err(AppError.Generic(
@@ -174,10 +185,20 @@ export class UserApplicationService implements IUserApplicationService {
       }
 
       const updatedUser = changePasswordResult.unwrap();
-      const savedUser = await this.userRepository.saveUser(updatedUser);
-
-      this.logger.info('User password changed successfully', { userId });
-      return AppResult.Ok(savedUser);
+      const saveResult = await this.userRepository.update(updatedUser);
+      
+      return matchRes(saveResult, {
+        Ok: (savedUser) => {
+          this.logger.info('User password changed successfully', { userId });
+          return AppResult.Ok(savedUser);
+        },
+        Err: (error) => {
+          this.logger.error('Failed to save user after password change', { userId, error: error.message });
+          return AppResult.Err(AppError.Generic(
+            `Failed to save user after password change with id: ${userId}`
+          ));
+        }
+      });
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { userId });
       return AppResult.Err(AppError.Generic(
@@ -230,10 +251,20 @@ export class UserApplicationService implements IUserApplicationService {
       }
 
       const updatedUser = changeRoleResult.unwrap();
-      const savedUser = await this.userRepository.saveUser(updatedUser);
-
-      this.logger.info('User role changed successfully', { targetUserId, newRole });
-      return AppResult.Ok(savedUser);
+      const saveResult = await this.userRepository.update(updatedUser);
+      
+      return matchRes(saveResult, {
+        Ok: (savedUser) => {
+          this.logger.info('User role changed successfully', { targetUserId, newRole });
+          return AppResult.Ok(savedUser);
+        },
+        Err: (error) => {
+          this.logger.error('Failed to save user after role change', { targetUserId, error: error.message });
+          return AppResult.Err(AppError.Generic(
+            `Failed to save user after role change with id: ${targetUserId}`
+          ));
+        }
+      });
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { currentUserId, targetUserId });
       return AppResult.Err(AppError.Generic(

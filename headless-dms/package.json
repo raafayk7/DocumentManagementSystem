@@ -36,6 +36,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@carbonteq/fp": "^0.7.0",
     "@carbonteq/hexapp": "^0.20.1",
     "@faker-js/faker": "^9.9.0",
     "@fastify/multipart": "^9.0.3",

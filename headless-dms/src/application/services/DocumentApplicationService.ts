@@ -1,5 +1,6 @@
 import { injectable, inject } from 'tsyringe';
 import { AppError, AppResult } from '@carbonteq/hexapp';
+import { matchRes } from '@carbonteq/fp';
 import { Document } from '../../domain/entities/Document.js';
 import { User } from '../../domain/entities/User.js';
 import { 
@@ -196,15 +197,15 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       }
 
       // Update document name
-      const updateResult = document.updateName(newName);
-      if (updateResult.isErr()) {
-        this.logger.error('Failed to update document name', { documentId, error: updateResult.unwrapErr() });
+      const domainUpdateResult = document.updateName(newName);
+      if (domainUpdateResult.isErr()) {
+        this.logger.error('Failed to update document name', { documentId, error: domainUpdateResult.unwrapErr() });
         return AppResult.Err(AppError.Generic(
           `Failed to update document name with id: ${documentId}`
         ));
       }
 
-      const updatedDocument = updateResult.unwrap();
+      const updatedDocument = domainUpdateResult.unwrap();
 
       // Validate new name
       const nameValidation = this.documentDomainService.validateDocumentName(updatedDocument);
@@ -216,10 +217,20 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       }
 
       // Save document
-      const savedDocument = await this.documentRepository.update(updatedDocument);
-
-      this.logger.info('Document name updated successfully', { documentId, newName, userId });
-      return AppResult.Ok(savedDocument);
+      const saveResult = await this.documentRepository.update(updatedDocument);
+      
+      return matchRes(saveResult, {
+        Ok: (savedDocument) => {
+          this.logger.info('Document name updated successfully', { documentId, newName, userId });
+          return AppResult.Ok(savedDocument);
+        },
+        Err: (error) => {
+          this.logger.error('Failed to save updated document', { documentId, error: error.message });
+          return AppResult.Err(AppError.Generic(
+            `Failed to save updated document with id: ${documentId}`
+          ));
+        }
+      });
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
       return AppResult.Err(AppError.Generic(
@@ -267,21 +278,31 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       }
 
       // Add tags
-      const updateResult = document.addTags(tags);
-      if (updateResult.isErr()) {
-        this.logger.error('Failed to add tags to document', { documentId, error: updateResult.unwrapErr() });
+      const domainUpdateResult = document.addTags(tags);
+      if (domainUpdateResult.isErr()) {
+        this.logger.error('Failed to add tags to document', { documentId, error: domainUpdateResult.unwrapErr() });
         return AppResult.Err(AppError.Generic(
           `Failed to add tags to document with id: ${documentId}`
         ));
       }
 
-      const updatedDocument = updateResult.unwrap();
+      const updatedDocument = domainUpdateResult.unwrap();
 
       // Save document
-      const savedDocument = await this.documentRepository.update(updatedDocument);
-
-      this.logger.info('Tags added to document successfully', { documentId, tags, userId });
-      return AppResult.Ok(savedDocument);
+      const saveResult = await this.documentRepository.update(updatedDocument);
+      
+      return matchRes(saveResult, {
+        Ok: (savedDocument) => {
+          this.logger.info('Tags added to document successfully', { documentId, tags, userId });
+          return AppResult.Ok(savedDocument);
+        },
+        Err: (error) => {
+          this.logger.error('Failed to save document after adding tags', { documentId, error: error.message });
+          return AppResult.Err(AppError.Generic(
+            `Failed to save document after adding tags with id: ${documentId}`
+          ));
+        }
+      });
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
       return AppResult.Err(AppError.Generic(
@@ -329,21 +350,31 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       }
 
       // Remove tags
-      const updateResult = document.removeTags(tags);
-      if (updateResult.isErr()) {
-        this.logger.error('Failed to remove tags from document', { documentId, error: updateResult.unwrapErr() });
+      const domainUpdateResult = document.removeTags(tags);
+      if (domainUpdateResult.isErr()) {
+        this.logger.error('Failed to remove tags from document', { documentId, error: domainUpdateResult.unwrapErr() });
         return AppResult.Err(AppError.Generic(
           `Failed to remove tags from document with id: ${documentId}`
         ));
       }
 
-      const updatedDocument = updateResult.unwrap();
+      const updatedDocument = domainUpdateResult.unwrap();
 
       // Save document
-      const savedDocument = await this.documentRepository.update(updatedDocument);
-
-      this.logger.info('Tags removed from document successfully', { documentId, tags, userId });
-      return AppResult.Ok(savedDocument);
+      const saveResult = await this.documentRepository.update(updatedDocument);
+      
+      return matchRes(saveResult, {
+        Ok: (savedDocument) => {
+          this.logger.info('Tags removed from document successfully', { documentId, tags, userId });
+          return AppResult.Ok(savedDocument);
+        },
+        Err: (error) => {
+          this.logger.error('Failed to save document after removing tags', { documentId, error: error.message });
+          return AppResult.Err(AppError.Generic(
+            `Failed to save document after removing tags with id: ${documentId}`
+          ));
+        }
+      });
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
       return AppResult.Err(AppError.Generic(
@@ -391,15 +422,15 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       }
 
       // Update metadata
-      const updateResult = document.updateMetadata(metadata);
-      if (updateResult.isErr()) {
-        this.logger.error('Failed to update document metadata', { documentId, error: updateResult.unwrapErr() });
+      const domainUpdateResult = document.updateMetadata(metadata);
+      if (domainUpdateResult.isErr()) {
+        this.logger.error('Failed to update document metadata', { documentId, error: domainUpdateResult.unwrapErr() });
         return AppResult.Err(AppError.Generic(
           `Failed to update document metadata with id: ${documentId}`
         ));
       }
 
-      const updatedDocument = updateResult.unwrap();
+      const updatedDocument = domainUpdateResult.unwrap();
 
       // Validate metadata
       const metadataValidation = this.documentDomainService.validateDocumentMetadata(updatedDocument);
@@ -411,10 +442,20 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       }
 
       // Save document
-      const savedDocument = await this.documentRepository.update(updatedDocument);
-
-      this.logger.info('Document metadata updated successfully', { documentId, userId });
-      return AppResult.Ok(savedDocument);
+      const saveResult = await this.documentRepository.update(updatedDocument);
+      
+      return matchRes(saveResult, {
+        Ok: (savedDocument) => {
+          this.logger.info('Document metadata updated successfully', { documentId, userId });
+          return AppResult.Ok(savedDocument);
+        },
+        Err: (error) => {
+          this.logger.error('Failed to save document after metadata update', { documentId, error: error.message });
+          return AppResult.Err(AppError.Generic(
+            `Failed to save document after metadata update with id: ${documentId}`
+          ));
+        }
+      });
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
       return AppResult.Err(AppError.Generic(
@@ -851,21 +892,31 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       }
 
       // Replace tags
-      const updateResult = document.replaceTags(tags);
-      if (updateResult.isErr()) {
-        this.logger.error('Failed to replace tags in document', { documentId, error: updateResult.unwrapErr() });
+      const domainUpdateResult = document.replaceTags(tags);
+      if (domainUpdateResult.isErr()) {
+        this.logger.error('Failed to replace tags in document', { documentId, error: domainUpdateResult.unwrapErr() });
         return AppResult.Err(AppError.Generic(
           `Failed to replace tags in document with id: ${documentId}`
         ));
       }
 
-      const updatedDocument = updateResult.unwrap();
+      const updatedDocument = domainUpdateResult.unwrap();
 
       // Save document
-      const savedDocument = await this.documentRepository.update(updatedDocument);
-
-      this.logger.info('Tags replaced in document successfully', { documentId, tags, userId });
-      return AppResult.Ok(savedDocument);
+      const saveResult = await this.documentRepository.update(updatedDocument);
+      
+      return matchRes(saveResult, {
+        Ok: (savedDocument) => {
+          this.logger.info('Tags replaced in document successfully', { documentId, tags, userId });
+          return AppResult.Ok(savedDocument);
+        },
+        Err: (error) => {
+          this.logger.error('Failed to save document after replacing tags', { documentId, error: error.message });
+          return AppResult.Err(AppError.Generic(
+            `Failed to save document after replacing tags with id: ${documentId}`
+          ));
+        }
+      });
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });
       return AppResult.Err(AppError.Generic(

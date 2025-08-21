@@ -14,6 +14,10 @@ Throughout this refactoring process, the following ground rules were strictly fo
 6. **Incremental Progress**: Each step was completed and verified before moving to the next
 7. **Traditional Hexagonal Architecture**: Maintained classic ports & adapters pattern without vertical slicing
 8. **Layer-by-Layer Approach**: Systematically tackled each architectural layer before proceeding
+9. **Consistency Across Services**: All application services must follow the same architectural patterns
+10. **Proper Type Handling**: Repository layer returns `Result<T, E>`, Application layer converts to `AppResult<T>`
+11. **Version Alignment**: Ensure dependency versions are aligned (e.g., `@carbonteq/fp` version compatibility)
+12. **Functional Error Handling**: Use `matchRes` for handling `Result<T, E>` types at application boundaries
 
 ## Step-by-Step Progress
 
@@ -114,14 +118,76 @@ Throughout this refactoring process, the following ground rules were strictly fo
   - Error handling standardized across all architectural layers
   - Legacy error classes completely removed from codebase
 
+### ✅ Step 4: Domain Layer Hexapp Integration (COMPLETE)
+
+#### 4.1 Entity Refactoring
+- **Status**: ✅ COMPLETE
+- **Action**: Refactored all entities to extend hexapp's BaseEntity
+- **Files Modified**:
+  - `src/domain/entities/User.ts` - Now extends `BaseEntity`
+  - `src/domain/entities/Document.ts` - Now extends `BaseEntity`
+- **Changes Made**:
+  - Entities now extend `BaseEntity` instead of custom base classes
+  - `serialize()` methods implemented using `_serialize()` from BaseEntity
+  - Custom ID generation replaced with `hexapp`'s `UUID.init()`
+  - `createdAt` and `updatedAt` now use `hexapp`'s `DateTime` type
+  - Factory methods (`create()`, `fromRepository()`) updated to use new types
+- **Result**: 
+  - Entities now inherit common functionality from hexapp's BaseEntity
+  - Consistent ID generation using hexapp's UUID system
+  - Proper timestamp handling with hexapp's DateTime
+  - Serialization methods standardized across all entities
+
+#### 4.2 Value Object Refactoring
+- **Status**: ✅ COMPLETE
+- **Action**: Replaced custom value objects with hexapp's refined types and BaseValueObject
+- **Files Modified**:
+  - **UUID**: `src/domain/entities/User.ts`, `src/domain/entities/Document.ts` - Now use `hexapp`'s `UUID`
+  - **DateTime**: `src/domain/entities/User.ts`, `src/domain/entities/Document.ts` - Now use `hexapp`'s `DateTime`
+  - **Email**: `src/domain/value-objects/Email.ts` - Now extends `BaseValueObject<string>`
+  - **Other Value Objects**: All custom value objects now extend `BaseValueObject<T>`
+- **Changes Made**:
+  - **UUID Migration**: Replaced custom UUID with `hexapp`'s `UUID.init()` and `UUID.from()`
+  - **DateTime Migration**: Replaced custom DateTime with `hexapp`'s `DateTime.now()` and `DateTime.from()`
+  - **Email Strategy**: Kept custom Email value object but extended `BaseValueObject<string>`
+  - **BaseValueObject Extension**: All custom value objects now extend `BaseValueObject<T>`
+  - **Serialization**: Added `serialize()` methods and optional `getParser()` methods
+- **Result**: 
+  - Consistent value object patterns across the domain layer
+  - Proper integration with hexapp's refined types
+  - Maintained custom Email value object functionality while extending BaseValueObject
+  - All value objects now follow hexapp's BaseValueObject pattern
+
+#### 4.3 Repository Pattern Updates
+- **Status**: ✅ COMPLETE
+- **Action**: Refactored repositories to use hexapp's BaseRepository
+- **Files Modified**:
+  - **Interfaces**: `src/ports/output/IUserRepository.ts`, `src/ports/output/IDocumentRepository.ts`
+  - **Mock Implementations**: `src/adapters/secondary/mocks/MockUserRepository.ts`, `src/adapters/secondary/mocks/MockDocumentRepository.ts`
+  - **Drizzle Implementations**: `src/adapters/secondary/database/implementations/drizzle-user.repository.ts`, `src/adapters/secondary/database/implementations/drizzle-document.repository.ts`
+  - **Application Services**: `src/application/services/UserApplicationService.ts`, `src/application/services/DocumentApplicationService.ts`
+- **Changes Made**:
+  - **Repository Interfaces**: Now extend `BaseRepository<T>` with required `insert()` and `update()` methods
+  - **Return Types**: Repository methods now return `RepositoryResult<T, E>` (which is `Result<T, E>` from `@carbonteq/fp`)
+  - **Version Alignment**: Resolved `@carbonteq/fp` version conflict (0.8.2 vs 0.7.0)
+  - **Application Services**: Updated to handle `RepositoryResult<T, E>` using `matchRes` from `@carbonteq/fp`
+  - **Error Handling**: Convert `Result<T, E>` to `AppResult<T>` at application boundaries
+- **Result**: 
+  - Repository interfaces now properly extend hexapp's BaseRepository
+  - Consistent error handling using `Result<T, E>` from `@carbonteq/fp`
+  - Application services use `matchRes` for functional error handling
+  - Proper layering: Repository layer returns `Result<T, E>`, Application layer converts to `AppResult<T>`
+  - Both UserApplicationService and DocumentApplicationService now follow consistent patterns
+
 ## Current Status
-**Phase 4 Steps 1-3 are 100% COMPLETE and SUCCESSFUL!** 🎉
+**Phase 4 Steps 1-4 are 100% COMPLETE and SUCCESSFUL!** 🎉
 
 ## Next Steps
-Ready to proceed with **Step 4: Domain Layer Hexapp Integration**:
-- **4.1 Entity Refactoring** - Extend hexapp's BaseEntity
-- **4.2 Value Object Refactoring** - Use hexapp's refined types  
-- **4.3 Repository Pattern Updates** - Use hexapp's BaseRepository
+Ready to proceed with **Step 5: Testing Implementation**:
+- **5.1 Test Framework Setup** - Configure Mocha, Sinon, and Chai
+- **5.2 Domain Layer Tests** - Test entities and value objects
+- **5.3 Repository Tests** - Test repository implementations
+- **5.4 Application Service Tests** - Test application services
 
 ## Key Achievements
 1. **Complete Architectural Transformation**: Successfully migrated from Clean Architecture to Hexagonal Architecture
@@ -130,12 +196,21 @@ Ready to proceed with **Step 4: Domain Layer Hexapp Integration**:
 4. **Result Pattern Consistency**: Unified all return types using AppResult across the entire codebase
 5. **Zero Functionality Loss**: Maintained all existing features while improving architecture
 6. **Clean Codebase**: Removed all legacy error classes and deprecated patterns
+7. **Domain Layer Integration**: Successfully integrated hexapp's BaseEntity, BaseValueObject, and BaseRepository
+8. **Repository Pattern Standardization**: Implemented consistent repository patterns using hexapp's BaseRepository
+9. **Application Service Consistency**: All application services now follow consistent architectural patterns
+10. **Functional Programming Integration**: Proper use of `Result<T, E>` and `matchRes` for error handling
 
 ## Technical Debt Eliminated
 - ❌ Legacy `@carbonteq/fp` package and Result<T, E> patterns
 - ❌ Custom error class hierarchy (ApplicationError, AuthError, DocumentError, FileError, RepositoryError, ValidationError)
 - ❌ Inconsistent error handling patterns across layers
 - ❌ Mixed architectural patterns
+- ❌ Custom entity base classes (replaced with hexapp's BaseEntity)
+- ❌ Custom value object patterns (replaced with hexapp's BaseValueObject)
+- ❌ Custom repository patterns (replaced with hexapp's BaseRepository)
+- ❌ Inconsistent application service patterns (now standardized)
+- ❌ Version conflicts in dependencies (aligned @carbonteq/fp versions)
 
 ## Architecture Benefits Gained
 - ✅ **Consistent Error Handling**: Unified AppError system across all layers
