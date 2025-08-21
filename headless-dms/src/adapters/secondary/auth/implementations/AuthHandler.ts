@@ -1,5 +1,5 @@
 import { injectable, inject } from 'tsyringe';
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 import type { IAuthHandler } from '../../../../ports/output/IAuthHandler.js';
 import type { IAuthStrategy } from '../../../../ports/output/IAuthStrategy.js';
 import type { IUserRepository } from '../../database/interfaces/user.repository.interface.js';
@@ -23,7 +23,7 @@ export class AuthHandler implements IAuthHandler {
     this.logger = this.logger.child({ service: 'AuthHandler' });
   }
 
-  async login(credentials: LoginCredentials): Promise<Result<AuthResult, AuthError>> {
+  async login(credentials: LoginCredentials): Promise<AppResult<AuthResult>> {
     this.logger.info('Authentication attempt', { 
       email: credentials.email, 
       strategy: this.authStrategy.getStrategyName() 
@@ -32,22 +32,24 @@ export class AuthHandler implements IAuthHandler {
     try {
       const result = await this.authStrategy.authenticate(credentials);
       
-      if (result.isOk()) {
-        this.logger.info('Authentication successful', { 
-          userId: result.unwrap().user.id, 
-          email: result.unwrap().user.email 
-        });
-      } else {
+      if (result.isErr()) {
+        const error = result.unwrapErr();
         this.logger.warn('Authentication failed', { 
           email: credentials.email, 
-          error: result.unwrapErr().message 
+          error: error.message 
+        });
+      } else {
+        const authResult = result.unwrap();
+        this.logger.info('Authentication successful', { 
+          userId: authResult.user.id, 
+          email: authResult.user.email 
         });
       }
       
       return result;
     } catch (error) {
       this.logger.logError(error as Error, { email: credentials.email });
-      return Result.Err(new AuthError(
+      return AppResult.Err(new AuthError(
         'AuthHandler.login',
         error instanceof Error ? error.message : 'Authentication failed',
         { email: credentials.email }
@@ -55,7 +57,7 @@ export class AuthHandler implements IAuthHandler {
     }
   }
 
-  async register(userData: RegisterData): Promise<Result<User, AuthError>> {
+  async register(userData: RegisterData): Promise<AppResult<User>> {
     this.logger.info('Registration attempt', { 
       email: userData.email, 
       strategy: this.authStrategy.getStrategyName() 
@@ -69,17 +71,17 @@ export class AuthHandler implements IAuthHandler {
           userId: result.unwrap().user.id, 
           email: result.unwrap().user.email 
         });
-        return Result.Ok(result.unwrap().user);
+        return AppResult.Ok(result.unwrap().user);
       } else {
         this.logger.warn('Registration failed', { 
           email: userData.email, 
           error: result.unwrapErr().message 
         });
-        return Result.Err(result.unwrapErr());
+        return AppResult.Err(result.unwrapErr());
       }
     } catch (error) {
       this.logger.logError(error as Error, { email: userData.email });
-      return Result.Err(new AuthError(
+      return AppResult.Err(new AuthError(
         'AuthHandler.register',
         error instanceof Error ? error.message : 'Registration failed',
         { email: userData.email }
@@ -87,7 +89,7 @@ export class AuthHandler implements IAuthHandler {
     }
   }
 
-  async validateToken(token: string): Promise<Result<DecodedToken, AuthError>> {
+  async validateToken(token: string): Promise<AppResult<DecodedToken>> {
     this.logger.debug('Token validation attempt', { 
       strategy: this.authStrategy.getStrategyName() 
     });
@@ -108,7 +110,7 @@ export class AuthHandler implements IAuthHandler {
       return result;
     } catch (error) {
       this.logger.logError(error as Error, { token: token.substring(0, 20) + '...' });
-      return Result.Err(new AuthError(
+      return AppResult.Err(new AuthError(
         'AuthHandler.validateToken',
         error instanceof Error ? error.message : 'Token validation failed',
         { token: token.substring(0, 20) + '...' }
@@ -116,7 +118,7 @@ export class AuthHandler implements IAuthHandler {
     }
   }
 
-  async refreshToken(token: string): Promise<Result<string, AuthError>> {
+  async refreshToken(token: string): Promise<AppResult<string>> {
     this.logger.info('Token refresh attempt', { 
       strategy: this.authStrategy.getStrategyName() 
     });
@@ -135,7 +137,7 @@ export class AuthHandler implements IAuthHandler {
       return result;
     } catch (error) {
       this.logger.logError(error as Error, { token: token.substring(0, 20) + '...' });
-      return Result.Err(new AuthError(
+      return AppResult.Err(new AuthError(
         'AuthHandler.refreshToken',
         error instanceof Error ? error.message : 'Token refresh failed',
         { token: token.substring(0, 20) + '...' }
@@ -143,7 +145,7 @@ export class AuthHandler implements IAuthHandler {
     }
   }
 
-  async logout(token: string): Promise<Result<void, AuthError>> {
+  async logout(token: string): Promise<AppResult<void>> {
     this.logger.info('Logout attempt', { 
       strategy: this.authStrategy.getStrategyName() 
     });
@@ -162,7 +164,7 @@ export class AuthHandler implements IAuthHandler {
       return result;
     } catch (error) {
       this.logger.logError(error as Error, { token: token.substring(0, 20) + '...' });
-      return Result.Err(new AuthError(
+      return AppResult.Err(new AuthError(
         'AuthHandler.logout',
         error instanceof Error ? error.message : 'Logout failed',
         { token: token.substring(0, 20) + '...' }
@@ -170,7 +172,7 @@ export class AuthHandler implements IAuthHandler {
     }
   }
 
-  async changeUserPassword(userId: string, newPassword: string): Promise<Result<User, AuthError>> {
+  async changeUserPassword(userId: string, newPassword: string): Promise<AppResult<User>> {
     this.logger.info('Password change attempt', { 
       userId, 
       strategy: this.authStrategy.getStrategyName() 
@@ -181,7 +183,7 @@ export class AuthHandler implements IAuthHandler {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('Password change failed - user not found', { userId });
-        return Result.Err(new AuthError(
+        return AppResult.Err(new AuthError(
           'AuthHandler.changeUserPassword.userNotFound',
           'User not found',
           { userId }
@@ -195,7 +197,7 @@ export class AuthHandler implements IAuthHandler {
           userId, 
           error: updatedUser.unwrapErr() 
         });
-        return Result.Err(new AuthError(
+        return AppResult.Err(new AuthError(
           'AuthHandler.changeUserPassword.validation',
           updatedUser.unwrapErr(),
           { userId }
@@ -206,10 +208,10 @@ export class AuthHandler implements IAuthHandler {
       const savedUser = await this.userRepository.saveUser(updatedUser.unwrap());
       
       this.logger.info('Password change successful', { userId });
-      return Result.Ok(savedUser);
+      return AppResult.Ok(savedUser);
     } catch (error) {
       this.logger.logError(error as Error, { userId });
-      return Result.Err(new AuthError(
+      return AppResult.Err(new AuthError(
         'AuthHandler.changeUserPassword',
         error instanceof Error ? error.message : 'Password change failed',
         { userId }
@@ -217,7 +219,7 @@ export class AuthHandler implements IAuthHandler {
     }
   }
 
-  async changeUserRole(userId: string, newRole: 'user' | 'admin'): Promise<Result<User, AuthError>> {
+  async changeUserRole(userId: string, newRole: 'user' | 'admin'): Promise<AppResult<User>> {
     this.logger.info('Role change attempt', { 
       userId, 
       newRole,
@@ -229,7 +231,7 @@ export class AuthHandler implements IAuthHandler {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('Role change failed - user not found', { userId });
-        return Result.Err(new AuthError(
+        return AppResult.Err(new AuthError(
           'AuthHandler.changeUserRole.userNotFound',
           'User not found',
           { userId }
@@ -244,7 +246,7 @@ export class AuthHandler implements IAuthHandler {
           newRole,
           error: updatedUser.unwrapErr() 
         });
-        return Result.Err(new AuthError(
+        return AppResult.Err(new AuthError(
           'AuthHandler.changeUserRole.validation',
           updatedUser.unwrapErr(),
           { userId, newRole }
@@ -255,10 +257,10 @@ export class AuthHandler implements IAuthHandler {
       const savedUser = await this.userRepository.saveUser(updatedUser.unwrap());
       
       this.logger.info('Role change successful', { userId, newRole });
-      return Result.Ok(savedUser);
+      return AppResult.Ok(savedUser);
     } catch (error) {
       this.logger.logError(error as Error, { userId, newRole });
-      return Result.Err(new AuthError(
+      return AppResult.Err(new AuthError(
         'AuthHandler.changeUserRole',
         error instanceof Error ? error.message : 'Role change failed',
         { userId, newRole }

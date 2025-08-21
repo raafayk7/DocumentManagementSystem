@@ -6,8 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { injectable, inject } from 'tsyringe';
-import type { ILogger } from '../../../domain/interfaces/ILogger.js';
-import { Result } from '@carbonteq/fp';
+import type { ILogger } from '../../../ports/output/ILogger.js';
 import { AppResult } from '@carbonteq/hexapp';
 import { FileError } from '../../../shared/errors/index.js';
 import { FileInfo } from '../../../shared/types/index.js';
@@ -21,7 +20,7 @@ export class LocalFileService implements IFileService {
   }
 
   // New method for direct file saving (Buffer-based)
-  async saveFile(file: Buffer, name: string, mimeType: string): Promise<Result<FileInfo, FileError>> {
+  async saveFile(file: Buffer, name: string, mimeType: string): Promise<AppResult<FileInfo>> {
     this.logger.info('Starting direct file upload', { name, mimeType, size: file.length });
     
     try {
@@ -49,10 +48,10 @@ export class LocalFileService implements IFileService {
         uploadPath 
       });
       
-      return Result.Ok(fileInfo);
+      return AppResult.Ok(fileInfo);
     } catch (error) {
       this.logger.logError(error as Error, { uploadDir: this.uploadDir, name });
-      return Result.Err(new FileError(
+      return AppResult.Err(new FileError(
         'LocalFileService.saveFile',
         error instanceof Error ? error.message : 'Direct file upload failed',
         { uploadDir: this.uploadDir, name }
@@ -61,7 +60,7 @@ export class LocalFileService implements IFileService {
   }
 
   // Legacy method for FastifyRequest-based uploads (renamed for clarity)
-  async saveFileFromRequest(request: FastifyRequest): Promise<Result<FileInfo, FileError>> {
+  async saveFileFromRequest(request: FastifyRequest): Promise<AppResult<FileInfo>> {
     this.logger.info('Starting file upload from request');
     
     try {
@@ -99,7 +98,7 @@ export class LocalFileService implements IFileService {
       
       if (!file) { 
         this.logger.error('No file found in request');
-        return Result.Err(new FileError(
+        return AppResult.Err(new FileError(
           'LocalFileService.saveFileFromRequest',
           'No file found in request'
         ));
@@ -111,10 +110,10 @@ export class LocalFileService implements IFileService {
         fieldsCount: Object.keys(fields).length 
       });
       
-      return Result.Ok({ ...file, fields });
+      return AppResult.Ok({ ...file, fields });
     } catch (error) {
       this.logger.logError(error as Error, { uploadDir: this.uploadDir });
-      return Result.Err(new FileError(
+      return AppResult.Err(new FileError(
         'LocalFileService.saveFileFromRequest',
         error instanceof Error ? error.message : 'File upload from request failed',
         { uploadDir: this.uploadDir }
@@ -122,13 +121,13 @@ export class LocalFileService implements IFileService {
     }
   }
 
-  async streamFile(filePath: string, reply: FastifyReply): Promise<Result<void, FileError>> {
+  async streamFile(filePath: string, reply: FastifyReply): Promise<AppResult<void>> {
     this.logger.info('Starting file stream', { filePath });
     
     try {
       if (!fs.existsSync(filePath)) {
         this.logger.error('File not found for streaming', { filePath });
-        return Result.Err(new FileError(
+        return AppResult.Err(new FileError(
           'LocalFileService.streamFile',
           'File not found',
           { filePath }
@@ -143,10 +142,10 @@ export class LocalFileService implements IFileService {
       
       await reply.send(readStream);
       this.logger.info('File stream completed', { filePath, fileSize: stat.size });
-      return Result.Ok(undefined);
+      return AppResult.Ok(undefined);
     } catch (error) {
       this.logger.logError(error as Error, { filePath });
-      return Result.Err(new FileError(
+      return AppResult.Err(new FileError(
         'LocalFileService.streamFile',
         error instanceof Error ? error.message : 'File streaming failed',
         { filePath }
@@ -154,21 +153,21 @@ export class LocalFileService implements IFileService {
     }
   }
 
-  async deleteFile(filePath: string): Promise<Result<boolean, FileError>> {
+  async deleteFile(filePath: string): Promise<AppResult<boolean>> {
     this.logger.info('Attempting to delete file', { filePath });
     
     try {
       if (!fs.existsSync(filePath)) {
         this.logger.warn('File not found for deletion', { filePath });
-        return Result.Ok(false);
+        return AppResult.Ok(false);
       }
 
       fs.unlinkSync(filePath);
       this.logger.info('File deleted successfully', { filePath });
-      return Result.Ok(true);
+      return AppResult.Ok(true);
     } catch (error) {
       this.logger.logError(error as Error, { filePath });
-      return Result.Err(new FileError(
+      return AppResult.Err(new FileError(
         'LocalFileService.deleteFile',
         error instanceof Error ? error.message : 'File deletion failed',
         { filePath }
@@ -176,14 +175,14 @@ export class LocalFileService implements IFileService {
     }
   }
 
-  async fileExists(filePath: string): Promise<Result<boolean, FileError>> {
+  async fileExists(filePath: string): Promise<AppResult<boolean>> {
     try {
       const exists = fs.existsSync(filePath);
       this.logger.debug('File existence check', { filePath, exists });
-      return Result.Ok(exists);
+      return AppResult.Ok(exists);
     } catch (error) {
       this.logger.logError(error as Error, { filePath });
-      return Result.Err(new FileError(
+      return AppResult.Err(new FileError(
         'LocalFileService.fileExists',
         error instanceof Error ? error.message : 'File existence check failed',
         { filePath }
@@ -191,13 +190,13 @@ export class LocalFileService implements IFileService {
     }
   }
 
-  async getFile(filePath: string): Promise<Result<Buffer, FileError>> {
+  async getFile(filePath: string): Promise<AppResult<Buffer>> {
     this.logger.info('Reading file', { filePath });
     
     try {
       if (!fs.existsSync(filePath)) {
         this.logger.error('File not found for reading', { filePath });
-        return Result.Err(new FileError(
+        return AppResult.Err(new FileError(
           'LocalFileService.getFile',
           'File not found',
           { filePath }
@@ -206,10 +205,10 @@ export class LocalFileService implements IFileService {
 
       const fileBuffer = await fs.promises.readFile(filePath);
       this.logger.info('File read successfully', { filePath, size: fileBuffer.length });
-      return Result.Ok(fileBuffer);
+      return AppResult.Ok(fileBuffer);
     } catch (error) {
       this.logger.logError(error as Error, { filePath });
-      return Result.Err(new FileError(
+      return AppResult.Err(new FileError(
         'LocalFileService.getFile',
         error instanceof Error ? error.message : 'File reading failed',
         { filePath }

@@ -1,7 +1,7 @@
 import { injectable } from 'tsyringe';
 import { IFileService } from '../../../ports/output/IFileService.js';
 import { FileInfo } from '../../../shared/types/index.js';
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 
 export interface MockFile {
   id: string;
@@ -29,17 +29,17 @@ export class MockFileService implements IFileService {
     this.seedMockFiles();
   }
 
-  async saveFile(file: Buffer, name: string, mimeType: string): Promise<Result<FileInfo, FileError>> {
+  async saveFile(file: Buffer, name: string, mimeType: string): Promise<AppResult<FileInfo, FileError>> {
     try {
       // Check if file already exists
       const existingFile = Array.from(this.files.values()).find(f => f.name === name);
       if (existingFile) {
-        return Result.Err(FileError.FILE_ALREADY_EXISTS);
+        return AppResult.Err(FileError.FILE_ALREADY_EXISTS);
       }
 
       // Validate MIME type
       if (!this.isValidMimeType(mimeType)) {
-        return Result.Err(FileError.INVALID_FILE_TYPE);
+        return AppResult.Err(FileError.INVALID_FILE_TYPE);
       }
 
       const fileId = `mock-file-${this.fileCounter++}`;
@@ -64,13 +64,13 @@ export class MockFileService implements IFileService {
         url: `/mock/files/${fileId}`
       };
 
-      return Result.Ok(fileInfo);
+      return AppResult.Ok(fileInfo);
     } catch (error) {
-      return Result.Err(FileError.STORAGE_ERROR);
+      return AppResult.Err(FileError.STORAGE_ERROR);
     }
   }
 
-  async saveFileFromRequest(request: any): Promise<Result<FileInfo, FileError>> {
+  async saveFileFromRequest(request: any): Promise<AppResult<FileInfo>> {
     try {
       // Mock implementation for request-based file saving
       const mockFile = request.file || Buffer.from('mock file content');
@@ -79,69 +79,69 @@ export class MockFileService implements IFileService {
 
       return await this.saveFile(mockFile, mockName, mockMimeType);
     } catch (error) {
-      return Result.Err(FileError.STORAGE_ERROR);
+      return AppResult.Err(FileError.STORAGE_ERROR);
     }
   }
 
-  async getFile(filePath: string): Promise<Result<Buffer, FileError>> {
+  async getFile(filePath: string): Promise<AppResult<Buffer>> {
     try {
       // Extract file ID from path
       const fileId = this.extractFileIdFromPath(filePath);
       if (!fileId) {
-        return Result.Err(FileError.FILE_NOT_FOUND);
+        return AppResult.Err(FileError.FILE_NOT_FOUND);
       }
 
       const file = this.files.get(fileId);
       if (!file) {
-        return Result.Err(FileError.FILE_NOT_FOUND);
+        return AppResult.Err(FileError.FILE_NOT_FOUND);
       }
 
-      return Result.Ok(file.content);
+      return AppResult.Ok(file.content);
     } catch (error) {
-      return Result.Err(FileError.STORAGE_ERROR);
+      return AppResult.Err(FileError.STORAGE_ERROR);
     }
   }
 
-  async fileExists(filePath: string): Promise<Result<boolean, FileError>> {
+  async fileExists(filePath: string): Promise<AppResult<boolean>> {
     try {
       const fileId = this.extractFileIdFromPath(filePath);
       if (!fileId) {
-        return Result.Ok(false);
+        return AppResult.Ok(false);
       }
 
       const exists = this.files.has(fileId);
-      return Result.Ok(exists);
+      return AppResult.Ok(exists);
     } catch (error) {
-      return Result.Err(FileError.STORAGE_ERROR);
+      return AppResult.Err(FileError.STORAGE_ERROR);
     }
   }
 
-  async deleteFile(filePath: string): Promise<Result<void, FileError>> {
+  async deleteFile(filePath: string): Promise<AppResult<void>> {
     try {
       const fileId = this.extractFileIdFromPath(filePath);
       if (!fileId) {
-        return Result.Err(FileError.FILE_NOT_FOUND);
+        return AppResult.Err(FileError.FILE_NOT_FOUND);
       }
 
       if (!this.files.has(fileId)) {
-        return Result.Err(FileError.FILE_NOT_FOUND);
+        return AppResult.Err(FileError.FILE_NOT_FOUND);
       }
 
       this.files.delete(fileId);
-      return Result.Ok(undefined);
+      return AppResult.Ok(undefined);
     } catch (error) {
-      return Result.Err(FileError.STORAGE_ERROR);
+      return AppResult.Err(FileError.STORAGE_ERROR);
     }
   }
 
-  async streamFile(filePath: string, response: any): Promise<Result<void, FileError>> {
+  async streamFile(filePath: string, response: any): Promise<AppResult<void>> {
     try {
-      const fileResult = await this.getFile(filePath);
-      if (fileResult.isErr()) {
-        return fileResult;
+      const fileAppResult = await this.getFile(filePath);
+      if (fileAppResult.isErr()) {
+        return fileAppResult;
       }
 
-      const file = fileResult.unwrap();
+      const file = fileAppResult.unwrap();
       
       // Mock streaming by setting response headers and sending file content
       if (response.header) {
@@ -154,9 +154,9 @@ export class MockFileService implements IFileService {
         response.send(file);
       }
 
-      return Result.Ok(undefined);
+      return AppResult.Ok(undefined);
     } catch (error) {
-      return Result.Err(FileError.STORAGE_ERROR);
+      return AppResult.Err(FileError.STORAGE_ERROR);
     }
   }
 

@@ -4,7 +4,7 @@ import { zodValidate } from '../../../../shared/dto/validation/technical/simple.
 import { container } from '../../../../shared/di/container.js';
 import { ILogger } from '../../../../ports/output/ILogger.js';
 import { PaginationInputSchema } from '../../../../shared/dto/common/pagination.dto.js';
-import { matchRes } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 
 // Import Use Cases
 import { GetDocumentsUseCase, GetDocumentByIdUseCase, UpdateDocumentNameUseCase, UpdateDocumentMetadataUseCase, DeleteDocumentUseCase, UploadDocumentUseCase, GenerateDownloadLinkUseCase, DownloadDocumentByTokenUseCase, ReplaceTagsInDocumentUseCase } from '../../../../application/use-cases/document/index.js';
@@ -71,22 +71,22 @@ export async function handleGetDocuments(req: IHttpRequest, res: IHttpResponse):
       toDate
     });
     
-    matchRes(result, {
-      Ok: (documentsResult) => {
-        logger.info('Documents retrieved successfully', { 
-          statusCode: 200, 
-          resultCount: documentsResult.document.length,
-          total: documentsResult.pagination.total,
-          page: documentsResult.pagination.page,
-          filtersApplied: { name, mimeType, tags: parsedTags, metadata: parsedMetadata, fromDate, toDate }
-        });
-        res.send(documentsResult);
-      },
-      Err: (error) => {
-        logger.error('Document retrieval failed', { error: error.message });
-        res.status(500).send({ error: error.message });
-      }
+    if (result.isErr()) {
+      const error = result.unwrapErr();
+      logger.error('Document retrieval failed', { error: error.message });
+      res.status(500).send({ error: error.message });
+      return;
+    }
+
+    const documentsResult = result.unwrap();
+    logger.info('Documents retrieved successfully', { 
+      statusCode: 200, 
+      resultCount: documentsResult.document.length,
+      total: documentsResult.pagination.total,
+      page: documentsResult.pagination.page,
+      filtersApplied: { name, mimeType, tags: parsedTags, metadata: parsedMetadata, fromDate, toDate }
     });
+    res.send(documentsResult);
   } catch (err: any) {
     logger.error('Document retrieval failed', { error: err.message, statusCode: err.statusCode || 400 });
     res.status(err.statusCode || 400).send({ error: err.message });
@@ -101,17 +101,17 @@ export async function handleGetDocumentById(req: IHttpRequest, res: IHttpRespons
     const { id } = req.params as { id: string };
     const result = await getDocumentByIdUseCase.execute({ documentId: id });
     
-    matchRes(result, {
-      Ok: (docResult) => {
-        logger.info('Document retrieved successfully', { statusCode: 200, documentId: id });
-        res.send(docResult);
-      },
-      Err: (error) => {
-        logger.error('Document retrieval failed', { error: error.message, documentId: id });
-        const statusCode = error.message.includes('not found') ? 404 : 500;
-        res.status(statusCode).send({ error: error.message });
-      }
-    });
+    if (result.isErr()) {
+      const error = result.unwrapErr();
+      logger.error('Document retrieval failed', { error: error.message, documentId: id });
+      const statusCode = error.message.includes('not found') ? 404 : 500;
+      res.status(statusCode).send({ error: error.message });
+      return;
+    }
+
+    const docResult = result.unwrap();
+    logger.info('Document retrieved successfully', { statusCode: 200, documentId: id });
+    res.send(docResult);
   } catch (err: any) {
     logger.error('Document retrieval failed', { error: err.message, statusCode: err.statusCode || 404, documentId: req.params.id });
     res.status(err.statusCode || 404).send({ error: err.message });
@@ -222,16 +222,16 @@ export async function handleUpdateDocument(req: IHttpRequest, res: IHttpResponse
     }
     
     if (result) {
-      matchRes(result, {
-        Ok: (updated) => {
-          logger.info('Document updated successfully', { statusCode: 200, documentId: id });
-          res.send(updated);
-        },
-        Err: (error) => {
-          logger.error('Document update failed', { error: error.message, documentId: id });
-          res.status(400).send({ error: error.message });
-        }
-      });
+      if (result.isErr()) {
+        const error = result.unwrapErr();
+        logger.error('Document update failed', { error: error.message, documentId: id });
+        res.status(400).send({ error: error.message });
+        return;
+      }
+
+      const updated = result.unwrap();
+      logger.info('Document updated successfully', { statusCode: 200, documentId: id });
+      res.send(updated);
     } else {
       res.status(400).send({ error: 'No valid update fields provided' });
     }
@@ -267,17 +267,17 @@ export async function handleDeleteDocument(req: IHttpRequest, res: IHttpResponse
       userId: req.user.sub
     });
     
-    matchRes(result, {
-      Ok: (deleteResult) => {
-        logger.info('Document deleted successfully', { statusCode: 200, documentId: id });
-        res.send(deleteResult);
-      },
-      Err: (error) => {
-        logger.error('Document deletion failed', { error: error.message, documentId: id });
-        const statusCode = error.message.includes('not found') ? 404 : 500;
-        res.status(statusCode).send({ error: error.message });
-      }
-    });
+    if (result.isErr()) {
+      const error = result.unwrapErr();
+      logger.error('Document deletion failed', { error: error.message, documentId: id });
+      const statusCode = error.message.includes('not found') ? 404 : 500;
+      res.status(statusCode).send({ error: error.message });
+      return;
+    }
+
+    const deleteResult = result.unwrap();
+    logger.info('Document deleted successfully', { statusCode: 200, documentId: id });
+    res.send(deleteResult);
   } catch (err: any) {
     logger.error('Document deletion failed', { error: err.message, statusCode: err.statusCode || 404, documentId: req.params.id });
     res.status(err.statusCode || 404).send({ error: err.message });
@@ -351,16 +351,16 @@ export async function handleUploadDocument(req: IHttpRequest, res: IHttpResponse
       userId: req.user?.sub
     });
     
-    matchRes(result, {
-      Ok: (docDto) => {
-        logger.info('Document uploaded successfully', { statusCode: 201 });
-        res.status(201).send(docDto);
-      },
-      Err: (error) => {
-        logger.error('Document upload failed', { error: error.message });
-        res.status(400).send({ error: error.message });
-      }
-    });
+    if (result.isErr()) {
+      const error = result.unwrapErr();
+      logger.error('Document upload failed', { error: error.message });
+      res.status(400).send({ error: error.message });
+      return;
+    }
+
+    const docDto = result.unwrap();
+    logger.info('Document uploaded successfully', { statusCode: 201 });
+    res.status(201).send(docDto);
   } catch (err: any) {
     logger.error('Document upload failed', { error: err.message, statusCode: err.statusCode || 400 });
     res.status(err.statusCode || 400).send({ error: err.message });
@@ -375,17 +375,17 @@ export async function handleGenerateDownloadLink(req: IHttpRequest, res: IHttpRe
     const { id } = req.params as { id: string };
     const result = await generateDownloadLinkUseCase.execute({ documentId: id, expiresInMinutes: 5 });
     
-    matchRes(result, {
-      Ok: (downloadResult) => {
-        logger.info('Download link generated successfully', { statusCode: 200, documentId: id });
-        res.send({ downloadUrl: downloadResult.downloadUrl });
-      },
-      Err: (error) => {
-        logger.error('Download link generation failed', { error: error.message, documentId: id });
-        const statusCode = error.message.includes('not found') ? 404 : 500;
-        res.status(statusCode).send({ error: error.message });
-      }
-    });
+    if (result.isErr()) {
+      const error = result.unwrapErr();
+      logger.error('Download link generation failed', { error: error.message, documentId: id });
+      const statusCode = error.message.includes('not found') ? 404 : 500;
+      res.status(statusCode).send({ error: error.message });
+      return;
+    }
+
+    const downloadResult = result.unwrap();
+    logger.info('Download link generated successfully', { statusCode: 200, documentId: id });
+    res.send({ downloadUrl: downloadResult.downloadUrl });
   } catch (err: any) {
     logger.error('Download link generation failed', { error: err.message, statusCode: err.statusCode || 404, documentId: req.params.id });
     res.status(err.statusCode || 404).send({ error: err.message });
@@ -405,23 +405,23 @@ export async function handleGenerateDownloadLink(req: IHttpRequest, res: IHttpRe
       // Get document and file content from the application service
       const result = await downloadDocumentByTokenUseCase.execute({ token });
       
-      matchRes(result, {
-        Ok: (downloadResult) => {
-          logger.info('Document downloaded by token successfully', { statusCode: 200 });
-          
-          // Set appropriate headers for file download
-          res.header('Content-Type', downloadResult.document.mimeType);
-          res.header('Content-Disposition', `attachment; filename="${downloadResult.document.name}"`);
-          res.header('Content-Length', downloadResult.document.size);
-          
-          // Stream the file content
-          res.send(downloadResult.file);
-        },
-        Err: (error) => {
-          logger.error('Token-based download failed', { error: error.message });
-          res.status(400).send({ error: error.message });
-        }
-      });
+      if (result.isErr()) {
+        const error = result.unwrapErr();
+        logger.error('Token-based download failed', { error: error.message });
+        res.status(400).send({ error: error.message });
+        return;
+      }
+
+      const downloadResult = result.unwrap();
+      logger.info('Document downloaded by token successfully', { statusCode: 200 });
+      
+      // Set appropriate headers for file download
+      res.header('Content-Type', downloadResult.document.mimeType);
+      res.header('Content-Disposition', `attachment; filename="${downloadResult.document.name}"`);
+      res.header('Content-Length', downloadResult.document.size);
+      
+      // Stream the file content
+      res.send(downloadResult.file);
     } catch (err: any) {
       logger.error('Token-based download failed', { error: err.message, statusCode: err.statusCode || 400 });
       res.status(err.statusCode || 400).send({ error: err.message });

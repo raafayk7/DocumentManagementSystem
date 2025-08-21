@@ -3,7 +3,7 @@ import { IHttpRequest, IHttpResponse } from '../../../../ports/input/IHttpServer
 import { container } from '../../../../shared/di/container.js';
 import { ILogger } from '../../../../ports/output/ILogger.js';
 import { zodValidate } from '../../../../shared/dto/validation/technical/simple.validator.js';
-import { matchRes } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 import { PaginationInputSchema } from '../../../../shared/dto/common/pagination.dto.js';
 
 // Import Use Cases
@@ -28,20 +28,20 @@ export async function handleLogin(req: IHttpRequest, res: IHttpResponse): Promis
     const { email, password } = req.body as { email: string; password: string };
     const result = await authenticateUserUseCase.execute({ email, password });
     
-    matchRes(result, {
-      Ok: (authResult) => {
-        logger.info('Login successful', { statusCode: 200, userId: authResult.user.id });
-        res.send({
-          message: 'Login successful',
-          token: authResult.token,
-          user: authResult.user,
-          expiresAt: authResult.expiresAt
-        });
-      },
-      Err: async (error) => {
-        logger.error('Login failed', { error: error.message });
-        res.status(401).send({ error: 'Invalid credentials' });
-      }
+    if (result.isErr()) {
+      const error = result.unwrapErr();
+      logger.error('Login failed', { error: error.message });
+      res.status(401).send({ error: 'Invalid credentials' });
+      return;
+    }
+
+    const authResult = result.unwrap();
+    logger.info('Login successful', { statusCode: 200, userId: authResult.user.id });
+    res.send({
+      message: 'Login successful',
+      token: authResult.token,
+      user: authResult.user,
+      expiresAt: authResult.expiresAt
     });
   } catch (err: any) {
     logger.error('Login failed', { error: err.message, statusCode: err.statusCode || 400 });
@@ -57,18 +57,18 @@ export async function handleRegister(req: IHttpRequest, res: IHttpResponse): Pro
     const { email, password, role } = req.body as { email: string; password: string; role: 'user' | 'admin' };
     const result = await createUserUseCase.execute({ email, password, role });
     
-    matchRes(result, {
-      Ok: (user) => {
-        logger.info('User registered successfully', { statusCode: 201, userId: user.id });
-        res.status(201).send({
-          message: 'User registered successfully',
-          user
-        });
-      },
-      Err: async (error) => {
-        logger.error('Registration failed', { error: error.message });
-        res.status(400).send({ error: error.message });
-      }
+    if (result.isErr()) {
+      const error = result.unwrapErr();
+      logger.error('Registration failed', { error: error.message });
+      res.status(400).send({ error: error.message });
+      return;
+    }
+
+    const user = result.unwrap();
+    logger.info('User registered successfully', { statusCode: 201, userId: user.id });
+    res.status(201).send({
+      message: 'User registered successfully',
+      user
     });
   } catch (err: any) {
     logger.error('Registration failed', { error: err.message, statusCode: err.statusCode || 400 });
@@ -96,22 +96,22 @@ export async function handleGetUsers(req: IHttpRequest, res: IHttpResponse): Pro
       role
     });
     
-    matchRes(result, {
-      Ok: (usersResult) => {
-        logger.info('Users retrieved successfully', { 
-          statusCode: 200, 
-          userCount: usersResult.users.length,
-          total: usersResult.pagination.total,
-          page: usersResult.pagination.page,
-          filtersApplied: { search, email, role }
-        });
-        res.send(usersResult);
-      },
-      Err: (error) => {
-        logger.error('User retrieval failed', { error: error.message });
-        res.status(500).send({ error: error.message });
-      }
+    if (result.isErr()) {
+      const error = result.unwrapErr();
+      logger.error('User retrieval failed', { error: error.message });
+      res.status(500).send({ error: error.message });
+      return;
+    }
+
+    const usersResult = result.unwrap();
+    logger.info('Users retrieved successfully', { 
+      statusCode: 200, 
+      userCount: usersResult.users.length,
+      total: usersResult.pagination.total,
+      page: usersResult.pagination.page,
+      filtersApplied: { search, email, role }
     });
+    res.send(usersResult);
   } catch (err: any) {
     logger.error('User retrieval failed', { error: err.message, statusCode: err.statusCode || 500 });
     res.status(err.statusCode || 500).send({ error: err.message });
@@ -126,17 +126,17 @@ export async function handleGetUserById(req: IHttpRequest, res: IHttpResponse): 
     const { id } = req.params as { id: string };
     const result = await getUserByIdUseCase.execute({ userId: id });
     
-    matchRes(result, {
-      Ok: (userResult) => {
-        logger.info('User retrieved successfully', { statusCode: 200, userId: id });
-        res.send(userResult);
-      },
-      Err: (error) => {
-        logger.error('User retrieval failed', { error: error.message, userId: id });
-        const statusCode = error.message.includes('not found') ? 404 : 500;
-        res.status(statusCode).send({ error: error.message });
-      }
-    });
+    if (result.isErr()) {
+      const error = result.unwrapErr();
+      logger.error('User retrieval failed', { error: error.message, userId: id });
+      const statusCode = error.message.includes('not found') ? 404 : 500;
+      res.status(statusCode).send({ error: error.message });
+      return;
+    }
+
+    const userResult = result.unwrap();
+    logger.info('User retrieved successfully', { statusCode: 200, userId: id });
+    res.send(userResult);
   } catch (err: any) {
     logger.error('User retrieval failed', { error: err.message, statusCode: err.statusCode || 404, userId: req.params.id });
     res.status(err.statusCode || 404).send({ error: err.message });
@@ -161,18 +161,18 @@ export async function handleChangeUserRole(req: IHttpRequest, res: IHttpResponse
       currentUserId: req.user?.sub
     });
     
-    matchRes(result, {
-      Ok: (userResult) => {
-        logger.info('User role updated successfully', { statusCode: 200, userId: id, newRole });
-        res.send({ 
-          message: userResult.message
-        });
-      },
-      Err: async (error) => {
-        logger.error('Role change failed', { error: error.message, userId: id });
-        const statusCode = error.message.includes('not found') ? 404 : 400;
-        res.status(statusCode).send({ error: error.message });
-      }
+    if (result.isErr()) {
+      const error = result.unwrapErr();
+      logger.error('Role change failed', { error: error.message, userId: id });
+      const statusCode = error.message.includes('not found') ? 404 : 400;
+      res.status(statusCode).send({ error: error.message });
+      return;
+    }
+
+    const userResult = result.unwrap();
+    logger.info('User role updated successfully', { statusCode: 200, userId: id, newRole });
+    res.send({ 
+      message: userResult.message
     });
   } catch (err: any) {
     logger.error('Role change failed', { error: err.message, statusCode: err.statusCode || 400, userId: req.params.id });
@@ -191,17 +191,17 @@ export async function handleDeleteUser(req: IHttpRequest, res: IHttpResponse): P
       currentUserId: req.user?.sub
     });
     
-    matchRes(result, {
-      Ok: (deleteResult) => {
-        logger.info('User deleted successfully', { statusCode: 200, userId: id });
-        res.send({ message: deleteResult.message });
-      },
-      Err: (error) => {
-        logger.error('User deletion failed', { error: error.message, userId: id });
-        const statusCode = error.message.includes('not found') ? 404 : 500;
-        res.status(statusCode).send({ error: error.message });
-      }
-    });
+    if (result.isErr()) {
+      const error = result.unwrapErr();
+      logger.error('User deletion failed', { error: error.message, userId: id });
+      const statusCode = error.message.includes('not found') ? 404 : 500;
+      res.status(statusCode).send({ error: error.message });
+      return;
+    }
+
+    const deleteResult = result.unwrap();
+    logger.info('User deleted successfully', { statusCode: 200, userId: id });
+    res.send({ message: deleteResult.message });
   } catch (err: any) {
     logger.error('User deletion failed', { error: err.message, statusCode: err.statusCode || 500, userId: req.params.id });
     res.status(err.statusCode || 500).send({ error: err.message });
@@ -226,18 +226,18 @@ export async function handleDeleteUser(req: IHttpRequest, res: IHttpResponse): P
         currentPassword: currentPassword || 'admin_override' // For admin password changes
       });
       
-      matchRes(result, {
-        Ok: (passwordResult) => {
-          logger.info('Password changed successfully', { statusCode: 200, userId: id });
-          res.send({ 
-            message: passwordResult.message
-          });
-        },
-        Err: async (error) => {
-          logger.error('Password change failed', { error: error.message, userId: id });
-          const statusCode = error.message.includes('not found') ? 404 : 400;
-          res.status(statusCode).send({ error: error.message });
-        }
+      if (result.isErr()) {
+        const error = result.unwrapErr();
+        logger.error('Password change failed', { error: error.message, userId: id });
+        const statusCode = error.message.includes('not found') ? 404 : 400;
+        res.status(statusCode).send({ error: error.message });
+        return;
+      }
+
+      const passwordResult = result.unwrap();
+      logger.info('Password changed successfully', { statusCode: 200, userId: id });
+      res.send({ 
+        message: passwordResult.message
       });
     } catch (err: any) {
       logger.error('Password change failed', { error: err.message, statusCode: err.statusCode || 400, userId: req.params.id });

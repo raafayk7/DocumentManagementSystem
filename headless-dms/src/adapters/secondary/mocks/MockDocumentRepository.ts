@@ -1,7 +1,8 @@
 import { injectable } from 'tsyringe';
 import { IDocumentRepository } from '../../../ports/output/IDocumentRepository.js';
 import { Document } from '../../../domain/entities/Document.js';
-import { DocumentFilterQuery, PaginationInput, PaginationOutput } from '../../application/dto/common/index.js';
+import { PaginationInput, PaginationOutput } from '../../../shared/dto/common/pagination.dto.js';
+import { DocumentFilterQuery } from '../../../shared/dto/common/document.filter.query.dto.js';
 
 @injectable()
 export class MockDocumentRepository implements IDocumentRepository {
