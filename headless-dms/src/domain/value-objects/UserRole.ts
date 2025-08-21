@@ -1,4 +1,4 @@
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 
 /**
  * UserRole value object representing user roles in the system.
@@ -19,21 +19,21 @@ export class UserRole {
 
   /**
    * Factory method to create a UserRole with validation.
-   * Returns Result<T, E> for consistent error handling.
+   * Returns AppResult<T> for consistent error handling.
    */
-  static create(value: string): Result<UserRole, string> {
+  static create(value: string): AppResult<UserRole> {
     // Validation logic - self-validating
     if (!value || typeof value !== 'string') {
-      return Result.Err('Role value is required and must be a string');
+      return AppResult.Err(new Error('Role value is required and must be a string'));
     }
 
     const normalizedValue = value.toLowerCase().trim();
     
     if (!UserRole.VALID_ROLES.includes(normalizedValue as any)) {
-      return Result.Err(`Invalid role: '${value}'. Valid roles are: ${UserRole.VALID_ROLES.join(', ')}`);
+      return AppResult.Err(new Error(`Invalid role: '${value}'. Valid roles are: ${UserRole.VALID_ROLES.join(', ')}`));
     }
 
-    return Result.Ok(new UserRole(normalizedValue as 'user' | 'admin'));
+    return AppResult.Ok(new UserRole(normalizedValue as 'user' | 'admin'));
   }
 
   /**

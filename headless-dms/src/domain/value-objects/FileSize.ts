@@ -1,4 +1,4 @@
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 
 /**
  * FileSize value object representing file sizes with units and validation.
@@ -24,43 +24,43 @@ export class FileSize {
 
   /**
    * Factory method to create a FileSize from bytes with validation.
-   * Returns Result<T, E> for consistent error handling.
+   * Returns AppResult<T> for consistent error handling.
    */
-  static fromBytes(bytes: number): Result<FileSize, string> {
+  static fromBytes(bytes: number): AppResult<FileSize> {
     // Validation logic - self-validating
     if (typeof bytes !== 'number' || isNaN(bytes)) {
-      return Result.Err('File size must be a valid number');
+      return AppResult.Err(new Error('File size must be a valid number'));
     }
 
     if (bytes < 0) {
-      return Result.Err('File size cannot be negative');
+      return AppResult.Err(new Error('File size cannot be negative'));
     }
 
     if (bytes > FileSize.MAX_FILE_SIZE_BYTES) {
-      return Result.Err(`File size cannot exceed ${FileSize.formatBytes(FileSize.MAX_FILE_SIZE_BYTES)}`);
+      return AppResult.Err(new Error(`File size cannot exceed ${FileSize.formatBytes(FileSize.MAX_FILE_SIZE_BYTES)}`));
     }
 
-    return Result.Ok(new FileSize(Math.round(bytes)));
+    return AppResult.Ok(new FileSize(Math.round(bytes)));
   }
 
   /**
    * Create a FileSize from kilobytes
    */
-  static fromKB(kilobytes: number): Result<FileSize, string> {
+  static fromKB(kilobytes: number): AppResult<FileSize> {
     return FileSize.fromBytes(kilobytes * FileSize.BYTES_IN_KB);
   }
 
   /**
    * Create a FileSize from megabytes
    */
-  static fromMB(megabytes: number): Result<FileSize, string> {
+  static fromMB(megabytes: number): AppResult<FileSize> {
     return FileSize.fromBytes(megabytes * FileSize.BYTES_IN_MB);
   }
 
   /**
    * Create a FileSize from gigabytes
    */
-  static fromGB(gigabytes: number): Result<FileSize, string> {
+  static fromGB(gigabytes: number): AppResult<FileSize> {
     return FileSize.fromBytes(gigabytes * FileSize.BYTES_IN_GB);
   }
 
@@ -154,9 +154,9 @@ export class FileSize {
   /**
    * Add another file size to this one
    */
-  add(other: FileSize): Result<FileSize, string> {
+  add(other: FileSize): AppResult<FileSize> {
     if (!other) {
-      return Result.Err('Cannot add undefined file size');
+      return AppResult.Err(new Error('Cannot add undefined file size'));
     }
     return FileSize.fromBytes(this._bytes + other._bytes);
   }
@@ -164,9 +164,9 @@ export class FileSize {
   /**
    * Subtract another file size from this one
    */
-  subtract(other: FileSize): Result<FileSize, string> {
+  subtract(other: FileSize): AppResult<FileSize> {
     if (!other) {
-      return Result.Err('Cannot subtract undefined file size');
+      return AppResult.Err(new Error('Cannot subtract undefined file size'));
     }
     return FileSize.fromBytes(this._bytes - other._bytes);
   }

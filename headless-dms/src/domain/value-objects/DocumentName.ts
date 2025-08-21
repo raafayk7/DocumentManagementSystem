@@ -1,4 +1,4 @@
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 
 /**
  * DocumentName value object representing document names with validation and business rules.
@@ -22,55 +22,55 @@ export class DocumentName {
 
   /**
    * Factory method to create a DocumentName with validation.
-   * Returns Result<T, E> for consistent error handling.
+   * Returns AppResult<T> for consistent error handling.
    */
-  static create(value: string): Result<DocumentName, string> {
+  static create(value: string): AppResult<DocumentName> {
     // Validation logic - self-validating
     if (!value || typeof value !== 'string') {
-      return Result.Err('Document name is required and must be a string');
+      return AppResult.Err(new Error('Document name is required and must be a string'));
     }
 
     const trimmedValue = value.trim();
     
     // Length validation
     if (trimmedValue.length < DocumentName.MIN_LENGTH) {
-      return Result.Err(`Document name must be at least ${DocumentName.MIN_LENGTH} character long`);
+      return AppResult.Err(new Error(`Document name must be at least ${DocumentName.MIN_LENGTH} character long`));
     }
 
     if (trimmedValue.length > DocumentName.MAX_LENGTH) {
-      return Result.Err(`Document name cannot exceed ${DocumentName.MAX_LENGTH} characters`);
+      return AppResult.Err(new Error(`Document name cannot exceed ${DocumentName.MAX_LENGTH} characters`));
     }
 
     // Forbidden characters validation
     if (DocumentName.FORBIDDEN_CHARACTERS.test(trimmedValue)) {
-      return Result.Err('Document name contains forbidden characters (< > : " | ? * or control characters)');
+      return AppResult.Err(new Error('Document name contains forbidden characters (< > : " | ? * or control characters)'));
     }
 
     // Forbidden names validation (Windows reserved names)
     const upperValue = trimmedValue.toUpperCase();
     if (DocumentName.FORBIDDEN_NAMES.includes(upperValue)) {
-      return Result.Err(`Document name '${trimmedValue}' is a reserved system name`);
+      return AppResult.Err(new Error(`Document name '${trimmedValue}' is a reserved system name`));
     }
 
     // Check for leading/trailing spaces and dots
     if (trimmedValue.startsWith('.') || trimmedValue.endsWith('.') || trimmedValue.startsWith(' ') || trimmedValue.endsWith(' ')) {
-      return Result.Err('Document name cannot start or end with spaces or dots');
+      return AppResult.Err(new Error('Document name cannot start or end with spaces or dots'));
     }
 
     // Check for consecutive spaces or dots
     if (trimmedValue.includes('  ') || trimmedValue.includes('..')) {
-      return Result.Err('Document name cannot contain consecutive spaces or dots');
+      return AppResult.Err(new Error('Document name cannot contain consecutive spaces or dots'));
     }
 
-    return Result.Ok(new DocumentName(trimmedValue));
+    return AppResult.Ok(new DocumentName(trimmedValue));
   }
 
   /**
    * Create a document name from a filename (extracts name without extension)
    */
-  static fromFilename(filename: string): Result<DocumentName, string> {
+  static fromFilename(filename: string): AppResult<DocumentName> {
     if (!filename || typeof filename !== 'string') {
-      return Result.Err('Filename is required and must be a string');
+      return AppResult.Err(new Error('Filename is required and must be a string'));
     }
 
     // Extract name without extension

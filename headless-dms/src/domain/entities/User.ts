@@ -1,4 +1,4 @@
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 import * as bcrypt from 'bcrypt';
 import { Email } from '../value-objects/Email.js';
 import { Password } from '../value-objects/Password.js';
@@ -39,23 +39,23 @@ export class User {
   get updatedAt(): Date { return this._updatedAt; }
 
   // Factory method for creating new users
-  static async create(email: string, password: string, role: string): Promise<Result<User, string>> {
+  static async create(email: string, password: string, role: string): Promise<AppResult<User>> {
     // Validate email using Email value object
     const emailResult = Email.create(email);
     if (emailResult.isErr()) {
-      return Result.Err(emailResult.unwrapErr());
+      return AppResult.Err(new Error(emailResult.unwrapErr().message));
     }
 
     // Validate password using Password value object
     const passwordResult = Password.create(password);
     if (passwordResult.isErr()) {
-      return Result.Err(passwordResult.unwrapErr());
+      return AppResult.Err(new Error(passwordResult.unwrapErr().message));
     }
 
     // Validate role using UserRole value object
     const roleResult = UserRole.create(role);
     if (roleResult.isErr()) {
-      return Result.Err(roleResult.unwrapErr());
+      return AppResult.Err(new Error(roleResult.unwrapErr().message));
     }
 
     // Hash password
@@ -70,7 +70,7 @@ export class User {
       updatedAt: new Date()
     };
 
-    return Result.Ok(new User(userProps));
+    return AppResult.Ok(new User(userProps));
   }
 
   // Factory method for creating from repository data
@@ -81,17 +81,17 @@ export class User {
     role: string;
     createdAt: Date;
     updatedAt: Date;
-  }): Result<User, string> {
+  }): AppResult<User> {
     // Validate email
     const emailResult = Email.create(props.email);
     if (emailResult.isErr()) {
-      return Result.Err(`Invalid email in repository data: ${emailResult.unwrapErr()}`);
+      return AppResult.Err(new Error(`Invalid email in repository data: ${emailResult.unwrapErr()}`));
     }
 
     // Validate role
     const roleResult = UserRole.create(props.role);
     if (roleResult.isErr()) {
-      return Result.Err(`Invalid role in repository data: ${roleResult.unwrapErr()}`);
+      return AppResult.Err(new Error(`Invalid role in repository data: ${roleResult.unwrapErr()}`));
     }
 
     const userProps: UserProps = {
@@ -103,7 +103,7 @@ export class User {
       updatedAt: props.updatedAt
     };
 
-    return Result.Ok(new User(userProps));
+    return AppResult.Ok(new User(userProps));
   }
 
   // Password hashing using bcrypt
@@ -112,11 +112,11 @@ export class User {
   }
 
   // State-changing operations
-  async changePassword(newPassword: string): Promise<Result<User, string>> {
+  async changePassword(newPassword: string): Promise<AppResult<User>> {
     // Validate new password using Password value object
     const passwordResult = Password.create(newPassword);
     if (passwordResult.isErr()) {
-      return Result.Err(passwordResult.unwrapErr());
+      return AppResult.Err(new Error(passwordResult.unwrapErr().message));
     }
 
     const newPasswordHash = await User.hashPassword(newPassword);
@@ -129,14 +129,14 @@ export class User {
       updatedAt: new Date()
     };
 
-    return Result.Ok(new User(updatedProps));
+    return AppResult.Ok(new User(updatedProps));
   }
 
-  changeRole(newRole: string): Result<User, string> {
+  changeRole(newRole: string): AppResult<User> {
     // Validate new role using UserRole value object
     const roleResult = UserRole.create(newRole);
     if (roleResult.isErr()) {
-      return Result.Err(roleResult.unwrapErr());
+      return AppResult.Err(new Error(roleResult.unwrapErr().message));
     }
 
     const updatedProps: UserProps = {
@@ -148,14 +148,14 @@ export class User {
       updatedAt: new Date()
     };
 
-    return Result.Ok(new User(updatedProps));
+    return AppResult.Ok(new User(updatedProps));
   }
 
-  changeEmail(newEmail: string): Result<User, string> {
+  changeEmail(newEmail: string): AppResult<User> {
     // Validate new email using Email value object
     const emailResult = Email.create(newEmail);
     if (emailResult.isErr()) {
-      return Result.Err(emailResult.unwrapErr());
+      return AppResult.Err(new Error(emailResult.unwrapErr().message));
     }
 
     const updatedProps: UserProps = {
@@ -167,7 +167,7 @@ export class User {
       updatedAt: new Date()
     };
 
-    return Result.Ok(new User(updatedProps));
+    return AppResult.Ok(new User(updatedProps));
   }
 
   // Business rule: Password verification

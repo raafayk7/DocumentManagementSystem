@@ -7,12 +7,14 @@ export interface IDocumentApplicationService {
    * Create a new document with validation
    */
   createDocument(
+    userId: string,
     name: string,
     filename: string,
     mimeType: string,
     size: string,
-    userId: string,
     tags?: string[],
+   
+    
     metadata?: Record<string, string>
   ): Promise<AppResult<Document>>;
 

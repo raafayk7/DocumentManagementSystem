@@ -1,4 +1,4 @@
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 
 export interface UserValidationContext {
   existingUsers?: { email: string; id: string }[];
@@ -21,32 +21,32 @@ export class UserValidator {
    * Business Rule: Password must meet minimum security requirements
    * Domain: Security policy requires minimum 8 characters
    */
-  static validatePassword(password: string): Result<string, string> {
+  static validatePassword(password: string): AppResult<string> {
     if (!password) {
-      return Result.Err('Password is required');
+      return AppResult.Err(new Error('Password is required'));
     }
     
     if (password.length < 8) {
-      return Result.Err('Password must be at least 8 characters for security');
+      return AppResult.Err(new Error('Password must be at least 8 characters for security'));
     }
     
-    return Result.Ok(password);
+    return AppResult.Ok(password);
   }
 
   /**
    * Business Rule: Role must be valid in the system hierarchy
    * Domain: Role hierarchy defines user permissions
    */
-  static validateRole(role: string): Result<'user' | 'admin', string> {
+  static validateRole(role: string): AppResult<'user' | 'admin'> {
     if (!role) {
-      return Result.Err('Role is required');
+      return AppResult.Err(new Error('Role is required'));
     }
     
     if (role !== 'user' && role !== 'admin') {
-      return Result.Err('Role must be either "user" or "admin"');
+      return AppResult.Err(new Error('Role must be either "user" or "admin"'));
     }
     
-    return Result.Ok(role as 'user' | 'admin');
+    return AppResult.Ok(role as 'user' | 'admin');
   }
 
   /**
@@ -57,12 +57,12 @@ export class UserValidator {
     currentUserId: string, 
     targetUserId: string, 
     newRole: 'user' | 'admin'
-  ): Result<'user' | 'admin', string> {
+  ): AppResult<'user' | 'admin'> {
     if (currentUserId === targetUserId) {
-      return Result.Err('Users cannot change their own role for security reasons');
+      return AppResult.Err(new Error('Users cannot change their own role for security reasons'));
     }
     
-    return Result.Ok(newRole);
+    return AppResult.Ok(newRole);
   }
 
   /**
@@ -72,15 +72,15 @@ export class UserValidator {
   static validateAccountAge(
     accountCreatedAt: Date, 
     requiredDays: number
-  ): Result<boolean, string> {
+  ): AppResult<boolean> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - requiredDays);
     
     if (accountCreatedAt > cutoffDate) {
-      return Result.Err(`Account must be older than ${requiredDays} days for this operation`);
+      return AppResult.Err(new Error(`Account must be older than ${requiredDays} days for this operation`));
     }
     
-    return Result.Ok(true);
+    return AppResult.Ok(true);
   }
 
   /**
@@ -90,98 +90,96 @@ export class UserValidator {
   static validateEmailUniqueness(
     email: string, 
     existingUsers: { email: string; id: string }[]
-  ): Result<string, string> {
+  ): AppResult<string> {
     const normalizedEmail = email.toLowerCase().trim();
     const existingUser = existingUsers.find(user => 
       user.email.toLowerCase().trim() === normalizedEmail
     );
     
     if (existingUser) {
-      return Result.Err('Email already exists in the system');
+      return AppResult.Err(new Error('Email already exists in the system'));
     }
     
-    return Result.Ok(normalizedEmail);
+    return AppResult.Ok(normalizedEmail);
   }
 
   /**
-   * Business Rule: User must have required permissions for operation
-   * Domain: Role-based access control policy
+   * Business Rule: User must have required role for operation
+   * Domain: Security policy - role-based access control
    */
-  static validatePermission(
+  static validateUserRoleForOperation(
     userRole: 'user' | 'admin',
     requiredRole: 'user' | 'admin',
     operation: string
-  ): Result<boolean, string> {
+  ): AppResult<boolean> {
     if (requiredRole === 'admin' && userRole !== 'admin') {
-      return Result.Err(`Admin role required for operation: ${operation}`);
+      return AppResult.Err(new Error(`Admin role required for operation: ${operation}`));
     }
     
-    return Result.Ok(true);
+    return AppResult.Ok(true);
   }
 
-  // Invariant checking methods
-
   /**
-   * Invariant: User must have valid email format
+   * Business Rule: User must have valid email format
    * Domain: Data integrity - email must be properly formatted
    */
-  static validateUserEmailInvariant(user: User): Result<User, string> {
+  static validateUserEmailInvariant(user: User): AppResult<User> {
     if (!user.email || !user.email.includes('@')) {
-      return Result.Err('User must have a valid email address');
+      return AppResult.Err(new Error('User must have a valid email address'));
     }
     
-    return Result.Ok(user);
+    return AppResult.Ok(user);
   }
 
   /**
-   * Invariant: User must have valid role
+   * Business Rule: User must have valid role enum value
    * Domain: Data integrity - role must be valid enum value
    */
-  static validateUserRoleInvariant(user: User): Result<User, string> {
+  static validateUserRoleInvariant(user: User): AppResult<User> {
     if (user.role !== 'user' && user.role !== 'admin') {
-      return Result.Err('User must have a valid role (user or admin)');
+      return AppResult.Err(new Error('User must have a valid role (user or admin)'));
     }
     
-    return Result.Ok(user);
+    return AppResult.Ok(user);
   }
 
   /**
-   * Invariant: User must have valid timestamps
+   * Business Rule: User must have valid timestamps
    * Domain: Data integrity - timestamps must be valid dates
    */
-  static validateUserTimestampsInvariant(user: User): Result<User, string> {
+  static validateUserTimestampsInvariant(user: User): AppResult<User> {
     if (!(user.createdAt instanceof Date) || isNaN(user.createdAt.getTime())) {
-      return Result.Err('User must have a valid creation timestamp');
+      return AppResult.Err(new Error('User must have a valid creation timestamp'));
     }
     
     if (!(user.updatedAt instanceof Date) || isNaN(user.updatedAt.getTime())) {
-      return Result.Err('User must have a valid update timestamp');
+      return AppResult.Err(new Error('User must have a valid update timestamp'));
     }
     
     if (user.updatedAt < user.createdAt) {
-      return Result.Err('User update timestamp cannot be before creation timestamp');
+      return AppResult.Err(new Error('User update timestamp cannot be before creation timestamp'));
     }
     
-    return Result.Ok(user);
+    return AppResult.Ok(user);
   }
 
   /**
-   * Invariant: User must have valid ID
+   * Business Rule: User must have valid ID
    * Domain: Data integrity - ID must be non-empty string
    */
-  static validateUserIdInvariant(user: User): Result<User, string> {
+  static validateUserIdInvariant(user: User): AppResult<User> {
     if (!user.id || typeof user.id !== 'string' || user.id.trim() === '') {
-      return Result.Err('User must have a valid ID');
+      return AppResult.Err(new Error('User must have a valid ID'));
     }
     
-    return Result.Ok(user);
+    return AppResult.Ok(user);
   }
 
   /**
-   * Comprehensive user invariant checking
+   * Business Rule: All user invariants must be satisfied
    * Domain: Data integrity - all user invariants must be satisfied
    */
-  static validateUserInvariants(user: User): Result<User, string> {
+  static validateUserInvariants(user: User): AppResult<User> {
     // Check all invariants in sequence
     const idResult = this.validateUserIdInvariant(user);
     if (idResult.isErr()) return idResult;
@@ -195,36 +193,36 @@ export class UserValidator {
     const timestampsResult = this.validateUserTimestampsInvariant(user);
     if (timestampsResult.isErr()) return timestampsResult;
     
-    return Result.Ok(user);
+    return AppResult.Ok(user);
   }
 
   /**
-   * Business Rule: User cannot be deleted if they own documents
+   * Business Rule: User cannot be deleted if they have documents
    * Domain: Data integrity - prevent orphaned documents
    */
-  static validateUserDeletionInvariant(
+  static validateUserDeletion(
     user: User, 
     userDocumentCount: number
-  ): Result<boolean, string> {
+  ): AppResult<boolean> {
     if (userDocumentCount > 0) {
-      return Result.Err(`Cannot delete user with ${userDocumentCount} documents. Please transfer or delete documents first.`);
+      return AppResult.Err(new Error(`Cannot delete user with ${userDocumentCount} documents. Please transfer or delete documents first.`));
     }
     
-    return Result.Ok(true);
+    return AppResult.Ok(true);
   }
 
   /**
-   * Business Rule: User cannot change role if they have admin privileges and are the only admin
-   * Domain: Security - prevent system from having no admins
+   * Business Rule: Cannot change role of only admin user
+   * Domain: Security policy - maintain system administration
    */
-  static validateAdminRoleChangeInvariant(
+  static validateAdminRoleChange(
     user: User,
     isOnlyAdmin: boolean
-  ): Result<boolean, string> {
+  ): AppResult<boolean> {
     if (user.role === 'admin' && isOnlyAdmin) {
-      return Result.Err('Cannot change role of the only admin user. Please create another admin first.');
+      return AppResult.Err(new Error('Cannot change role of the only admin user. Please create another admin first.'));
     }
     
-    return Result.Ok(true);
+    return AppResult.Ok(true);
   }
 }

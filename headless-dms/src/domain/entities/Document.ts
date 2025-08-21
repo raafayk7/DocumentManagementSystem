@@ -1,4 +1,4 @@
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 import { DocumentName } from '../value-objects/DocumentName.js';
 import { MimeType } from '../value-objects/MimeType.js';
 import { FileSize } from '../value-objects/FileSize.js';
@@ -57,40 +57,40 @@ export class Document {
     size: string, 
     tags: string[] = [], 
     metadata: Record<string, string> = {}
-  ): Result<Document, string> {
+  ): AppResult<Document> {
     // Validate name using DocumentName value object
     const nameResult = DocumentName.create(name);
     if (nameResult.isErr()) {
-      return Result.Err(nameResult.unwrapErr());
+      return AppResult.Err(nameResult.unwrapErr());
     }
 
     // Validate file path
     if (!Document.validateFilePath(filePath)) {
-      return Result.Err('Invalid file path');
+      return AppResult.Err(new Error('Invalid file path'));
     }
 
     // Validate MIME type using MimeType value object
     const mimeTypeResult = MimeType.create(mimeType);
     if (mimeTypeResult.isErr()) {
-      return Result.Err(mimeTypeResult.unwrapErr());
+      return AppResult.Err(mimeTypeResult.unwrapErr());
     }
 
     // Validate size using FileSize value object
     const sizeResult = FileSize.fromBytes(parseInt(size));
     if (sizeResult.isErr()) {
-      return Result.Err(sizeResult.unwrapErr());
+      return AppResult.Err(sizeResult.unwrapErr());
     }
 
     // Validate and clean tags
     const cleanTags = Document.validateAndCleanTags(tags);
     if (cleanTags.isErr()) {
-      return Result.Err(cleanTags.unwrapErr());
+      return AppResult.Err(cleanTags.unwrapErr());
     }
 
     // Validate metadata
     const cleanMetadata = Document.validateMetadata(metadata);
     if (cleanMetadata.isErr()) {
-      return Result.Err(cleanMetadata.unwrapErr());
+      return AppResult.Err(cleanMetadata.unwrapErr());
     }
 
     const documentProps: DocumentProps = {
@@ -105,7 +105,7 @@ export class Document {
       updatedAt: new Date()
     };
 
-    return Result.Ok(new Document(documentProps));
+    return AppResult.Ok(new Document(documentProps));
   }
 
   // Factory method for creating from repository data
@@ -119,23 +119,23 @@ export class Document {
     metadata: Record<string, string>;
     createdAt: Date;
     updatedAt: Date;
-  }): Result<Document, string> {
+  }): AppResult<Document> {
     // Validate name
     const nameResult = DocumentName.create(props.name);
     if (nameResult.isErr()) {
-      return Result.Err(`Invalid name in repository data: ${nameResult.unwrapErr()}`);
+      return AppResult.Err(new Error(`Invalid name in repository data: ${nameResult.unwrapErr()}`));
     }
 
     // Validate MIME type
     const mimeTypeResult = MimeType.create(props.mimeType);
     if (mimeTypeResult.isErr()) {
-      return Result.Err(`Invalid MIME type in repository data: ${mimeTypeResult.unwrapErr()}`);
+      return AppResult.Err(new Error(`Invalid MIME type in repository data: ${mimeTypeResult.unwrapErr()}`));
     }
 
     // Validate size
     const sizeResult = FileSize.fromBytes(parseInt(props.size));
     if (sizeResult.isErr()) {
-      return Result.Err(`Invalid size in repository data: ${sizeResult.unwrapErr()}`);
+      return AppResult.Err(new Error(`Invalid size in repository data: ${sizeResult.unwrapErr()}`));
     }
 
     const documentProps: DocumentProps = {
@@ -150,7 +150,7 @@ export class Document {
       updatedAt: props.updatedAt
     };
 
-    return Result.Ok(new Document(documentProps));
+    return AppResult.Ok(new Document(documentProps));
   }
 
   // Factory method for creating from file upload
@@ -161,17 +161,17 @@ export class Document {
     size: string,
     tagsInput?: string | string[],
     metadataInput?: string | Record<string, string>
-  ): Result<Document, string> {
+  ): AppResult<Document> {
     // Parse tags
     const tags = Document.parseTags(tagsInput);
     if (tags.isErr()) {
-      return Result.Err(tags.unwrapErr());
+      return AppResult.Err(tags.unwrapErr());
     }
 
     // Parse metadata
     const metadata = Document.parseMetadata(metadataInput);
     if (metadata.isErr()) {
-      return Result.Err(metadata.unwrapErr());
+      return AppResult.Err(metadata.unwrapErr());
     }
 
     return Document.create(name, filePath, mimeType, size, tags.unwrap(), metadata.unwrap());
@@ -182,32 +182,32 @@ export class Document {
     return filePath.trim().length > 0;
   }
 
-  static validateAndCleanTags(tags: string[]): Result<string[], string> {
+  static validateAndCleanTags(tags: string[]): AppResult<string[]> {
     const cleanTags = tags
       .map(tag => tag.trim())
       .filter(tag => tag.length > 0);
 
     if (cleanTags.length !== tags.length) {
-      return Result.Err('Tags cannot be empty strings');
+      return AppResult.Err(new Error('Tags cannot be empty strings'));
     }
 
-    return Result.Ok(cleanTags);
+    return AppResult.Ok(cleanTags);
   }
 
-  static validateMetadata(metadata: Record<string, string>): Result<Record<string, string>, string> {
+  static validateMetadata(metadata: Record<string, string>): AppResult<Record<string, string>> {
     // Basic validation - ensure all values are strings
     for (const [key, value] of Object.entries(metadata)) {
       if (typeof value !== 'string') {
-        return Result.Err(`Metadata value for key "${key}" must be a string`);
+        return AppResult.Err(new Error(`Metadata value for key "${key}" must be a string`));
       }
     }
-    return Result.Ok(metadata);
+    return AppResult.Ok(metadata);
   }
 
   // Parsing methods for upload data
-  static parseTags(tagsInput?: string | string[]): Result<string[], string> {
+  static parseTags(tagsInput?: string | string[]): AppResult<string[]> {
     if (!tagsInput) {
-      return Result.Ok([]);
+      return AppResult.Ok([]);
     }
 
     if (typeof tagsInput === 'string') {
@@ -218,12 +218,12 @@ export class Document {
         } else if (typeof parsed === 'string') {
           return Document.validateAndCleanTags([parsed]);
         } else {
-          return Result.Ok([]);
+          return AppResult.Ok([]);
         }
       } catch {
         // Fallback: comma-separated string
         const tags = tagsInput.split(',').map(t => t.trim()).filter(t => t.length > 0);
-        return Result.Ok(tags);
+        return AppResult.Ok(tags);
       }
     }
 
@@ -231,12 +231,12 @@ export class Document {
       return Document.validateAndCleanTags(tagsInput.map(String));
     }
 
-    return Result.Ok([]);
+    return AppResult.Ok([]);
   }
 
-  static parseMetadata(metadataInput?: string | Record<string, string>): Result<Record<string, string>, string> {
+  static parseMetadata(metadataInput?: string | Record<string, string>): AppResult<Record<string, string>> {
     if (!metadataInput) {
-      return Result.Ok({});
+      return AppResult.Ok({});
     }
 
     if (typeof metadataInput === 'string') {
@@ -246,7 +246,7 @@ export class Document {
           return Document.validateMetadata(parsed);
         }
       } catch {
-        return Result.Err('Invalid metadata JSON format');
+        return AppResult.Err(new Error('Invalid metadata JSON format'));
       }
     }
 
@@ -254,15 +254,15 @@ export class Document {
       return Document.validateMetadata(metadataInput);
     }
 
-    return Result.Ok({});
+    return AppResult.Ok({});
   }
 
   // State-changing operations
-  updateName(newName: string): Result<Document, string> {
+  updateName(newName: string): AppResult<Document> {
     // Validate new name using DocumentName value object
     const nameResult = DocumentName.create(newName);
     if (nameResult.isErr()) {
-      return Result.Err(nameResult.unwrapErr());
+      return AppResult.Err(nameResult.unwrapErr());
     }
 
     const updatedProps: DocumentProps = {
@@ -277,13 +277,13 @@ export class Document {
       updatedAt: new Date()
     };
 
-    return Result.Ok(new Document(updatedProps));
+    return AppResult.Ok(new Document(updatedProps));
   }
 
-  addTags(newTags: string[]): Result<Document, string> {
+  addTags(newTags: string[]): AppResult<Document> {
     const cleanTags = Document.validateAndCleanTags(newTags);
     if (cleanTags.isErr()) {
-      return Result.Err(cleanTags.unwrapErr());
+      return AppResult.Err(cleanTags.unwrapErr());
     }
 
     const allTags = [...this._tags, ...cleanTags.unwrap()];
@@ -301,10 +301,10 @@ export class Document {
       updatedAt: new Date()
     };
 
-    return Result.Ok(new Document(updatedProps));
+    return AppResult.Ok(new Document(updatedProps));
   }
 
-  removeTags(tagsToRemove: string[]): Result<Document, string> {
+  removeTags(tagsToRemove: string[]): AppResult<Document> {
     const tagsToRemoveSet = new Set(tagsToRemove);
     const remainingTags = this._tags.filter(tag => !tagsToRemoveSet.has(tag));
 
@@ -320,13 +320,13 @@ export class Document {
       updatedAt: new Date()
     };
 
-    return Result.Ok(new Document(updatedProps));
+    return AppResult.Ok(new Document(updatedProps));
   }
 
-  replaceTags(newTags: string[]): Result<Document, string> {
+  replaceTags(newTags: string[]): AppResult<Document> {
     const cleanTags = Document.validateAndCleanTags(newTags);
     if (cleanTags.isErr()) {
-      return Result.Err(cleanTags.unwrapErr());
+      return AppResult.Err(cleanTags.unwrapErr());
     }
 
     const updatedProps: DocumentProps = {
@@ -341,13 +341,13 @@ export class Document {
       updatedAt: new Date()
     };
 
-    return Result.Ok(new Document(updatedProps));
+    return AppResult.Ok(new Document(updatedProps));
   }
 
-  updateMetadata(newMetadata: Record<string, string>): Result<Document, string> {
+  updateMetadata(newMetadata: Record<string, string>): AppResult<Document> {
     const cleanMetadata = Document.validateMetadata(newMetadata);
     if (cleanMetadata.isErr()) {
-      return Result.Err(cleanMetadata.unwrapErr());
+      return AppResult.Err(cleanMetadata.unwrapErr());
     }
 
     const updatedProps: DocumentProps = {
@@ -362,24 +362,24 @@ export class Document {
       updatedAt: new Date()
     };
 
-    return Result.Ok(new Document(updatedProps));
+    return AppResult.Ok(new Document(updatedProps));
   }
 
-  updateFileInfo(newFilePath: string, newMimeType: string, newSize: string): Result<Document, string> {
+  updateFileInfo(newFilePath: string, newMimeType: string, newSize: string): AppResult<Document> {
     if (!Document.validateFilePath(newFilePath)) {
-      return Result.Err('Invalid file path');
+      return AppResult.Err(new Error('Invalid file path'));
     }
 
     // Validate new MIME type using MimeType value object
     const mimeTypeResult = MimeType.create(newMimeType);
     if (mimeTypeResult.isErr()) {
-      return Result.Err(mimeTypeResult.unwrapErr());
+      return AppResult.Err(mimeTypeResult.unwrapErr());
     }
 
     // Validate new size using FileSize value object
     const sizeResult = FileSize.fromBytes(parseInt(newSize));
     if (sizeResult.isErr()) {
-      return Result.Err(sizeResult.unwrapErr());
+      return AppResult.Err(sizeResult.unwrapErr());
     }
 
     const updatedProps: DocumentProps = {
@@ -394,7 +394,7 @@ export class Document {
       updatedAt: new Date()
     };
 
-    return Result.Ok(new Document(updatedProps));
+    return AppResult.Ok(new Document(updatedProps));
   }
 
   // Business rules

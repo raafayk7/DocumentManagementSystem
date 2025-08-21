@@ -1,4 +1,4 @@
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 
 /**
  * Password value object representing passwords with strength validation and security rules.
@@ -26,21 +26,21 @@ export class Password {
 
   /**
    * Factory method to create a Password with validation.
-   * Returns Result<T, E> for consistent error handling.
+   * Returns AppResult<T> for consistent error handling.
    */
-  static create(value: string): Result<Password, string> {
+  static create(value: string): AppResult<Password> {
     // Validation logic - self-validating
     if (!value || typeof value !== 'string') {
-      return Result.Err('Password is required and must be a string');
+      return AppResult.Err(new Error('Password is required and must be a string'));
     }
 
     // Length validation
     if (value.length < Password.MIN_LENGTH) {
-      return Result.Err(`Password must be at least ${Password.MIN_LENGTH} characters long`);
+      return AppResult.Err(new Error(`Password must be at least ${Password.MIN_LENGTH} characters long`));
     }
 
     if (value.length > Password.MAX_LENGTH) {
-      return Result.Err(`Password cannot exceed ${Password.MAX_LENGTH} characters`);
+      return AppResult.Err(new Error(`Password cannot exceed ${Password.MAX_LENGTH} characters`));
     }
 
     // Character type validation
@@ -63,25 +63,25 @@ export class Password {
     }
 
     if (validationErrors.length > 0) {
-      return Result.Err(`Password must contain ${validationErrors.join(', ')}`);
+      return AppResult.Err(new Error(`Password must contain ${validationErrors.join(', ')}`));
     }
 
     // Check for common weak patterns
     if (Password.isCommonPassword(value)) {
-      return Result.Err('Password is too common and easily guessable');
+      return AppResult.Err(new Error('Password is too common and easily guessable'));
     }
 
     // Check for sequential characters
     if (Password.hasSequentialChars(value)) {
-      return Result.Err('Password contains sequential characters (e.g., 123, abc)');
+      return AppResult.Err(new Error('Password contains sequential characters (e.g., 123, abc)'));
     }
 
     // Check for repeated characters
     if (Password.hasRepeatedChars(value)) {
-      return Result.Err('Password contains too many repeated characters');
+      return AppResult.Err(new Error('Password contains too many repeated characters'));
     }
 
-    return Result.Ok(new Password(value));
+    return AppResult.Ok(new Password(value));
   }
 
   /**
@@ -99,27 +99,29 @@ export class Password {
       allowSequentialChars?: boolean;
       allowRepeatedChars?: boolean;
     } = {}
-  ): Result<Password, string> {
+  ): AppResult<Password> {
     if (!value || typeof value !== 'string') {
-      return Result.Err('Password is required and must be a string');
+      return AppResult.Err(new Error('Password is required and must be a string'));
     }
 
-    const minLength = requirements.minLength || Password.MIN_LENGTH;
-    const requireLowercase = requirements.requireLowercase ?? true;
-    const requireUppercase = requirements.requireUppercase ?? true;
-    const requireNumbers = requirements.requireNumbers ?? true;
-    const requireSpecialChars = requirements.requireSpecialChars ?? true;
-    const allowCommonPasswords = requirements.allowCommonPasswords ?? false;
-    const allowSequentialChars = requirements.allowSequentialChars ?? false;
-    const allowRepeatedChars = requirements.allowRepeatedChars ?? false;
+    const {
+      minLength = Password.MIN_LENGTH,
+      requireLowercase = true,
+      requireUppercase = true,
+      requireNumbers = true,
+      requireSpecialChars = true,
+      allowCommonPasswords = false,
+      allowSequentialChars = false,
+      allowRepeatedChars = false
+    } = requirements;
 
     // Length validation
     if (value.length < minLength) {
-      return Result.Err(`Password must be at least ${minLength} characters long`);
+      return AppResult.Err(new Error(`Password must be at least ${minLength} characters long`));
     }
 
     if (value.length > Password.MAX_LENGTH) {
-      return Result.Err(`Password cannot exceed ${Password.MAX_LENGTH} characters`);
+      return AppResult.Err(new Error(`Password cannot exceed ${Password.MAX_LENGTH} characters`));
     }
 
     // Character type validation
@@ -142,23 +144,23 @@ export class Password {
     }
 
     if (validationErrors.length > 0) {
-      return Result.Err(`Password must contain ${validationErrors.join(', ')}`);
+      return AppResult.Err(new Error(`Password must contain ${validationErrors.join(', ')}`));
     }
 
     // Optional validations
     if (!allowCommonPasswords && Password.isCommonPassword(value)) {
-      return Result.Err('Password is too common and easily guessable');
+      return AppResult.Err(new Error('Password is too common and easily guessable'));
     }
 
     if (!allowSequentialChars && Password.hasSequentialChars(value)) {
-      return Result.Err('Password contains sequential characters (e.g., 123, abc)');
+      return AppResult.Err(new Error('Password contains sequential characters (e.g., 123, abc)'));
     }
 
     if (!allowRepeatedChars && Password.hasRepeatedChars(value)) {
-      return Result.Err('Password contains too many repeated characters');
+      return AppResult.Err(new Error('Password contains too many repeated characters'));
     }
 
-    return Result.Ok(new Password(value));
+    return AppResult.Ok(new Password(value));
   }
 
   /**

@@ -1,6 +1,6 @@
 import { injectable } from 'tsyringe';
 import { User } from '../entities/User.js';
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 
 export interface SecurityValidation {
   isValid: boolean;
@@ -135,7 +135,7 @@ export class AuthDomainService {
     }
 
     // Role-based security checks
-    if (user.role === 'admin') {
+    if (user.role.value === 'admin') {
       issues.push('Admin account - requires enhanced security');
       recommendations.push('Enable two-factor authentication');
       recommendations.push('Regular security audits');
@@ -213,7 +213,7 @@ export class AuthDomainService {
     let baseExpiration = 60; // 1 hour
 
     // Adjust based on role
-    if (user.role === 'admin') {
+    if (user.role.value === 'admin') {
       baseExpiration = 30; // Shorter for admins
     }
 
@@ -241,7 +241,7 @@ export class AuthDomainService {
     operation: 'password_change' | 'role_change' | 'account_deletion' | 'system_config'
   ): boolean {
     // Admin can perform all operations
-    if (user.role === 'admin') {
+    if (user.role.value === 'admin') {
       return true;
     }
 
@@ -275,7 +275,7 @@ export class AuthDomainService {
     else if (daysSinceCreation > 365) score += 10; // Old account
 
     // Role factor
-    if (user.role === 'admin') score += 50; // Admin accounts are high risk
+    if (user.role.value === 'admin') score += 50; // Admin accounts are high risk
 
     // Activity factor (would need repository to calculate)
     // For now, we'll use a simple heuristic

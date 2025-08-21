@@ -1,4 +1,4 @@
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 
 /**
  * Email value object representing email addresses with validation and business rules.
@@ -25,57 +25,57 @@ export class Email {
 
   /**
    * Factory method to create an Email with validation.
-   * Returns Result<T, E> for consistent error handling.
+   * Returns AppResult<T> for consistent error handling.
    */
-  static create(value: string): Result<Email, string> {
+  static create(value: string): AppResult<Email> {
     // Validation logic - self-validating
     if (!value || typeof value !== 'string') {
-      return Result.Err('Email address is required and must be a string');
+      return AppResult.Err(new Error('Email address is required and must be a string'));
     }
 
     const normalizedValue = value.toLowerCase().trim();
     
     // Basic format validation
     if (!Email.EMAIL_REGEX.test(normalizedValue)) {
-      return Result.Err('Invalid email format');
+      return AppResult.Err(new Error('Invalid email format'));
     }
 
     // Length validation
     if (normalizedValue.length > 254) { // RFC 5321 limit
-      return Result.Err('Email address cannot exceed 254 characters');
+      return AppResult.Err(new Error('Email address cannot exceed 254 characters'));
     }
 
     // Local part validation (before @)
     const [localPart, domain] = normalizedValue.split('@');
     if (localPart.length > 64) { // RFC 5321 limit
-      return Result.Err('Local part of email cannot exceed 64 characters');
+      return AppResult.Err(new Error('Local part of email cannot exceed 64 characters'));
     }
 
     if (localPart.length === 0) {
-      return Result.Err('Local part of email cannot be empty');
+      return AppResult.Err(new Error('Local part of email cannot be empty'));
     }
 
     // Domain validation
     if (!domain || domain.length === 0) {
-      return Result.Err('Domain part of email cannot be empty');
+      return AppResult.Err(new Error('Domain part of email cannot be empty'));
     }
 
     if (domain.length > 253) { // RFC 5321 limit
-      return Result.Err('Domain part of email cannot exceed 253 characters');
+      return AppResult.Err(new Error('Domain part of email cannot exceed 253 characters'));
     }
 
     // Check for valid domain format
     if (!/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/.test(domain)) {
-      return Result.Err('Invalid domain format');
+      return AppResult.Err(new Error('Invalid domain format'));
     }
 
-    return Result.Ok(new Email(normalizedValue));
+    return AppResult.Ok(new Email(normalizedValue));
   }
 
   /**
    * Create an email with disposable domain checking
    */
-  static createWithDisposableCheck(value: string, allowDisposable: boolean = false): Result<Email, string> {
+  static createWithDisposableCheck(value: string, allowDisposable: boolean = false): AppResult<Email> {
     const emailResult = Email.create(value);
     if (emailResult.isErr()) {
       return emailResult;
@@ -84,10 +84,10 @@ export class Email {
     const email = emailResult.unwrap();
     
     if (!allowDisposable && email.isDisposable()) {
-      return Result.Err('Disposable email addresses are not allowed');
+      return AppResult.Err(new Error('Disposable email addresses are not allowed'));
     }
 
-    return Result.Ok(email);
+    return AppResult.Ok(email);
   }
 
   /**

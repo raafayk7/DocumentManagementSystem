@@ -1,7 +1,7 @@
 import { injectable } from 'tsyringe';
 import { Document } from '../entities/Document.js';
 import { User } from '../entities/User.js';
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 
 export interface DocumentImportanceScore {
   score: number;

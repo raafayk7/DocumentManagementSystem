@@ -1,4 +1,4 @@
-import { Result } from '@carbonteq/fp';
+import { AppResult } from '@carbonteq/hexapp';
 
 /**
  * MimeType value object representing MIME types with validation and categorization.
@@ -25,27 +25,27 @@ export class MimeType {
 
   /**
    * Factory method to create a MimeType with validation.
-   * Returns Result<T, E> for consistent error handling.
+   * Returns AppResult<T> for consistent error handling.
    */
-  static create(value: string): Result<MimeType, string> {
+  static create(value: string): AppResult<MimeType> {
     // Validation logic - self-validating
     if (!value || typeof value !== 'string') {
-      return Result.Err('MIME type value is required and must be a string');
+      return AppResult.Err(new Error('MIME type value is required and must be a string'));
     }
 
     const normalizedValue = value.toLowerCase().trim();
     
     // Basic MIME type format validation
     if (!MimeType.MIME_TYPE_PATTERN.test(normalizedValue)) {
-      return Result.Err(`Invalid MIME type format: '${value}'. Expected format: type/subtype`);
+      return AppResult.Err(new Error(`Invalid MIME type format: '${value}'. Expected format: type/subtype`));
     }
 
     // Check for common invalid patterns
     if (normalizedValue.includes('..') || normalizedValue.includes('//')) {
-      return Result.Err(`Invalid MIME type: '${value}'. Contains invalid characters`);
+      return AppResult.Err(new Error(`Invalid MIME type: '${value}'. Contains invalid characters`));
     }
 
-    return Result.Ok(new MimeType(normalizedValue));
+    return AppResult.Ok(new MimeType(normalizedValue));
   }
 
   /**
