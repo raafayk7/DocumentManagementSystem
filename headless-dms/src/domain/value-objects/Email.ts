@@ -1,4 +1,4 @@
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, BaseValueObject } from '@carbonteq/hexapp';
 
 /**
  * Email value object representing email addresses with validation and business rules.
@@ -9,8 +9,9 @@ import { AppResult } from '@carbonteq/hexapp';
  * - Value Comparison: Equality is based on email value, not instance
  * - Self-validating: Only valid email addresses can be created
  * - Easily testable: Simple to test all scenarios
+ * - Extends hexapp's BaseValueObject for framework consistency
  */
-export class Email {
+export class Email extends BaseValueObject<string> {
   // Email validation regex (RFC 5322 compliant)
   private static readonly EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
   
@@ -21,7 +22,9 @@ export class Email {
   ];
   
   // Private constructor ensures immutability
-  private constructor(private readonly _value: string) {}
+  private constructor(private readonly _value: string) {
+    super();
+  }
 
   /**
    * Factory method to create an Email with validation.
@@ -98,21 +101,21 @@ export class Email {
   }
 
   /**
-   * Get the local part (before @)
-   */
-  get localPart(): string {
-    return this._value.split('@')[0];
-  }
-
-  /**
-   * Get the domain part (after @)
+   * Get the domain part of the email address
    */
   get domain(): string {
     return this._value.split('@')[1];
   }
 
   /**
-   * Get the top-level domain
+   * Get the local part of the email address (before @)
+   */
+  get localPart(): string {
+    return this._value.split('@')[0];
+  }
+
+  /**
+   * Get the top-level domain (TLD)
    */
   get topLevelDomain(): string {
     const domainParts = this.domain.split('.');
@@ -120,110 +123,61 @@ export class Email {
   }
 
   /**
-   * Check if this is a corporate email (not common free providers)
+   * Check if the email is from a disposable domain
+   */
+  isDisposable(): boolean {
+    return Email.DISPOSABLE_DOMAINS.includes(this.domain);
+  }
+
+  /**
+   * Check if the email is from a corporate domain (not common providers)
    */
   get isCorporate(): boolean {
-    const commonProviders = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com'];
+    const commonProviders = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com'];
     return !commonProviders.includes(this.domain);
   }
 
   /**
-   * Check if this is a free email provider
+   * Check if the email is from a common provider
    */
-  get isFreeProvider(): boolean {
-    const commonProviders = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com'];
-    return commonProviders.includes(this.domain);
+  get isCommonProvider(): boolean {
+    return !this.isCorporate;
   }
 
   /**
-   * Check if this is a disposable email
+   * Check if the email has a specific domain
    */
-  isDisposable(): boolean {
-    return Email.DISPOSABLE_DOMAINS.some(disposableDomain => 
-      this.domain === disposableDomain || this.domain.endsWith('.' + disposableDomain)
-    );
+  hasDomain(domain: string): boolean {
+    return this.domain.toLowerCase() === domain.toLowerCase();
   }
 
   /**
-   * Check if this is a valid business email format
+   * Check if the email has the same domain as another email
    */
-  get isValidBusinessFormat(): boolean {
-    // Business emails typically have a company domain
-    return this.isCorporate && !this.isDisposable();
+  hasSameDomain(other: Email): boolean {
+    return this.domain.toLowerCase() === other.domain.toLowerCase();
   }
 
   /**
-   * Get the email length
+   * Check if the email has the same top-level domain as another email
    */
-  get length(): number {
-    return this._value.length;
+  hasSameTopLevelDomain(other: Email): boolean {
+    return this.topLevelDomain.toLowerCase() === other.topLevelDomain.toLowerCase();
   }
 
   /**
-   * Check if the email is short (< 20 characters)
-   */
-  get isShort(): boolean {
-    return this._value.length < 20;
-  }
-
-  /**
-   * Check if the email is medium length (20-40 characters)
-   */
-  get isMedium(): boolean {
-    return this._value.length >= 20 && this._value.length <= 40;
-  }
-
-  /**
-   * Check if the email is long (> 40 characters)
-   */
-  get isLong(): boolean {
-    return this._value.length > 40;
-  }
-
-  /**
-   * Check if the email contains numbers
-   */
-  get hasNumbers(): boolean {
-    return /\d/.test(this._value);
-  }
-
-  /**
-   * Check if the email contains special characters
-   */
-  get hasSpecialChars(): boolean {
-    return /[^a-zA-Z0-9@._-]/.test(this._value);
-  }
-
-  /**
-   * Value equality - compares by value, not instance
+   * Check if the email equals another email (case-insensitive)
    */
   equals(other: Email): boolean {
-    if (!other) return false;
-    return this._value === other._value;
-  }
-
-  /**
-   * Case-insensitive equality check
-   */
-  equalsIgnoreCase(other: Email): boolean {
     if (!other) return false;
     return this._value.toLowerCase() === other._value.toLowerCase();
   }
 
   /**
-   * Check if this email has the same domain as another
+   * Check if the email equals another email (case-insensitive)
    */
-  hasSameDomain(other: Email): boolean {
-    if (!other) return false;
-    return this.domain === other.domain;
-  }
-
-  /**
-   * Check if this email has the same top-level domain as another
-   */
-  hasSameTopLevelDomain(other: Email): boolean {
-    if (!other) return false;
-    return this.topLevelDomain === other.topLevelDomain;
+  equalsIgnoreCase(other: Email): boolean {
+    return this.equals(other);
   }
 
   /**
@@ -234,19 +188,6 @@ export class Email {
   }
 
   /**
-   * Get a masked version for privacy (e.g., u***@e***.com)
-   */
-  get masked(): string {
-    const [local, domain] = this._value.split('@');
-    const maskedLocal = local.length > 1 ? local[0] + '*'.repeat(local.length - 1) : local;
-    const domainParts = domain.split('.');
-    const maskedDomain = domainParts[0].length > 1 ? domainParts[0][0] + '*'.repeat(domainParts[0].length - 1) : domainParts[0];
-    const maskedTLD = domainParts[1] || '';
-    
-    return `${maskedLocal}@${maskedDomain}.${maskedTLD}`;
-  }
-
-  /**
    * Get a normalized version (lowercase, trimmed)
    */
   get normalized(): string {
@@ -254,7 +195,7 @@ export class Email {
   }
 
   /**
-   * Check if a string represents a valid email
+   * Check if a string represents a valid email address
    */
   static isValid(value: string): boolean {
     return Email.create(value).isOk();
@@ -282,9 +223,40 @@ export class Email {
   }
 
   /**
-   * Get all disposable email domains
+   * Get all disposable domains
    */
   static getDisposableDomains(): readonly string[] {
     return Email.DISPOSABLE_DOMAINS;
+  }
+
+  /**
+   * Check if a domain is disposable
+   */
+  static isDisposableDomain(domain: string): boolean {
+    return Email.DISPOSABLE_DOMAINS.includes(domain.toLowerCase());
+  }
+
+  /**
+   * Create an email from a trusted source (bypasses validation)
+   * Use with caution - only for data that has already been validated
+   */
+  static fromTrusted(value: string): Email {
+    return new Email(value.toLowerCase().trim());
+  }
+
+  /**
+   * Required serialize method from BaseValueObject
+   */
+  serialize(): string {
+    return this._value;
+  }
+
+  /**
+   * Optional getParser method for boundary validation
+   */
+  getParser() {
+    // Return a Zod schema for email validation at boundaries
+    const { z } = require('zod');
+    return z.string().email().max(254);
   }
 }

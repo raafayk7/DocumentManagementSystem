@@ -1,4 +1,4 @@
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, BaseValueObject } from '@carbonteq/hexapp';
 
 /**
  * DocumentName value object representing document names with validation and business rules.
@@ -9,8 +9,9 @@ import { AppResult } from '@carbonteq/hexapp';
  * - Value Comparison: Equality is based on name value, not instance
  * - Self-validating: Only valid document names can be created
  * - Easily testable: Simple to test all scenarios
+ * - Extends hexapp's BaseValueObject for framework consistency
  */
-export class DocumentName {
+export class DocumentName extends BaseValueObject<string> {
   // Validation constants
   private static readonly MIN_LENGTH = 1;
   private static readonly MAX_LENGTH = 255;
@@ -18,7 +19,9 @@ export class DocumentName {
   private static readonly FORBIDDEN_NAMES = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'];
   
   // Private constructor ensures immutability
-  private constructor(private readonly _value: string) {}
+  private constructor(private readonly _value: string) {
+    super();
+  }
 
   /**
    * Factory method to create a DocumentName with validation.
@@ -235,5 +238,24 @@ export class DocumentName {
    */
   static getForbiddenNames(): readonly string[] {
     return DocumentName.FORBIDDEN_NAMES;
+  }
+
+  /**
+   * Required serialize method from BaseValueObject
+   */
+  serialize(): string {
+    return this._value;
+  }
+
+  /**
+   * Optional getParser method for boundary validation
+   */
+  getParser() {
+    // Return a Zod schema for document name validation at boundaries
+    const { z } = require('zod');
+    return z.string()
+      .min(1, 'Document name is required')
+      .max(255, 'Document name cannot exceed 255 characters')
+      .regex(/^[^<>:"|?*\x00-\x1f]+$/, 'Document name contains forbidden characters');
   }
 }

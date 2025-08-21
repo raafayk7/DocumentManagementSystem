@@ -1,4 +1,4 @@
-import { AppResult, BaseEntity, UUID } from '@carbonteq/hexapp';
+import { AppResult, BaseEntity, UUID, DateTime } from '@carbonteq/hexapp';
 import { DocumentName } from '../value-objects/DocumentName.js';
 import { MimeType } from '../value-objects/MimeType.js';
 import { FileSize } from '../value-objects/FileSize.js';
@@ -427,7 +427,7 @@ export class Document extends BaseEntity {
   }
 
   isRecentlyUpdated(hours: number = 24): boolean {
-    const cutoffTime = new Date();
+    const cutoffTime = DateTime.now();
     cutoffTime.setHours(cutoffTime.getHours() - hours);
     return this.updatedAt > cutoffTime;
   }

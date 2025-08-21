@@ -3,6 +3,7 @@ import { IUserRepository } from '../../../ports/output/IUserRepository.js';
 import { User } from '../../../domain/entities/User.js';
 import { PaginationInput, PaginationOutput } from '../../../shared/dto/common/pagination.dto.js';
 import { UserFilterQuery } from '../../../ports/output/IUserRepository.js';
+import { Email } from '../../../domain/value-objects/Email.js';
 
 
 @injectable()

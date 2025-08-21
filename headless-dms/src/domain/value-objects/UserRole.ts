@@ -1,4 +1,4 @@
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, BaseValueObject } from '@carbonteq/hexapp';
 
 /**
  * UserRole value object representing user roles in the system.
@@ -9,13 +9,16 @@ import { AppResult } from '@carbonteq/hexapp';
  * - Value Comparison: Equality is based on role value, not instance
  * - Self-validating: Only valid roles can be created
  * - Easily testable: Simple to test all scenarios
+ * - Extends hexapp's BaseValueObject for framework consistency
  */
-export class UserRole {
+export class UserRole extends BaseValueObject<'user' | 'admin'> {
   // Valid role values
   private static readonly VALID_ROLES = ['user', 'admin'] as const;
   
   // Private constructor ensures immutability
-  private constructor(private readonly _value: 'user' | 'admin') {}
+  private constructor(private readonly _value: 'user' | 'admin') {
+    super();
+  }
 
   /**
    * Factory method to create a UserRole with validation.
@@ -48,6 +51,14 @@ export class UserRole {
    */
   static admin(): UserRole {
     return new UserRole('admin');
+  }
+
+  /**
+   * Create a role from a trusted source (bypasses validation)
+   * Use with caution - only for data that has already been validated
+   */
+  static fromTrusted(value: 'user' | 'admin'): UserRole {
+    return new UserRole(value);
   }
 
   /**
@@ -104,9 +115,48 @@ export class UserRole {
   }
 
   /**
-   * Check if a string value represents a valid role
+   * Check if a string represents a valid role
    */
   static isValid(value: string): boolean {
     return UserRole.create(value).isOk();
+  }
+
+  /**
+   * Get the default role for new users
+   */
+  static getDefaultRole(): 'user' | 'admin' {
+    return 'user';
+  }
+
+  /**
+   * Check if a role can be promoted (user -> admin)
+   */
+  static canPromote(currentRole: 'user' | 'admin'): boolean {
+    return currentRole === 'user';
+  }
+
+  /**
+   * Check if a role can be demoted (admin -> user)
+   */
+  static canDemote(currentRole: 'user' | 'admin'): boolean {
+    return currentRole === 'admin';
+  }
+
+  /**
+   * Required serialize method from BaseValueObject
+   */
+  serialize(): 'user' | 'admin' {
+    return this._value;
+  }
+
+  /**
+   * Optional getParser method for boundary validation
+   */
+  getParser() {
+    // Return a Zod schema for user role validation at boundaries
+    const { z } = require('zod');
+    return z.enum(['user', 'admin'], {
+      errorMap: () => ({ message: 'Role must be either "user" or "admin"' })
+    });
   }
 }

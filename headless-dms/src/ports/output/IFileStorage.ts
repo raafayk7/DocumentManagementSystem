@@ -1,6 +1,6 @@
 import { AppResult } from '@carbonteq/hexapp';
 import { FileInfo } from '../../shared/types/index.js';
-import { FileError } from '../../shared/errors/index.js';
+
 
 export interface IFileStorage {
   saveFile(file: Buffer, name: string, mimeType: string): Promise<AppResult<FileInfo>>;

@@ -1,4 +1,4 @@
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, BaseValueObject } from '@carbonteq/hexapp';
 
 /**
  * MimeType value object representing MIME types with validation and categorization.
@@ -9,8 +9,9 @@ import { AppResult } from '@carbonteq/hexapp';
  * - Value Comparison: Equality is based on MIME type value, not instance
  * - Self-validating: Only valid MIME types can be created
  * - Easily testable: Simple to test all scenarios
+ * - Extends hexapp's BaseValueObject for framework consistency
  */
-export class MimeType {
+export class MimeType extends BaseValueObject<string> {
   // Common MIME type patterns
   private static readonly MIME_TYPE_PATTERN = /^[a-zA-Z0-9!#$&\-\^_]*\/[a-zA-Z0-9!#$&\-\^_\.+]*$/;
   
@@ -21,7 +22,9 @@ export class MimeType {
   private static readonly ARCHIVE_TYPES = ['application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed'];
   
   // Private constructor ensures immutability
-  private constructor(private readonly _value: string) {}
+  private constructor(private readonly _value: string) {
+    super();
+  }
 
   /**
    * Factory method to create a MimeType with validation.
@@ -76,6 +79,14 @@ export class MimeType {
   }
 
   /**
+   * Create a MIME type from a trusted source (bypasses validation)
+   * Use with caution - only for data that has already been validated
+   */
+  static fromTrusted(value: string): MimeType {
+    return new MimeType(value.toLowerCase().trim());
+  }
+
+  /**
    * Get the MIME type value (immutable accessor)
    */
   get value(): string {
@@ -100,43 +111,78 @@ export class MimeType {
    * Check if this is a text MIME type
    */
   get isText(): boolean {
-    return this.mainType === 'text';
+    return MimeType.TEXT_TYPES.includes(this._value);
   }
 
   /**
    * Check if this is an image MIME type
    */
   get isImage(): boolean {
-    return this.mainType === 'image';
+    return MimeType.IMAGE_TYPES.includes(this._value) || this.mainType === 'image';
   }
 
   /**
    * Check if this is a document MIME type
    */
   get isDocument(): boolean {
-    return this.mainType === 'application' && 
-           (this.subType.includes('pdf') || this.subType.includes('word') || this.subType.includes('document'));
+    return MimeType.DOCUMENT_TYPES.includes(this._value) || 
+           this.mainType === 'application' && this.subType.includes('document');
   }
 
   /**
    * Check if this is an archive MIME type
    */
   get isArchive(): boolean {
-    return this.mainType === 'application' && 
-           (this.subType.includes('zip') || this.subType.includes('rar') || this.subType.includes('7z'));
+    return MimeType.ARCHIVE_TYPES.includes(this._value) || 
+           this.mainType === 'application' && this.subType.includes('zip');
+  }
+
+  /**
+   * Check if this is an audio MIME type
+   */
+  get isAudio(): boolean {
+    return this.mainType === 'audio';
+  }
+
+  /**
+   * Check if this is a video MIME type
+   */
+  get isVideo(): boolean {
+    return this.mainType === 'video';
   }
 
   /**
    * Check if this is a binary MIME type
    */
   get isBinary(): boolean {
-    return !this.isText;
+    return this.mainType === 'application' || this.isImage || this.isAudio || this.isVideo;
+  }
+
+  /**
+   * Check if this MIME type supports streaming
+   */
+  get supportsStreaming(): boolean {
+    return this.isAudio || this.isVideo || this._value === 'text/plain';
+  }
+
+  /**
+   * Check if this MIME type is editable in text editors
+   */
+  get isTextEditable(): boolean {
+    return this.isText || this._value === 'application/json' || this._value === 'application/xml';
+  }
+
+  /**
+   * Check if this MIME type can be previewed in browsers
+   */
+  get isBrowserPreviewable(): boolean {
+    return this.isText || this.isImage || this._value === 'application/pdf';
   }
 
   /**
    * Get the file extension typically associated with this MIME type
    */
-  getFileExtension(): string {
+  get typicalExtension(): string {
     const extensionMap: Record<string, string> = {
       'text/plain': '.txt',
       'text/html': '.html',
@@ -150,11 +196,28 @@ export class MimeType {
       'image/svg+xml': '.svg',
       'application/pdf': '.pdf',
       'application/zip': '.zip',
-      'application/x-rar-compressed': '.rar',
-      'application/x-7z-compressed': '.7z'
+      'application/json': '.json',
+      'application/xml': '.xml'
     };
-
+    
     return extensionMap[this._value] || '';
+  }
+
+  /**
+   * Check if this MIME type matches a pattern
+   */
+  matches(pattern: string | RegExp): boolean {
+    if (typeof pattern === 'string') {
+      return this._value.includes(pattern.toLowerCase());
+    }
+    return pattern.test(this._value);
+  }
+
+  /**
+   * Check if this MIME type starts with a specific type
+   */
+  startsWith(type: string): boolean {
+    return this.mainType === type.toLowerCase();
   }
 
   /**
@@ -166,25 +229,6 @@ export class MimeType {
   }
 
   /**
-   * Check if this MIME type is compatible with another
-   * (same main type or specific compatibility rules)
-   */
-  isCompatibleWith(other: MimeType): boolean {
-    if (!other) return false;
-    
-    // Same MIME type is always compatible
-    if (this.equals(other)) return true;
-    
-    // Text types are generally compatible with each other
-    if (this.isText && other.isText) return true;
-    
-    // Image types are generally compatible with each other
-    if (this.isImage && other.isImage) return true;
-    
-    return false;
-  }
-
-  /**
    * String representation for serialization
    */
   toString(): string {
@@ -192,40 +236,77 @@ export class MimeType {
   }
 
   /**
-   * Get all supported MIME types (useful for validation, forms, etc.)
+   * Get a normalized version (lowercase, trimmed)
    */
-  static getSupportedTypes(): readonly string[] {
-    return [
-      ...MimeType.TEXT_TYPES,
-      ...MimeType.IMAGE_TYPES,
-      ...MimeType.DOCUMENT_TYPES,
-      ...MimeType.ARCHIVE_TYPES
-    ];
+  get normalized(): string {
+    return this._value.toLowerCase().trim();
   }
 
   /**
-   * Check if a string value represents a valid MIME type
+   * Check if a string represents a valid MIME type
    */
   static isValid(value: string): boolean {
     return MimeType.create(value).isOk();
   }
 
   /**
-   * Get MIME types by category
+   * Get all supported text MIME types
    */
   static getTextTypes(): readonly string[] {
     return MimeType.TEXT_TYPES;
   }
 
+  /**
+   * Get all supported image MIME types
+   */
   static getImageTypes(): readonly string[] {
     return MimeType.IMAGE_TYPES;
   }
 
+  /**
+   * Get all supported document MIME types
+   */
   static getDocumentTypes(): readonly string[] {
     return MimeType.DOCUMENT_TYPES;
   }
 
+  /**
+   * Get all supported archive MIME types
+   */
   static getArchiveTypes(): readonly string[] {
     return MimeType.ARCHIVE_TYPES;
+  }
+
+  /**
+   * Check if a MIME type is in a specific category
+   */
+  static isInCategory(mimeType: string, category: 'text' | 'image' | 'document' | 'archive'): boolean {
+    const mimeTypeObj = MimeType.create(mimeType);
+    if (mimeTypeObj.isErr()) return false;
+    
+    switch (category) {
+      case 'text': return mimeTypeObj.unwrap().isText;
+      case 'image': return mimeTypeObj.unwrap().isImage;
+      case 'document': return mimeTypeObj.unwrap().isDocument;
+      case 'archive': return mimeTypeObj.unwrap().isArchive;
+      default: return false;
+    }
+  }
+
+  /**
+   * Required serialize method from BaseValueObject
+   */
+  serialize(): string {
+    return this._value;
+  }
+
+  /**
+   * Optional getParser method for boundary validation
+   */
+  getParser() {
+    // Return a Zod schema for MIME type validation at boundaries
+    const { z } = require('zod');
+    return z.string()
+      .regex(/^[a-zA-Z0-9!#$&\-\^_]*\/[a-zA-Z0-9!#$&\-\^_\.+]*$/, 'Invalid MIME type format. Expected format: type/subtype');
   }
 }

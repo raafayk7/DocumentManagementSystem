@@ -4,7 +4,6 @@ import { IUserRepository } from '../../../../ports/output/IUserRepository.js';
 import type { UserFilterQuery } from '../interfaces/user.repository.interface.js';
 import { User } from '../../../../domain/entities/User.js';
 import { eq, and } from 'drizzle-orm';
-import { v4 as uuidv4 } from 'uuid';
 import { injectable } from 'tsyringe';
 import { PaginationInput, PaginationOutput, calculatePaginationMetadata } from '../../../../shared/dto/common/pagination.dto.js';
 import { sql } from 'drizzle-orm';

@@ -4,10 +4,9 @@ import { createReadStream } from 'fs';
 import { join } from 'path';
 import fs from 'fs';
 import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import { injectable, inject } from 'tsyringe';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import { AppResult, AppError } from '@carbonteq/hexapp';
+import { AppResult, AppError, UUID } from '@carbonteq/hexapp';
 import { FileInfo } from '../../../shared/types/index.js';
 
 @injectable()
@@ -26,8 +25,8 @@ export class LocalFileService implements IFileService {
       // Ensure upload directory exists
       await fs.promises.mkdir(this.uploadDir, { recursive: true });
       
-      // Generate unique filename
-      const uniqueName = `${Date.now()}-${uuidv4()}${path.extname(name)}`;
+      // Generate unique filename using hexapp's UUID
+      const uniqueName = `${Date.now()}-${UUID.init()}${path.extname(name)}`;
       const uploadPath = path.join(this.uploadDir, uniqueName);
       
       // Write file to disk
@@ -68,7 +67,7 @@ export class LocalFileService implements IFileService {
       for await (const part of parts) {
         if (part.type === 'file') {
           // Handle file
-          const uniqueName = `${Date.now()}-${uuidv4()}${path.extname(part.filename)}`;
+          const uniqueName = `${Date.now()}-${UUID.init()}${path.extname(part.filename)}`;
           const uploadPath = path.join(this.uploadDir, uniqueName);
           await fs.promises.mkdir(this.uploadDir, { recursive: true });
           const writeStream = fs.createWriteStream(uploadPath);

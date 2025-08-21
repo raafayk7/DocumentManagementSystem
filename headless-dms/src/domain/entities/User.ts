@@ -1,4 +1,4 @@
-import { AppResult, BaseEntity, UUID } from '@carbonteq/hexapp';
+import { AppResult, BaseEntity, UUID, DateTime } from '@carbonteq/hexapp';
 import * as bcrypt from 'bcrypt';
 import { Email } from '../value-objects/Email.js';
 import { Password } from '../value-objects/Password.js';
@@ -29,7 +29,7 @@ export class User extends BaseEntity {
 
   // Factory method for creating new users
   static async create(email: string, password: string, role: string): Promise<AppResult<User>> {
-    // Validate email using Email value object
+    // Validate email using custom Email value object
     const emailResult = Email.create(email);
     if (emailResult.isErr()) {
       return AppResult.Err(emailResult.unwrapErr());
@@ -68,7 +68,7 @@ export class User extends BaseEntity {
     createdAt: Date;
     updatedAt: Date;
   }): AppResult<User> {
-    // Validate email
+    // Validate email using custom Email value object
     const emailResult = Email.create(props.email);
     if (emailResult.isErr()) {
       return AppResult.Err(emailResult.unwrapErr());
@@ -144,7 +144,7 @@ export class User extends BaseEntity {
   }
 
   changeEmail(newEmail: string): AppResult<User> {
-    // Validate new email using Email value object
+    // Validate new email using custom Email value object
     const emailResult = Email.create(newEmail);
     if (emailResult.isErr()) {
       return AppResult.Err(emailResult.unwrapErr());
@@ -178,7 +178,7 @@ export class User extends BaseEntity {
 
   // Business rule: Account age validation
   isAccountOlderThan(days: number): boolean {
-    const cutoffDate = new Date();
+    const cutoffDate = DateTime.now();
     cutoffDate.setDate(cutoffDate.getDate() - days);
     return this.createdAt < cutoffDate;
   }
