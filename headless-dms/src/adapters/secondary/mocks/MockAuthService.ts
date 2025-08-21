@@ -1,9 +1,9 @@
 import { injectable } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import type { IAuthStrategy } from '../../../ports/output/IAuthStrategy.js';
 import type { LoginCredentials, RegisterData, DecodedToken, AuthResult } from '../../../ports/output/IAuthHandler.js';
 import { User } from '../../../domain/entities/User.js';
-import { AuthError } from '../../../shared/errors/index.js';
+
 
 @injectable()
 export class MockAuthService implements IAuthStrategy {
@@ -20,19 +20,15 @@ export class MockAuthService implements IAuthStrategy {
     const user = Array.from(this.mockUsers.values()).find(u => u.email.value === credentials.email);
     
     if (!user) {
-      return AppResult.Err(new AuthError(
-        'MockAuthService.authenticate.userNotFound',
-        'Invalid credentials',
-        { email: credentials.email }
+      return AppResult.Err(AppError.Unauthorized(
+        `Invalid credentials for email: ${credentials.email}`
       ));
     }
 
     // Simple password check (in real tests you'd use proper hashing)
     if (credentials.password !== 'password123') {
-      return AppResult.Err(new AuthError(
-        'MockAuthService.authenticate.invalidPassword',
-        'Invalid credentials',
-        { email: credentials.email }
+      return AppResult.Err(AppError.Unauthorized(
+        `Invalid credentials for email: ${credentials.email}`
       ));
     }
 
@@ -63,8 +59,7 @@ export class MockAuthService implements IAuthStrategy {
     const tokenData = this.mockTokens.get(token);
     
     if (!tokenData) {
-      return AppResult.Err(new AuthError(
-        'MockAuthService.verifyToken.invalidToken',
+      return AppResult.Err(AppError.Unauthorized(
         'Invalid token'
       ));
     }
@@ -72,16 +67,14 @@ export class MockAuthService implements IAuthStrategy {
     // Check if token is expired
     if (tokenData.expiresAt < new Date()) {
       this.mockTokens.delete(token);
-      return AppResult.Err(new AuthError(
-        'MockAuthService.verifyToken.expiredToken',
+      return AppResult.Err(AppError.Unauthorized(
         'Token expired'
       ));
     }
 
     const user = this.mockUsers.get(tokenData.userId);
     if (!user) {
-      return AppResult.Err(new AuthError(
-        'MockAuthService.verifyToken.userNotFound',
+      return AppResult.Err(AppError.Unauthorized(
         'User not found'
       ));
     }
@@ -115,8 +108,7 @@ export class MockAuthService implements IAuthStrategy {
       
       return AppResult.Ok(token);
     } catch (error) {
-      return AppResult.Err(new AuthError(
-        'MockAuthService.generateToken',
+      return AppResult.Err(AppError.Generic(
         'Token generation failed'
       ));
     }
@@ -127,10 +119,8 @@ export class MockAuthService implements IAuthStrategy {
       // Check if user already exists
       const existingUser = Array.from(this.mockUsers.values()).find(u => u.email.value === userData.email);
       if (existingUser) {
-        return AppResult.Err(new AuthError(
-          'MockAuthService.register.emailExists',
-          'Email already in use',
-          { email: userData.email }
+        return AppResult.Err(AppError.AlreadyExists(
+          `Email already in use: ${userData.email}`
         ));
       }
 
@@ -169,10 +159,8 @@ export class MockAuthService implements IAuthStrategy {
 
       return AppResult.Ok(authResult);
     } catch (error) {
-      return AppResult.Err(new AuthError(
-        'MockAuthService.register',
-        'Registration failed',
-        { email: userData.email }
+      return AppResult.Err(AppError.Generic(
+        'Registration failed'
       ));
     }
   }
@@ -195,8 +183,7 @@ export class MockAuthService implements IAuthStrategy {
 
       return AppResult.Ok(newTokenResult.unwrap());
     } catch (error) {
-      return AppResult.Err(new AuthError(
-        'MockAuthService.refreshToken',
+      return AppResult.Err(AppError.Generic(
         'Token refresh failed'
       ));
     }
@@ -207,8 +194,7 @@ export class MockAuthService implements IAuthStrategy {
       this.mockTokens.delete(token);
       return AppResult.Ok(undefined);
     } catch (error) {
-      return AppResult.Err(new AuthError(
-        'MockAuthService.invalidateToken',
+      return AppResult.Err(AppError.Generic(
         'Token invalidation failed'
       ));
     }

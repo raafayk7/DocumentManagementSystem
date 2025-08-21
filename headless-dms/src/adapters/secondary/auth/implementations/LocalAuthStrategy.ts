@@ -1,9 +1,8 @@
 import { injectable, inject } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import type { IAuthStrategy } from '../../../../ports/output/IAuthStrategy.js';
 import type { IUserRepository } from '../../database/interfaces/user.repository.interface.js';
 import type { ILogger } from '../../../../ports/output/ILogger.js';
-import { AuthError } from '../../../../shared/errors/index.js';
 import { User } from '../../../../domain/entities/User.js';
 import type { 
   LoginCredentials, 
@@ -67,10 +66,8 @@ export class LocalAuthStrategy implements IAuthStrategy {
     await this.simulateDelay();
     
     if (this.shouldFail) {
-      return AppResult.Err(new AuthError(
-        'LocalAuthStrategy.authenticate.simulatedFailure',
-        'Simulated authentication failure',
-        { email: credentials.email }
+      return AppResult.Err(AppError.InvalidData(
+        'Simulated authentication failure'
       ));
     }
 
@@ -79,20 +76,16 @@ export class LocalAuthStrategy implements IAuthStrategy {
       const mockUser = this.mockUsers.find(u => u.email === credentials.email);
       if (!mockUser) {
         this.logger.warn('Local authentication failed - user not found', { email: credentials.email });
-        return AppResult.Err(new AuthError(
-          'LocalAuthStrategy.authenticate.userNotFound',
-          'Invalid credentials',
-          { email: credentials.email }
+        return AppResult.Err(AppError.Unauthorized(
+          'Invalid credentials'
         ));
       }
 
       // Check password
       if (mockUser.password !== credentials.password) {
         this.logger.warn('Local authentication failed - invalid password', { email: credentials.email });
-        return AppResult.Err(new AuthError(
-          'LocalAuthStrategy.authenticate.invalidPassword',
-          'Invalid credentials',
-          { email: credentials.email }
+        return AppResult.Err(AppError.Unauthorized(
+          'Invalid credentials'
         ));
       }
 
@@ -135,10 +128,8 @@ export class LocalAuthStrategy implements IAuthStrategy {
       return AppResult.Ok(authAppResult);
     } catch (error) {
       this.logger.logError(error as Error, { email: credentials.email });
-      return AppResult.Err(new AuthError(
-        'LocalAuthStrategy.authenticate',
-        error instanceof Error ? error.message : 'Authentication failed',
-        { email: credentials.email }
+      return AppResult.Err(AppError.InvalidData(
+        error instanceof Error ? error.message : 'Authentication failed'
       ));
     }
   }
@@ -150,10 +141,8 @@ export class LocalAuthStrategy implements IAuthStrategy {
       return AppResult.Ok(mockToken);
     } catch (error) {
       this.logger.logError(error as Error, { payload });
-      return AppResult.Err(new AuthError(
-        'LocalAuthStrategy.generateToken',
-        error instanceof Error ? error.message : 'Token generation failed',
-        { payload }
+      return AppResult.Err(AppError.InvalidData(
+        error instanceof Error ? error.message : 'Token generation failed'
       ));
     }
   }
@@ -162,16 +151,14 @@ export class LocalAuthStrategy implements IAuthStrategy {
     try {
       // Parse mock token to extract payload
       if (!token.startsWith('mock_')) {
-        return AppResult.Err(new AuthError(
-          'LocalAuthStrategy.verifyToken',
+        return AppResult.Err(AppError.Unauthorized(
           'Invalid token format'
         ));
       }
 
       const parts = token.split('_');
       if (parts.length < 3) {
-        return AppResult.Err(new AuthError(
-          'LocalAuthStrategy.verifyToken',
+        return AppResult.Err(AppError.Unauthorized(
           'Invalid token structure'
         ));
       }
@@ -183,8 +170,7 @@ export class LocalAuthStrategy implements IAuthStrategy {
       // Check if token is expired
       const now = Date.now();
       if (now > issuedAt + expirationMs) {
-        return AppResult.Err(new AuthError(
-          'LocalAuthStrategy.verifyToken',
+        return AppResult.Err(AppError.Unauthorized(
           'Token expired'
         ));
       }
@@ -192,8 +178,7 @@ export class LocalAuthStrategy implements IAuthStrategy {
       // Find user to get email and role
       const mockUser = this.mockUsers.find(u => u.id === userId);
       if (!mockUser) {
-        return AppResult.Err(new AuthError(
-          'LocalAuthStrategy.verifyToken',
+        return AppResult.Err(AppError.Unauthorized(
           'User not found'
         ));
       }
@@ -210,8 +195,7 @@ export class LocalAuthStrategy implements IAuthStrategy {
       return AppResult.Ok(decoded);
     } catch (error) {
       this.logger.warn('Local token verification failed', { error: error instanceof Error ? error.message : 'Unknown error' });
-      return AppResult.Err(new AuthError(
-        'LocalAuthStrategy.verifyToken',
+      return AppResult.Err(AppError.Unauthorized(
         'Invalid or expired token'
       ));
     }
@@ -223,10 +207,8 @@ export class LocalAuthStrategy implements IAuthStrategy {
     await this.simulateDelay();
     
     if (this.shouldFail) {
-      return AppResult.Err(new AuthError(
-        'LocalAuthStrategy.register.simulatedFailure',
-        'Simulated registration failure',
-        { email: userData.email }
+      return AppResult.Err(AppError.InvalidData(
+        'Simulated registration failure'
       ));
     }
 
@@ -234,10 +216,8 @@ export class LocalAuthStrategy implements IAuthStrategy {
       // Check if user already exists
       const existingUser = this.mockUsers.find(u => u.email === userData.email);
       if (existingUser) {
-        return AppResult.Err(new AuthError(
-          'LocalAuthStrategy.register.emailExists',
-          'Email already in use',
-          { email: userData.email }
+        return AppResult.Err(AppError.InvalidData(
+          'Email already in use'
         ));
       }
 
@@ -291,10 +271,8 @@ export class LocalAuthStrategy implements IAuthStrategy {
       return AppResult.Ok(authAppResult);
     } catch (error) {
       this.logger.logError(error as Error, { email: userData.email });
-      return AppResult.Err(new AuthError(
-        'LocalAuthStrategy.register',
-        error instanceof Error ? error.message : 'Registration failed',
-        { email: userData.email }
+      return AppResult.Err(AppError.InvalidData(
+        error instanceof Error ? error.message : 'Registration failed'
       ));
     }
   }
@@ -324,10 +302,8 @@ export class LocalAuthStrategy implements IAuthStrategy {
       return AppResult.Ok(newTokenAppResult.unwrap());
     } catch (error) {
       this.logger.logError(error as Error, { token });
-      return AppResult.Err(new AuthError(
-        'LocalAuthStrategy.refreshToken',
-        error instanceof Error ? error.message : 'Token refresh failed',
-        { token }
+      return AppResult.Err(AppError.Unauthorized(
+        error instanceof Error ? error.message : 'Token refresh failed'
       ));
     }
   }

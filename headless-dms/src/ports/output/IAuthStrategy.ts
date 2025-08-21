@@ -1,6 +1,5 @@
 import { AppResult } from '@carbonteq/hexapp';
 import { LoginCredentials, RegisterData, DecodedToken, AuthResult } from './IAuthHandler.js';
-import { AuthError } from '../../shared/errors/index.js';
 
 export interface IAuthStrategy {
   getStrategyName(): string;

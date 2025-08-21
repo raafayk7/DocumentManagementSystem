@@ -20,16 +20,16 @@ export class CreateDocumentUseCase {
       userId: request.userId 
     });
 
-    try {
-      const documentResult = await this.documentApplicationService.createDocument(
-        request.name,
-        request.filePath,
-        request.mimeType,
-        request.size,
-        request.tags || [],
-        request.metadata,
-        request.userId
-      );
+          try {
+        const documentResult = await this.documentApplicationService.createDocument(
+          request.userId,
+          request.name,
+          request.filePath,
+          request.mimeType,
+          request.size,
+          request.tags || [],
+          request.metadata
+        );
       
       if (documentResult.isErr()) {
         this.logger.warn('Document creation failed', { 

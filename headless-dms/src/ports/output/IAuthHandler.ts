@@ -1,6 +1,5 @@
 import { AppResult } from '@carbonteq/hexapp';
 import { User } from '../../domain/entities/User.js';
-import { AuthError } from '../../shared/errors/index.js';
 
 export interface LoginCredentials {
   email: string;

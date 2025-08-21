@@ -13,7 +13,7 @@ export interface MockFile {
   updatedAt: Date;
 }
 
-export enum FileError {
+export enum FileErrorCode {
   FILE_NOT_FOUND = 'FILE_NOT_FOUND',
   FILE_ALREADY_EXISTS = 'FILE_ALREADY_EXISTS',
   INVALID_FILE_TYPE = 'INVALID_FILE_TYPE',
@@ -34,12 +34,12 @@ export class MockFileService implements IFileService {
       // Check if file already exists
       const existingFile = Array.from(this.files.values()).find(f => f.name === name);
       if (existingFile) {
-        return AppResult.Err(new Error(FileError.FILE_ALREADY_EXISTS));
+        return AppResult.Err(new Error(FileErrorCode.FILE_ALREADY_EXISTS));
       }
 
       // Validate MIME type
       if (!this.isValidMimeType(mimeType)) {
-        return AppResult.Err(new Error(FileError.INVALID_FILE_TYPE));
+        return AppResult.Err(new Error(FileErrorCode.INVALID_FILE_TYPE));
       }
 
       const fileId = `mock-file-${this.fileCounter++}`;
@@ -66,7 +66,7 @@ export class MockFileService implements IFileService {
 
       return AppResult.Ok(fileInfo);
     } catch (error) {
-      return AppResult.Err(new Error(FileError.STORAGE_ERROR));
+      return AppResult.Err(new Error(FileErrorCode.STORAGE_ERROR));
     }
   }
 
@@ -79,7 +79,7 @@ export class MockFileService implements IFileService {
 
       return await this.saveFile(mockFile, mockName, mockMimeType);
     } catch (error) {
-      return AppResult.Err(new Error(FileError.STORAGE_ERROR));
+      return AppResult.Err(new Error(FileErrorCode.STORAGE_ERROR));
     }
   }
 
@@ -88,17 +88,17 @@ export class MockFileService implements IFileService {
       // Extract file ID from path
       const fileId = this.extractFileIdFromPath(filePath);
       if (!fileId) {
-        return AppResult.Err(new Error(FileError.FILE_NOT_FOUND));
+        return AppResult.Err(new Error(FileErrorCode.FILE_NOT_FOUND));
       }
 
       const file = this.files.get(fileId);
       if (!file) {
-        return AppResult.Err(new Error(FileError.FILE_NOT_FOUND));
+        return AppResult.Err(new Error(FileErrorCode.FILE_NOT_FOUND));
       }
 
       return AppResult.Ok(file.content);
     } catch (error) {
-      return AppResult.Err(new Error(FileError.STORAGE_ERROR));
+      return AppResult.Err(new Error(FileErrorCode.STORAGE_ERROR));
     }
   }
 
@@ -112,7 +112,7 @@ export class MockFileService implements IFileService {
       const exists = this.files.has(fileId);
       return AppResult.Ok(exists);
     } catch (error) {
-      return AppResult.Err(new Error(FileError.STORAGE_ERROR));
+      return AppResult.Err(new Error(FileErrorCode.STORAGE_ERROR));
     }
   }
 
@@ -120,17 +120,17 @@ export class MockFileService implements IFileService {
     try {
       const fileId = this.extractFileIdFromPath(filePath);
       if (!fileId) {
-        return AppResult.Err(new Error(FileError.FILE_NOT_FOUND));
+        return AppResult.Err(new Error(FileErrorCode.FILE_NOT_FOUND));
       }
 
       if (!this.files.has(fileId)) {
-        return AppResult.Err(new Error(FileError.FILE_NOT_FOUND));
+        return AppResult.Err(new Error(FileErrorCode.FILE_NOT_FOUND));
       }
 
       this.files.delete(fileId);
       return AppResult.Ok(true);
     } catch (error) {
-      return AppResult.Err(new Error(FileError.STORAGE_ERROR));
+      return AppResult.Err(new Error(FileErrorCode.STORAGE_ERROR));
     }
   }
 
@@ -156,7 +156,7 @@ export class MockFileService implements IFileService {
 
       return AppResult.Ok(undefined);
     } catch (error) {
-      return AppResult.Err(new Error(FileError.STORAGE_ERROR));
+      return AppResult.Err(new Error(FileErrorCode.STORAGE_ERROR));
     }
   }
 

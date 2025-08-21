@@ -7,8 +7,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { injectable, inject } from 'tsyringe';
 import type { ILogger } from '../../../ports/output/ILogger.js';
-import { AppResult } from '@carbonteq/hexapp';
-import { FileError } from '../../../shared/errors/index.js';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import { FileInfo } from '../../../shared/types/index.js';
 
 @injectable()
@@ -51,10 +50,8 @@ export class LocalFileService implements IFileService {
       return AppResult.Ok(fileInfo);
     } catch (error) {
       this.logger.logError(error as Error, { uploadDir: this.uploadDir, name });
-      return AppResult.Err(new FileError(
-        'LocalFileService.saveFile',
-        error instanceof Error ? error.message : 'Direct file upload failed',
-        { uploadDir: this.uploadDir, name }
+      return AppResult.Err(AppError.Generic(
+        error instanceof Error ? error.message : 'Direct file upload failed'
       ));
     }
   }
@@ -98,8 +95,7 @@ export class LocalFileService implements IFileService {
       
       if (!file) { 
         this.logger.error('No file found in request');
-        return AppResult.Err(new FileError(
-          'LocalFileService.saveFileFromRequest',
+        return AppResult.Err(AppError.NotFound(
           'No file found in request'
         ));
       }
@@ -113,10 +109,8 @@ export class LocalFileService implements IFileService {
       return AppResult.Ok({ ...file, fields });
     } catch (error) {
       this.logger.logError(error as Error, { uploadDir: this.uploadDir });
-      return AppResult.Err(new FileError(
-        'LocalFileService.saveFileFromRequest',
-        error instanceof Error ? error.message : 'File upload from request failed',
-        { uploadDir: this.uploadDir }
+      return AppResult.Err(AppError.Generic(
+        error instanceof Error ? error.message : 'File upload from request failed'
       ));
     }
   }
@@ -127,10 +121,8 @@ export class LocalFileService implements IFileService {
     try {
       if (!fs.existsSync(filePath)) {
         this.logger.error('File not found for streaming', { filePath });
-        return AppResult.Err(new FileError(
-          'LocalFileService.streamFile',
-          'File not found',
-          { filePath }
+        return AppResult.Err(AppError.NotFound(
+          'File not found'
         ));
       }
 
@@ -145,10 +137,8 @@ export class LocalFileService implements IFileService {
       return AppResult.Ok(undefined);
     } catch (error) {
       this.logger.logError(error as Error, { filePath });
-      return AppResult.Err(new FileError(
-        'LocalFileService.streamFile',
-        error instanceof Error ? error.message : 'File streaming failed',
-        { filePath }
+      return AppResult.Err(AppError.Generic(
+        error instanceof Error ? error.message : 'File streaming failed'
       ));
     }
   }
@@ -167,10 +157,8 @@ export class LocalFileService implements IFileService {
       return AppResult.Ok(true);
     } catch (error) {
       this.logger.logError(error as Error, { filePath });
-      return AppResult.Err(new FileError(
-        'LocalFileService.deleteFile',
-        error instanceof Error ? error.message : 'File deletion failed',
-        { filePath }
+      return AppResult.Err(AppError.Generic(
+        error instanceof Error ? error.message : 'File deletion failed'
       ));
     }
   }
@@ -182,10 +170,8 @@ export class LocalFileService implements IFileService {
       return AppResult.Ok(exists);
     } catch (error) {
       this.logger.logError(error as Error, { filePath });
-      return AppResult.Err(new FileError(
-        'LocalFileService.fileExists',
-        error instanceof Error ? error.message : 'File existence check failed',
-        { filePath }
+      return AppResult.Err(AppError.Generic(
+        error instanceof Error ? error.message : 'File existence check failed'
       ));
     }
   }
@@ -196,10 +182,8 @@ export class LocalFileService implements IFileService {
     try {
       if (!fs.existsSync(filePath)) {
         this.logger.error('File not found for reading', { filePath });
-        return AppResult.Err(new FileError(
-          'LocalFileService.getFile',
-          'File not found',
-          { filePath }
+        return AppResult.Err(AppError.NotFound(
+          'File not found'
         ));
       }
 
@@ -208,10 +192,8 @@ export class LocalFileService implements IFileService {
       return AppResult.Ok(fileBuffer);
     } catch (error) {
       this.logger.logError(error as Error, { filePath });
-      return AppResult.Err(new FileError(
-        'LocalFileService.getFile',
-        error instanceof Error ? error.message : 'File reading failed',
-        { filePath }
+      return AppResult.Err(AppError.Generic(
+        error instanceof Error ? error.message : 'File reading failed'
       ));
     }
   }

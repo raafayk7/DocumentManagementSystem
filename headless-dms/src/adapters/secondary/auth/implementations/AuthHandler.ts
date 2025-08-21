@@ -1,10 +1,9 @@
 import { injectable, inject } from 'tsyringe';
-import { AppResult } from '@carbonteq/hexapp';
+import { AppResult, AppError } from '@carbonteq/hexapp';
 import type { IAuthHandler } from '../../../../ports/output/IAuthHandler.js';
 import type { IAuthStrategy } from '../../../../ports/output/IAuthStrategy.js';
 import type { IUserRepository } from '../../database/interfaces/user.repository.interface.js';
 import type { ILogger } from '../../../../ports/output/ILogger.js';
-import { AuthError } from '../../../../shared/errors/index.js';
 import { User } from '../../../../domain/entities/User.js';
 import { 
   LoginCredentials, 
@@ -49,10 +48,8 @@ export class AuthHandler implements IAuthHandler {
       return result;
     } catch (error) {
       this.logger.logError(error as Error, { email: credentials.email });
-      return AppResult.Err(new AuthError(
-        'AuthHandler.login',
-        error instanceof Error ? error.message : 'Authentication failed',
-        { email: credentials.email }
+      return AppResult.Err(AppError.InvalidData(
+        error instanceof Error ? error.message : 'Authentication failed'
       ));
     }
   }
@@ -83,10 +80,8 @@ export class AuthHandler implements IAuthHandler {
       return AppResult.Ok(authResult.user);
     } catch (error) {
       this.logger.logError(error as Error, { email: userData.email });
-      return AppResult.Err(new AuthError(
-        'AuthHandler.register',
-        error instanceof Error ? error.message : 'Registration failed',
-        { email: userData.email }
+      return AppResult.Err(AppError.InvalidData(
+        error instanceof Error ? error.message : 'Registration failed'
       ));
     }
   }
@@ -114,10 +109,8 @@ export class AuthHandler implements IAuthHandler {
       return result;
     } catch (error) {
       this.logger.logError(error as Error, { token: token.substring(0, 20) + '...' });
-      return AppResult.Err(new AuthError(
-        'AuthHandler.validateToken',
-        error instanceof Error ? error.message : 'Token validation failed',
-        { token: token.substring(0, 20) + '...' }
+      return AppResult.Err(AppError.InvalidData(
+        error instanceof Error ? error.message : 'Token validation failed'
       ));
     }
   }
@@ -142,10 +135,8 @@ export class AuthHandler implements IAuthHandler {
       return result;
     } catch (error) {
       this.logger.logError(error as Error, { token: token.substring(0, 20) + '...' });
-      return AppResult.Err(new AuthError(
-        'AuthHandler.refreshToken',
-        error instanceof Error ? error.message : 'Token refresh failed',
-        { token: token.substring(0, 20) + '...' }
+      return AppResult.Err(AppError.InvalidData(
+        error instanceof Error ? error.message : 'Token refresh failed'
       ));
     }
   }
@@ -171,10 +162,8 @@ export class AuthHandler implements IAuthHandler {
       return result;
     } catch (error) {
       this.logger.logError(error as Error, { token: token.substring(0, 20) + '...' });
-      return AppResult.Err(new AuthError(
-        'AuthHandler.logout',
-        error instanceof Error ? error.message : 'Logout failed',
-        { token: token.substring(0, 20) + '...' }
+      return AppResult.Err(AppError.Generic(
+        error instanceof Error ? error.message : 'Logout failed'
       ));
     }
   }
@@ -190,10 +179,8 @@ export class AuthHandler implements IAuthHandler {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('Password change failed - user not found', { userId });
-        return AppResult.Err(new AuthError(
-          'AuthHandler.changeUserPassword.userNotFound',
-          'User not found',
-          { userId }
+        return AppResult.Err(AppError.NotFound (
+          `User not found for userId: ${userId}`
         ));
       }
 
@@ -204,10 +191,8 @@ export class AuthHandler implements IAuthHandler {
           userId, 
           error: updatedUser.unwrapErr() 
         });
-        return AppResult.Err(new AuthError(
-          'AuthHandler.changeUserPassword.validation',
-          updatedUser.unwrapErr(),
-          { userId }
+        return AppResult.Err(AppError.InvalidData(
+          updatedUser.unwrapErr().message
         ));
       }
 
@@ -218,10 +203,8 @@ export class AuthHandler implements IAuthHandler {
       return AppResult.Ok(savedUser);
     } catch (error) {
       this.logger.logError(error as Error, { userId });
-      return AppResult.Err(new AuthError(
-        'AuthHandler.changeUserPassword',
-        error instanceof Error ? error.message : 'Password change failed',
-        { userId }
+      return AppResult.Err(AppError.InvalidData(
+        error instanceof Error ? error.message : 'Password change failed'
       ));
     }
   }
@@ -238,10 +221,8 @@ export class AuthHandler implements IAuthHandler {
       const user = await this.userRepository.findById(userId);
       if (!user) {
         this.logger.warn('Role change failed - user not found', { userId });
-        return AppResult.Err(new AuthError(
-          'AuthHandler.changeUserRole.userNotFound',
-          'User not found',
-          { userId }
+        return AppResult.Err(AppError.NotFound(
+          `User not found for userId: ${userId}`
         ));
       }
 
@@ -253,10 +234,8 @@ export class AuthHandler implements IAuthHandler {
           newRole,
           error: updatedUser.unwrapErr() 
         });
-        return AppResult.Err(new AuthError(
-          'AuthHandler.changeUserRole.validation',
-          updatedUser.unwrapErr(),
-          { userId, newRole }
+        return AppResult.Err(AppError.InvalidData(
+          updatedUser.unwrapErr().message
         ));
       }
 
@@ -267,10 +246,8 @@ export class AuthHandler implements IAuthHandler {
       return AppResult.Ok(savedUser);
     } catch (error) {
       this.logger.logError(error as Error, { userId, newRole });
-      return AppResult.Err(new AuthError(
-        'AuthHandler.changeUserRole',
-        error instanceof Error ? error.message : 'Role change failed',
-        { userId, newRole }
+      return AppResult.Err(AppError.InvalidData(
+        error instanceof Error ? error.message : 'Role change failed'
       ));
     }
   }
