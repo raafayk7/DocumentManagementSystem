@@ -1,7 +1,9 @@
 import { injectable } from 'tsyringe';
 import { IUserRepository } from '../../../ports/output/IUserRepository.js';
 import { User } from '../../../domain/entities/User.js';
-import { UserFilterQuery, PaginationInput, PaginationOutput } from '../../application/dto/common/index.js';
+import { PaginationInput, PaginationOutput } from '../../../shared/dto/common/pagination.dto.js';
+import { UserFilterQuery } from '../../../ports/output/IUserRepository.js';
+
 
 @injectable()
 export class MockUserRepository implements IUserRepository {
@@ -75,25 +77,25 @@ export class MockUserRepository implements IUserRepository {
   }
 
   async findOne(query: UserFilterQuery): Promise<User | null> {
-    const result = await this.find(query, { page: 1, limit: 1 });
+    const result = await this.find(query, { page: 1, limit: 1, order: 'asc', sort: 'createdAt' });
     return result.data[0] || null;
   }
 
   async exists(query: UserFilterQuery): Promise<boolean> {
-    const result = await this.find(query, { page: 1, limit: 1 });
+    const result = await this.find(query, { page: 1, limit: 1, order: 'asc', sort: 'createdAt' });
     return result.data.length > 0;
   }
 
   async count(query: UserFilterQuery): Promise<number> {
-    const result = await this.find(query, { page: 1, limit: Number.MAX_SAFE_INTEGER });
+    const result = await this.find(query, { page: 1, limit: Number.MAX_SAFE_INTEGER, order: 'asc', sort: 'createdAt' });
     return result.data.length;
   }
 
-  async save(user: User): Promise<User> {
-    if (!user.id) {
-      user.id = `mock-user-${this.nextId++}`;
-    }
-    this.users.set(user.id, user);
+  async saveUser(user: User): Promise<User> {
+    // if (!user.id) {
+    //   user.id = `mock-user-${this.nextId++}`;
+    // }
+    // this.users.set(user.id, user);
     return user;
   }
 
@@ -105,11 +107,13 @@ export class MockUserRepository implements IUserRepository {
     return user;
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string): Promise<boolean> {
     if (!this.users.has(id)) {
-      throw new Error('User not found for deletion');
+      console.error('User not found for deletion', id);
+      return false;
     }
     this.users.delete(id);
+    return true;
   }
 
   // Mock-specific methods for testing
@@ -146,5 +150,9 @@ export class MockUserRepository implements IUserRepository {
   // Seed with some initial test data
   private seedMockData(): void {
     // This will be populated by tests as needed
+  }
+
+  async findByRole(role: 'user' | 'admin'): Promise<User[]> {
+    return Array.from(this.users.values()).filter(user => user.role.value === role);
   }
 }

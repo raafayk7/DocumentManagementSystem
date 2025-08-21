@@ -38,14 +38,14 @@ export class AuthHandler implements IAuthHandler {
           email: credentials.email, 
           error: error.message 
         });
-      } else {
-        const authResult = result.unwrap();
-        this.logger.info('Authentication successful', { 
-          userId: authResult.user.id, 
-          email: authResult.user.email 
-        });
+        return AppResult.Err(error);
       }
       
+      const authResult = result.unwrap();
+      this.logger.info('Authentication successful', { 
+        userId: authResult.user.id, 
+        email: authResult.user.email 
+      });
       return result;
     } catch (error) {
       this.logger.logError(error as Error, { email: credentials.email });
@@ -57,7 +57,7 @@ export class AuthHandler implements IAuthHandler {
     }
   }
 
-  async register(userData: RegisterData): Promise<AppResult<User>> {
+  async register(userData: RegisterData): Promise<AppResult<{ id: string; email: string; role: string }>> {
     this.logger.info('Registration attempt', { 
       email: userData.email, 
       strategy: this.authStrategy.getStrategyName() 
@@ -66,19 +66,21 @@ export class AuthHandler implements IAuthHandler {
     try {
       const result = await this.authStrategy.register(userData);
       
-      if (result.isOk()) {
-        this.logger.info('Registration successful', { 
-          userId: result.unwrap().user.id, 
-          email: result.unwrap().user.email 
-        });
-        return AppResult.Ok(result.unwrap().user);
-      } else {
+      if (result.isErr()) {
+        const error = result.unwrapErr();
         this.logger.warn('Registration failed', { 
           email: userData.email, 
-          error: result.unwrapErr().message 
+          error: error.message 
         });
-        return AppResult.Err(result.unwrapErr());
+        return AppResult.Err(error);
       }
+
+      const authResult = result.unwrap();
+      this.logger.info('Registration successful', { 
+        userId: authResult.user.id, 
+        email: authResult.user.email 
+      });
+      return AppResult.Ok(authResult.user);
     } catch (error) {
       this.logger.logError(error as Error, { email: userData.email });
       return AppResult.Err(new AuthError(
@@ -97,16 +99,18 @@ export class AuthHandler implements IAuthHandler {
     try {
       const result = await this.authStrategy.verifyToken(token);
       
-      if (result.isOk()) {
-        this.logger.debug('Token validation successful', { 
-          userId: result.unwrap().sub 
-        });
-      } else {
+      if (result.isErr()) {
+        const error = result.unwrapErr();
         this.logger.warn('Token validation failed', { 
-          error: result.unwrapErr().message 
+          error: error.message 
         });
+        return AppResult.Err(error);
       }
       
+      const decodedToken = result.unwrap();
+      this.logger.debug('Token validation successful', { 
+        userId: decodedToken.userId 
+      });
       return result;
     } catch (error) {
       this.logger.logError(error as Error, { token: token.substring(0, 20) + '...' });
@@ -126,14 +130,15 @@ export class AuthHandler implements IAuthHandler {
     try {
       const result = await this.authStrategy.refreshToken(token);
       
-      if (result.isOk()) {
-        this.logger.info('Token refresh successful');
-      } else {
+      if (result.isErr()) {
+        const error = result.unwrapErr();
         this.logger.warn('Token refresh failed', { 
-          error: result.unwrapErr().message 
+          error: error.message 
         });
+        return AppResult.Err(error);
       }
       
+      this.logger.info('Token refresh successful');
       return result;
     } catch (error) {
       this.logger.logError(error as Error, { token: token.substring(0, 20) + '...' });
@@ -153,13 +158,15 @@ export class AuthHandler implements IAuthHandler {
     try {
       const result = await this.authStrategy.invalidateToken(token);
       
-      if (result.isOk()) {
-        this.logger.info('Logout successful');
-      } else {
+      if (result.isErr()) {
+        const error = result.unwrapErr();
         this.logger.warn('Logout failed', { 
-          error: result.unwrapErr().message 
+          error: error.message 
         });
+        return AppResult.Err(error);
       }
+      
+      this.logger.info('Logout successful');
       
       return result;
     } catch (error) {

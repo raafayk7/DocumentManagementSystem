@@ -1,2 +1,2 @@
-export { User, UserProps } from './User.js';
-export { Document, DocumentProps } from './Document.js'; 
+export { User, type UserProps } from './User.js';
+export { Document, type DocumentProps } from './Document.js'; 

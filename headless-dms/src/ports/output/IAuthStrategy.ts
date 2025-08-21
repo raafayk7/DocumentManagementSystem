@@ -3,6 +3,7 @@ import { LoginCredentials, RegisterData, DecodedToken, AuthResult } from './IAut
 import { AuthError } from '../../shared/errors/index.js';
 
 export interface IAuthStrategy {
+  getStrategyName(): string;
   authenticate(credentials: LoginCredentials): Promise<AppResult<AuthResult>>;
   generateToken(payload: any): Promise<AppResult<string>>;
   verifyToken(token: string): Promise<AppResult<DecodedToken>>;

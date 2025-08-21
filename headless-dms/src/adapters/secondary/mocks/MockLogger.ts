@@ -1,5 +1,5 @@
 import { injectable } from 'tsyringe';
-import { ILogger } from '../../../ports/output/ILogger.js';
+import { ILogger, LogContext, LogLevel } from '../../../ports/output/ILogger.js';
 
 export interface LogEntry {
   level: string;
@@ -10,9 +10,17 @@ export interface LogEntry {
 
 @injectable()
 export class MockLogger implements ILogger {
-  private logs: LogEntry[] = [];
-  private logLevel: string = 'info';
-
+  logs: LogEntry[] = [];
+  logLevel: string = 'info';
+  log(level: keyof LogLevel, message: string, context?: LogContext): void {
+    this.addLog(level, message, context);
+  }
+  logError(error: Error, context?: LogContext): void {
+    this.addLog('error', error.message, { ...context, error: error.message });
+  }
+  logRequest(request: any, context?: LogContext): void {}
+  logResponse(response: any, context?: LogContext): void {}
+ 
   constructor() {
     this.logs = [];
   }
@@ -140,4 +148,6 @@ export class MockLogger implements ILogger {
       console.log(`[MOCK LOG] ${level.toUpperCase()}: ${message}`, context || '');
     }
   }
+
+  
 }

@@ -2,16 +2,16 @@ import { injectable, inject } from 'tsyringe';
 import { AppResult } from '@carbonteq/hexapp';
 import jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcrypt';
-import { IAuthStrategy } from '../../../../ports/output/IAuthStrategy.js';
-import { IUserRepository } from '../../database/interfaces/user.repository.interface.js';
-import { ILogger } from '../../../../ports/output/ILogger.js';
+import type { IAuthStrategy } from '../../../../ports/output/IAuthStrategy.js';
+import type { IUserRepository } from '../../database/interfaces/user.repository.interface.js';
+import type { ILogger } from '../../../../ports/output/ILogger.js';
 import { AuthError } from '../../../../shared/errors/index.js';
 import { User } from '../../../../domain/entities/User.js';
-import { 
+import type { 
   LoginCredentials, 
   RegisterData, 
   DecodedToken, 
-  AuthAppResult 
+  AuthResult 
 } from '../../../../ports/output/IAuthHandler.js';
 import { UserValidator, EmailValidator } from '../../../../domain/validators/index.js';
 
@@ -25,7 +25,7 @@ export class JwtAuthStrategy implements IAuthStrategy {
     this.logger = this.logger.child({ strategy: 'JwtAuthStrategy' });
   }
 
-  async authenticate(credentials: LoginCredentials): Promise<AppResult<AuthAppResult>> {
+  async authenticate(credentials: LoginCredentials): Promise<AppResult<AuthResult>> {
     this.logger.info('JWT authentication attempt', { email: credentials.email });
     
     try {
@@ -77,19 +77,18 @@ export class JwtAuthStrategy implements IAuthStrategy {
       const token = tokenAppResult.unwrap();
       const expiresAt = new Date(Date.now() + (60 * 60 * 1000)); // 1 hour
 
-      const authAppResult: AuthAppResult = {
+      const authResult: AuthResult = {
         token,
-        user,
-        expiresAt,
-        strategy: this.getStrategyName(),
-        metadata: {
-          tokenType: 'Bearer',
-          algorithm: 'HS256'
-        }
+        user: {
+          id: user.id,
+          email: user.email.value,
+          role: user.role.value
+        },
+        expiresAt
       };
 
       this.logger.info('JWT authentication successful', { userId: user.id, email: user.email });
-      return AppResult.Ok(authAppResult);
+      return AppResult.Ok(authResult);
     } catch (error) {
       this.logger.logError(error as Error, { email: credentials.email });
       return AppResult.Err(new AuthError(
@@ -100,7 +99,7 @@ export class JwtAuthStrategy implements IAuthStrategy {
     }
   }
 
-  async generateToken(payload: any): Promise<AppResult<string, AuthError>> {
+  async generateToken(payload: any): Promise<AppResult<string>> {
     try {
       this.logger.info('JWT generateToken called with payload', { payload });
       
@@ -142,7 +141,7 @@ export class JwtAuthStrategy implements IAuthStrategy {
     }
   }
 
-  async verifyToken(token: string): Promise<AppResult<DecodedToken, AuthError>> {
+  async verifyToken(token: string): Promise<AppResult<DecodedToken>> {
     try {
       const secret = process.env.JWT_SECRET;
       if (!secret) {
@@ -163,7 +162,7 @@ export class JwtAuthStrategy implements IAuthStrategy {
     }
   }
 
-  async register(userData: RegisterData): Promise<AppResult<AuthAppResult, AuthError>> {
+  async register(userData: RegisterData): Promise<AppResult<AuthResult>> {
     this.logger.info('JWT registration attempt', { email: userData.email });
     
     try {
@@ -207,8 +206,9 @@ export class JwtAuthStrategy implements IAuthStrategy {
         ));
       }
 
-      // Create user
-      const userAppResult = await User.create(userData.email, userData.password, userData.role);
+      // Create user with default role if not provided
+      const role = userData.role || 'user';
+      const userAppResult = await User.create(userData.email, userData.password, role);
       if (userAppResult.isErr()) {
         return AppResult.Err(new AuthError(
           'JwtAuthStrategy.register.userCreation',
@@ -234,15 +234,14 @@ export class JwtAuthStrategy implements IAuthStrategy {
       const token = tokenAppResult.unwrap();
       const expiresAt = new Date(Date.now() + (60 * 60 * 1000)); // 1 hour
 
-      const authAppResult: AuthAppResult = {
+      const authAppResult: AuthResult = {
         token,
-        user: savedUser,
-        expiresAt,
-        strategy: this.getStrategyName(),
-        metadata: {
-          tokenType: 'Bearer',
-          algorithm: 'HS256'
-        }
+        user: {
+          id: savedUser.id,
+          email: savedUser.email.value,
+          role: savedUser.role.value
+        },
+        expiresAt
       };
 
       this.logger.info('JWT registration successful', { userId: savedUser.id, email: savedUser.email });
@@ -257,7 +256,7 @@ export class JwtAuthStrategy implements IAuthStrategy {
     }
   }
 
-  async refreshToken(token: string): Promise<AppResult<string, AuthError>> {
+  async refreshToken(token: string): Promise<AppResult<string>> {
     try {
       // Verify current token
       const decodedAppResult = await this.verifyToken(token);
@@ -267,18 +266,18 @@ export class JwtAuthStrategy implements IAuthStrategy {
 
       const decoded = decodedAppResult.unwrap();
       
-      // Generate new token with same payload
-      const newTokenAppResult = await this.generateToken({
-        sub: decoded.sub,
-        email: decoded.email, // This is already a string from decoded token
-        role: decoded.role    // This is already a string from decoded token
-      });
+             // Generate new token with same payload
+       const newTokenAppResult = await this.generateToken({
+         userId: decoded.userId,
+         email: decoded.email, // This is already a string from decoded token
+         role: decoded.role    // This is already a string from decoded token
+       });
 
       if (newTokenAppResult.isErr()) {
         return AppResult.Err(newTokenAppResult.unwrapErr());
       }
 
-      this.logger.info('JWT token refreshed successfully', { userId: decoded.sub });
+             this.logger.info('JWT token refreshed successfully', { userId: decoded.userId });
       return AppResult.Ok(newTokenAppResult.unwrap());
     } catch (error) {
       this.logger.logError(error as Error, { token });
@@ -290,7 +289,7 @@ export class JwtAuthStrategy implements IAuthStrategy {
     }
   }
 
-  async invalidateToken(token: string): Promise<AppResult<void, AuthError>> {
+  async invalidateToken(token: string): Promise<AppResult<void>> {
     // For JWT, we can't actually invalidate tokens (they're stateless)
     // In a real implementation, you might add the token to a blacklist
     // For now, we'll just log the invalidation attempt

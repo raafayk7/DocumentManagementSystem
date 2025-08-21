@@ -10,7 +10,7 @@ export { MockLogger } from './MockLogger.js';
 
 // Export mock-specific types and interfaces
 export type { MockRoute, MockRequest, MockResponse } from './MockHttpServer.js';
-export type { MockAuthResult } from './MockAuthService.js';
+// export type { MockAuthResult } from './MockAuthService.js';
 export type { MockFile } from './MockFileService.js';
 export type { LogEntry } from './MockLogger.js';
 export { FileError } from './MockFileService.js';

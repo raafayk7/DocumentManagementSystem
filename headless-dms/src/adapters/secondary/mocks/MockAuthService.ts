@@ -1,16 +1,9 @@
 import { injectable } from 'tsyringe';
-import { IAuthStrategy } from '../../../ports/output/IAuthStrategy.js';
+import { AppResult } from '@carbonteq/hexapp';
+import type { IAuthStrategy } from '../../../ports/output/IAuthStrategy.js';
+import type { LoginCredentials, RegisterData, DecodedToken, AuthResult } from '../../../ports/output/IAuthHandler.js';
 import { User } from '../../../domain/entities/User.js';
-
-export interface MockAuthResult {
-  token: string;
-  expiresAt: Date;
-  user: {
-    id: string;
-    email: string;
-    role: string;
-  };
-}
+import { AuthError } from '../../../shared/errors/index.js';
 
 @injectable()
 export class MockAuthService implements IAuthStrategy {
@@ -22,17 +15,25 @@ export class MockAuthService implements IAuthStrategy {
     this.seedMockUsers();
   }
 
-  async authenticate(email: string, password: string): Promise<MockAuthResult | null> {
+  async authenticate(credentials: LoginCredentials): Promise<AppResult<AuthResult>> {
     // Find user by email
-    const user = Array.from(this.mockUsers.values()).find(u => u.email.value === email);
+    const user = Array.from(this.mockUsers.values()).find(u => u.email.value === credentials.email);
     
     if (!user) {
-      return null;
+      return AppResult.Err(new AuthError(
+        'MockAuthService.authenticate.userNotFound',
+        'Invalid credentials',
+        { email: credentials.email }
+      ));
     }
 
     // Simple password check (in real tests you'd use proper hashing)
-    if (password !== 'password123') {
-      return null;
+    if (credentials.password !== 'password123') {
+      return AppResult.Err(new AuthError(
+        'MockAuthService.authenticate.invalidPassword',
+        'Invalid credentials',
+        { email: credentials.email }
+      ));
     }
 
     // Generate mock token
@@ -45,7 +46,7 @@ export class MockAuthService implements IAuthStrategy {
       expiresAt
     });
 
-    return {
+    const authResult: AuthResult = {
       token,
       expiresAt,
       user: {
@@ -54,31 +55,163 @@ export class MockAuthService implements IAuthStrategy {
         role: user.role.value
       }
     };
+
+    return AppResult.Ok(authResult);
   }
 
-  async verifyToken(token: string): Promise<{ userId: string; email: string; role: string } | null> {
+  async verifyToken(token: string): Promise<AppResult<DecodedToken>> {
     const tokenData = this.mockTokens.get(token);
     
     if (!tokenData) {
-      return null;
+      return AppResult.Err(new AuthError(
+        'MockAuthService.verifyToken.invalidToken',
+        'Invalid token'
+      ));
     }
 
     // Check if token is expired
     if (tokenData.expiresAt < new Date()) {
       this.mockTokens.delete(token);
-      return null;
+      return AppResult.Err(new AuthError(
+        'MockAuthService.verifyToken.expiredToken',
+        'Token expired'
+      ));
     }
 
     const user = this.mockUsers.get(tokenData.userId);
     if (!user) {
-      return null;
+      return AppResult.Err(new AuthError(
+        'MockAuthService.verifyToken.userNotFound',
+        'User not found'
+      ));
     }
 
-    return {
+    const decodedToken: DecodedToken = {
       userId: user.id,
       email: user.email.value,
-      role: user.role.value
+      role: user.role.value,
+      iat: Math.floor(tokenData.expiresAt.getTime() / 1000) - 24 * 60 * 60, // 24 hours ago
+      exp: Math.floor(tokenData.expiresAt.getTime() / 1000)
     };
+
+    return AppResult.Ok(decodedToken);
+  }
+
+  // Required IAuthStrategy methods
+  getStrategyName(): string {
+    return 'MOCK';
+  }
+
+  async generateToken(payload: any): Promise<AppResult<string>> {
+    try {
+      const token = `mock-token-${this.tokenCounter++}`;
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      
+      const userId = payload.userId || payload.sub || 'mock-user';
+      this.mockTokens.set(token, {
+        userId: userId || 'mock-user',
+        expiresAt
+      });
+      
+      return AppResult.Ok(token);
+    } catch (error) {
+      return AppResult.Err(new AuthError(
+        'MockAuthService.generateToken',
+        'Token generation failed'
+      ));
+    }
+  }
+
+  async register(userData: RegisterData): Promise<AppResult<AuthResult>> {
+    try {
+      // Check if user already exists
+      const existingUser = Array.from(this.mockUsers.values()).find(u => u.email.value === userData.email);
+      if (existingUser) {
+        return AppResult.Err(new AuthError(
+          'MockAuthService.register.emailExists',
+          'Email already in use',
+          { email: userData.email }
+        ));
+      }
+
+      // Create new mock user (simplified for testing)
+      const newUser = User.fromRepository({
+        id: `mock-${Date.now()}`,
+        email: userData.email,
+        passwordHash: 'mock_hash_' + userData.password,
+        role: userData.role as 'user' | 'admin',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      const user = newUser.unwrap(); // Unwrap the result first
+      this.mockUsers.set(user.id, user);
+      //this.mockUsers.set(newUser.id, newUser);
+
+      // Generate token
+      const tokenResult = await this.generateToken({ userId: user.id });
+      if (tokenResult.isErr()) {
+        return AppResult.Err(tokenResult.unwrapErr());
+      }
+
+      const token = tokenResult.unwrap();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      const authResult: AuthResult = {
+        token,
+        expiresAt,
+        user: {
+          id: user.id,
+          email: user.email.value,
+          role: user.role.value
+        }
+      };
+
+      return AppResult.Ok(authResult);
+    } catch (error) {
+      return AppResult.Err(new AuthError(
+        'MockAuthService.register',
+        'Registration failed',
+        { email: userData.email }
+      ));
+    }
+  }
+
+  async refreshToken(token: string): Promise<AppResult<string>> {
+    try {
+      // Verify current token
+      const decodedResult = await this.verifyToken(token);
+      if (decodedResult.isErr()) {
+        return AppResult.Err(decodedResult.unwrapErr());
+      }
+
+      const decoded = decodedResult.unwrap();
+      
+      // Generate new token
+      const newTokenResult = await this.generateToken({ userId: decoded.userId });
+      if (newTokenResult.isErr()) {
+        return AppResult.Err(newTokenResult.unwrapErr());
+      }
+
+      return AppResult.Ok(newTokenResult.unwrap());
+    } catch (error) {
+      return AppResult.Err(new AuthError(
+        'MockAuthService.refreshToken',
+        'Token refresh failed'
+      ));
+    }
+  }
+
+  async invalidateToken(token: string): Promise<AppResult<void>> {
+    try {
+      this.mockTokens.delete(token);
+      return AppResult.Ok(undefined);
+    } catch (error) {
+      return AppResult.Err(new AuthError(
+        'MockAuthService.invalidateToken',
+        'Token invalidation failed'
+      ));
+    }
   }
 
   // Mock-specific methods for testing

@@ -10,7 +10,7 @@ export interface LoginCredentials {
 export interface RegisterData {
   email: string;
   password: string;
-  role?: 'user' | 'admin';
+  role: 'user' | 'admin';
 }
 
 export interface DecodedToken {
@@ -33,7 +33,7 @@ export interface AuthResult {
 
 export interface IAuthHandler {
   login(credentials: LoginCredentials): Promise<AppResult<AuthResult>>;
-  register(userData: RegisterData): Promise<AppResult<User>>;
+  register(userData: RegisterData): Promise<AppResult<{ id: string; email: string; role: string }>>;
   validateToken(token: string): Promise<AppResult<DecodedToken>>;
   refreshToken(token: string): Promise<AppResult<string>>;
   logout(token: string): Promise<AppResult<void>>;

@@ -1,15 +1,15 @@
 import { injectable, inject } from 'tsyringe';
-import { AppAppResult } from '@carbonteq/hexapp';
-import { IAuthStrategy } from '../../../../ports/output/IAuthStrategy.js';
-import { IUserRepository } from '../../database/interfaces/user.repository.interface.js';
-import { ILogger } from '../../../../ports/output/ILogger.js';
+import { AppResult } from '@carbonteq/hexapp';
+import type { IAuthStrategy } from '../../../../ports/output/IAuthStrategy.js';
+import type { IUserRepository } from '../../database/interfaces/user.repository.interface.js';
+import type { ILogger } from '../../../../ports/output/ILogger.js';
 import { AuthError } from '../../../../shared/errors/index.js';
 import { User } from '../../../../domain/entities/User.js';
-import { 
+import type { 
   LoginCredentials, 
   RegisterData, 
   DecodedToken, 
-  AuthAppResult 
+  AuthResult 
 } from '../../../../ports/output/IAuthHandler.js';
 
 interface MockUser {
@@ -61,7 +61,7 @@ export class LocalAuthStrategy implements IAuthStrategy {
     }
   }
 
-  async authenticate(credentials: LoginCredentials): Promise<AppResult<AuthAppResult, AuthError>> {
+  async authenticate(credentials: LoginCredentials): Promise<AppResult<AuthResult>> {
     this.logger.info('Local authentication attempt', { email: credentials.email });
     
     await this.simulateDelay();
@@ -108,9 +108,9 @@ export class LocalAuthStrategy implements IAuthStrategy {
 
       // Generate mock token
       const tokenAppResult = await this.generateToken({
-        sub: user.id,
-        email: user.email,
-        role: user.role
+        sub: user.unwrap().id,
+        email: user.unwrap().email.value,
+        role: user.unwrap().role.value
       });
 
       if (tokenAppResult.isErr()) {
@@ -120,19 +120,18 @@ export class LocalAuthStrategy implements IAuthStrategy {
       const token = tokenAppResult.unwrap();
       const expiresAt = new Date(Date.now() + this.tokenExpirationMs);
 
-      const authAppResult: AuthAppResult = {
+      const authAppResult: AuthResult = {
         token,
-        user,
+        user: {
+          id: user.unwrap().id,
+          email: user.unwrap().email.value,
+          role: user.unwrap().role.value
+        },
         expiresAt,
-        strategy: this.getStrategyName(),
-        metadata: {
-          tokenType: 'Mock',
-          algorithm: 'Mock',
-          isTest: true
-        }
+       
       };
 
-      this.logger.info('Local authentication successful', { userId: user.id, email: user.email });
+      this.logger.info('Local authentication successful', { userId: user.unwrap().id, email: user.unwrap().email.value });
       return AppResult.Ok(authAppResult);
     } catch (error) {
       this.logger.logError(error as Error, { email: credentials.email });
@@ -144,7 +143,7 @@ export class LocalAuthStrategy implements IAuthStrategy {
     }
   }
 
-  async generateToken(payload: any): Promise<AppResult<string, AuthError>> {
+  async generateToken(payload: any): Promise<AppResult<string>> {
     try {
       // Create a mock token that looks like JWT but isn't real
       const mockToken = `mock_${payload.sub}_${Date.now()}_${this.tokenExpirationMs}`;
@@ -159,7 +158,7 @@ export class LocalAuthStrategy implements IAuthStrategy {
     }
   }
 
-  async verifyToken(token: string): Promise<AppResult<DecodedToken, AuthError>> {
+  async verifyToken(token: string): Promise<AppResult<DecodedToken>> {
     try {
       // Parse mock token to extract payload
       if (!token.startsWith('mock_')) {
@@ -200,9 +199,10 @@ export class LocalAuthStrategy implements IAuthStrategy {
       }
 
       const decoded: DecodedToken = {
-        sub: userId,
+        userId: userId,
         email: mockUser.email,
         role: mockUser.role,
+
         iat: Math.floor(issuedAt / 1000),
         exp: Math.floor((issuedAt + expirationMs) / 1000)
       };
@@ -217,7 +217,7 @@ export class LocalAuthStrategy implements IAuthStrategy {
     }
   }
 
-  async register(userData: RegisterData): Promise<AppResult<AuthAppResult, AuthError>> {
+  async register(userData: RegisterData): Promise<AppResult<AuthResult>> {
     this.logger.info('Local registration attempt', { email: userData.email });
     
     await this.simulateDelay();
@@ -264,9 +264,9 @@ export class LocalAuthStrategy implements IAuthStrategy {
 
       // Generate token
       const tokenAppResult = await this.generateToken({
-        sub: user.id,
-        email: user.email,
-        role: user.role
+        userId: user.unwrap().id,
+        email: user.unwrap().email.value,
+        role: user.unwrap().role.value
       });
 
       if (tokenAppResult.isErr()) {
@@ -276,19 +276,18 @@ export class LocalAuthStrategy implements IAuthStrategy {
       const token = tokenAppResult.unwrap();
       const expiresAt = new Date(Date.now() + this.tokenExpirationMs);
 
-      const authAppResult: AuthAppResult = {
+      const authAppResult: AuthResult = {
         token,
-        user,
+        user: {
+          id: user.unwrap().id,
+          email: user.unwrap().email.value,
+          role: user.unwrap().role.value
+        },
         expiresAt,
-        strategy: this.getStrategyName(),
-        metadata: {
-          tokenType: 'Mock',
-          algorithm: 'Mock',
-          isTest: true
-        }
+       
       };
 
-      this.logger.info('Local registration successful', { userId: user.id, email: user.email });
+      this.logger.info('Local registration successful', { userId: user.unwrap().id, email: user.unwrap().email.value });
       return AppResult.Ok(authAppResult);
     } catch (error) {
       this.logger.logError(error as Error, { email: userData.email });
@@ -300,7 +299,7 @@ export class LocalAuthStrategy implements IAuthStrategy {
     }
   }
 
-  async refreshToken(token: string): Promise<AppResult<string, AuthError>> {
+  async refreshToken(token: string): Promise<AppResult<string>> {
     try {
       // Verify current token
       const decodedAppResult = await this.verifyToken(token);
@@ -312,7 +311,7 @@ export class LocalAuthStrategy implements IAuthStrategy {
       
       // Generate new token with same payload
       const newTokenAppResult = await this.generateToken({
-        sub: decoded.sub,
+        userId: decoded.userId,
         email: decoded.email,
         role: decoded.role
       });
@@ -321,7 +320,7 @@ export class LocalAuthStrategy implements IAuthStrategy {
         return AppResult.Err(newTokenAppResult.unwrapErr());
       }
 
-      this.logger.info('Local token refreshed successfully', { userId: decoded.sub });
+      this.logger.info('Local token refreshed successfully', { userId: decoded.userId });
       return AppResult.Ok(newTokenAppResult.unwrap());
     } catch (error) {
       this.logger.logError(error as Error, { token });
@@ -333,7 +332,7 @@ export class LocalAuthStrategy implements IAuthStrategy {
     }
   }
 
-  async invalidateToken(token: string): Promise<AppResult<void, AuthError>> {
+  async invalidateToken(token: string): Promise<AppResult<void>> {
     // For local strategy, we can't actually invalidate tokens
     // Just log the invalidation attempt
     this.logger.info('Local token invalidation requested', { token: token.substring(0, 20) + '...' });

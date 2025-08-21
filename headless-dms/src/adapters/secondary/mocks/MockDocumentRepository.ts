@@ -2,7 +2,7 @@ import { injectable } from 'tsyringe';
 import { IDocumentRepository } from '../../../ports/output/IDocumentRepository.js';
 import { Document } from '../../../domain/entities/Document.js';
 import { PaginationInput, PaginationOutput } from '../../../shared/dto/common/pagination.dto.js';
-import { DocumentFilterQuery } from '../../../shared/dto/common/document.filter.query.dto.js';
+import { DocumentFilterQuery } from '../../../ports/output/IDocumentRepository.js';
 
 @injectable()
 export class MockDocumentRepository implements IDocumentRepository {
@@ -19,7 +19,7 @@ export class MockDocumentRepository implements IDocumentRepository {
   }
 
   async findByUserId(userId: string): Promise<Document[]> {
-    return Array.from(this.documents.values()).filter(doc => doc.userId === userId);
+    return Array.from(this.documents.values()).filter(doc => doc.id === userId);
   }
 
   async find(query: DocumentFilterQuery, pagination: PaginationInput): Promise<PaginationOutput<Document>> {
@@ -38,15 +38,9 @@ export class MockDocumentRepository implements IDocumentRepository {
       );
     }
 
-    if (query.userId) {
-      filteredDocuments = filteredDocuments.filter(doc => 
-        doc.userId === query.userId
-      );
-    }
-
     if (query.tags && query.tags.length > 0) {
       filteredDocuments = filteredDocuments.filter(doc => 
-        query.tags!.some(tag => doc.tags.includes(tag))
+        Array.isArray(query.tags) ? query.tags.some(tag => doc.tags.includes(tag)) : doc.tags.includes(query.tags as string)
       );
     }
 
@@ -83,24 +77,24 @@ export class MockDocumentRepository implements IDocumentRepository {
   }
 
   async findOne(query: DocumentFilterQuery): Promise<Document | null> {
-    const result = await this.find(query, { page: 1, limit: 1 });
+    const result = await this.find(query, { page: 1, limit: 1, order: 'asc', sort: 'createdAt' });
     return result.data[0] || null;
   }
 
   async exists(query: DocumentFilterQuery): Promise<boolean> {
-    const result = await this.find(query, { page: 1, limit: 1 });
+    const result = await this.find(query, { page: 1, limit: 1, order: 'asc', sort: 'createdAt' });
     return result.data.length > 0;
   }
 
   async count(query: DocumentFilterQuery): Promise<number> {
-    const result = await this.find(query, { page: 1, limit: Number.MAX_SAFE_INTEGER });
+    const result = await this.find(query, { page: 1, limit: Number.MAX_SAFE_INTEGER, order: 'asc', sort: 'createdAt' });
     return result.data.length;
   }
 
   async save(document: Document): Promise<Document> {
-    if (!document.id) {
-      document.id = `mock-doc-${this.nextId++}`;
-    }
+    // if (!document.id) {
+    //   document.id = `mock-doc-${this.nextId++}`;
+    // }
     this.documents.set(document.id, document);
     return document;
   }
@@ -113,11 +107,13 @@ export class MockDocumentRepository implements IDocumentRepository {
     return document;
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string): Promise<boolean> {
     if (!this.documents.has(id)) {
-      throw new Error('Document not found for deletion');
+      console.error('Document not found for deletion', id);
+      return false;
     }
     this.documents.delete(id);
+    return true;
   }
 
   // Mock-specific methods for testing
@@ -157,4 +153,24 @@ export class MockDocumentRepository implements IDocumentRepository {
   private seedMockData(): void {
     // This will be populated by tests as needed
   }
+
+  async findByTags(tags: string[]): Promise<Document[]> {
+    return Array.from(this.documents.values()).filter(doc => doc.tags.some(tag => tags.includes(tag)));
+  }
+
+  async findByMimeType(mimeType: string): Promise<Document[]> {
+    return Array.from(this.documents.values()).filter(doc => doc.mimeType.value === mimeType);
+  }
+
+  async findByName(name: string): Promise<Document | null> {
+    return Array.from(this.documents.values()).find(doc => doc.name.value === name) || null;
+  }
+
+  async saveWithNameCheck(document: Document): Promise<Document> {
+    if (await this.findByName(document.name.value)) {
+      throw new Error('Document with this name already exists');
+    }
+    return this.save(document);
+  }
+
 }

@@ -29,17 +29,17 @@ export class MockFileService implements IFileService {
     this.seedMockFiles();
   }
 
-  async saveFile(file: Buffer, name: string, mimeType: string): Promise<AppResult<FileInfo, FileError>> {
+  async saveFile(file: Buffer, name: string, mimeType: string): Promise<AppResult<FileInfo>> {
     try {
       // Check if file already exists
       const existingFile = Array.from(this.files.values()).find(f => f.name === name);
       if (existingFile) {
-        return AppResult.Err(FileError.FILE_ALREADY_EXISTS);
+        return AppResult.Err(new Error(FileError.FILE_ALREADY_EXISTS));
       }
 
       // Validate MIME type
       if (!this.isValidMimeType(mimeType)) {
-        return AppResult.Err(FileError.INVALID_FILE_TYPE);
+        return AppResult.Err(new Error(FileError.INVALID_FILE_TYPE));
       }
 
       const fileId = `mock-file-${this.fileCounter++}`;
@@ -59,14 +59,14 @@ export class MockFileService implements IFileService {
         id: fileId,
         name,
         mimeType,
-        size: file.length,
+        size: file.length.toString(),
         path: `/mock/storage/${fileId}`,
-        url: `/mock/files/${fileId}`
+        //url: `/mock/files/${fileId}`
       };
 
       return AppResult.Ok(fileInfo);
     } catch (error) {
-      return AppResult.Err(FileError.STORAGE_ERROR);
+      return AppResult.Err(new Error(FileError.STORAGE_ERROR));
     }
   }
 
@@ -79,7 +79,7 @@ export class MockFileService implements IFileService {
 
       return await this.saveFile(mockFile, mockName, mockMimeType);
     } catch (error) {
-      return AppResult.Err(FileError.STORAGE_ERROR);
+      return AppResult.Err(new Error(FileError.STORAGE_ERROR));
     }
   }
 
@@ -88,17 +88,17 @@ export class MockFileService implements IFileService {
       // Extract file ID from path
       const fileId = this.extractFileIdFromPath(filePath);
       if (!fileId) {
-        return AppResult.Err(FileError.FILE_NOT_FOUND);
+        return AppResult.Err(new Error(FileError.FILE_NOT_FOUND));
       }
 
       const file = this.files.get(fileId);
       if (!file) {
-        return AppResult.Err(FileError.FILE_NOT_FOUND);
+        return AppResult.Err(new Error(FileError.FILE_NOT_FOUND));
       }
 
       return AppResult.Ok(file.content);
     } catch (error) {
-      return AppResult.Err(FileError.STORAGE_ERROR);
+      return AppResult.Err(new Error(FileError.STORAGE_ERROR));
     }
   }
 
@@ -112,25 +112,25 @@ export class MockFileService implements IFileService {
       const exists = this.files.has(fileId);
       return AppResult.Ok(exists);
     } catch (error) {
-      return AppResult.Err(FileError.STORAGE_ERROR);
+      return AppResult.Err(new Error(FileError.STORAGE_ERROR));
     }
   }
 
-  async deleteFile(filePath: string): Promise<AppResult<void>> {
+  async deleteFile(filePath: string): Promise<AppResult<boolean>> {
     try {
       const fileId = this.extractFileIdFromPath(filePath);
       if (!fileId) {
-        return AppResult.Err(FileError.FILE_NOT_FOUND);
+        return AppResult.Err(new Error(FileError.FILE_NOT_FOUND));
       }
 
       if (!this.files.has(fileId)) {
-        return AppResult.Err(FileError.FILE_NOT_FOUND);
+        return AppResult.Err(new Error(FileError.FILE_NOT_FOUND));
       }
 
       this.files.delete(fileId);
-      return AppResult.Ok(undefined);
+      return AppResult.Ok(true);
     } catch (error) {
-      return AppResult.Err(FileError.STORAGE_ERROR);
+      return AppResult.Err(new Error(FileError.STORAGE_ERROR));
     }
   }
 
@@ -156,7 +156,7 @@ export class MockFileService implements IFileService {
 
       return AppResult.Ok(undefined);
     } catch (error) {
-      return AppResult.Err(FileError.STORAGE_ERROR);
+      return AppResult.Err(new Error(FileError.STORAGE_ERROR));
     }
   }
 
@@ -220,5 +220,20 @@ export class MockFileService implements IFileService {
 
     this.files.set(fileId, mockFile);
     return mockFile;
+  }
+
+  async generateDownloadLink(filePath: string, expiresIn: number = 60): Promise<AppResult<string>> {
+    return AppResult.Ok(`/mock/download/${filePath}?expires=${Date.now() + (expiresIn * 60 * 1000)}`);
+  }
+
+  async getFileInfo(filePath: string): Promise<AppResult<FileInfo>> {
+    return AppResult.Ok({
+      id: this.extractFileIdFromPath(filePath) || '',
+      name: filePath.split('/').pop() || '',
+      mimeType: 'application/octet-stream',
+      size: '0',
+      path: filePath,
+      url: `/mock/files/${this.extractFileIdFromPath(filePath)}`
+    });
   }
 }
