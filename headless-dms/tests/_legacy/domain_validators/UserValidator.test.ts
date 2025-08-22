@@ -1,5 +1,5 @@
 // src/domain/validators/__tests__/UserValidator.test.ts
-import { UserValidator, User } from '../UserValidator.js';
+import { UserValidator, User } from '../../src/domain/validators/UserValidator.js';
 
 describe('UserValidator', () => {
   describe('Business Rules', () => {

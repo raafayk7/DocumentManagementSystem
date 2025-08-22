@@ -1,0 +1,2 @@
+# Domain value objects tests directory  
+# Tests for Email, Password, DocumentName, FileSize, MimeType, UserRole value objects

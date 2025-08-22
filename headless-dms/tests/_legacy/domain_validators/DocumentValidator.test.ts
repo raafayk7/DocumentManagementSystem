@@ -1,5 +1,5 @@
 // src/domain/validators/__tests__/DocumentValidator.test.ts
-import { DocumentValidator, Document } from '../DocumentValidator.js';
+import { DocumentValidator, Document } from '../../src/domain/validators/DocumentValidator.js';
 
 describe('DocumentValidator', () => {
   describe('Business Rules', () => {

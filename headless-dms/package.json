@@ -8,6 +8,7 @@
     "build": "tsc --noEmit",
     "start": "node dist/app.js",
     "start:dev": "tsx --watch src/app.ts",
+
     "test": "node tests/run-all-tests.js",
     "test:domain": "tsx tests/domain/user.test.ts && tsx tests/domain/document.test.ts",
     "test:validators": "tsx tests/validators/user-validator.test.ts && tsx tests/validators/document-validator.test.ts",
@@ -25,6 +26,16 @@
     "test:entities": "npx tsx tests/domain/entities/run-all-entity-tests.ts",
     "test:user-entity": "npx tsx src/tests/domain/entities/user.entity.test.ts",
     "test:document-entity": "npx tsx tests/domain/entities/document.entity.test.ts",
+
+    "_comment": "=== NEW MOCHA TESTS (Steps 7-9) ===",
+    "test:mocha": "mocha",
+    "test:mocha:domain": "mocha tests/domain/**/*.test.ts",
+    "test:mocha:entities": "mocha tests/domain/entities/**/*.test.ts",
+    "test:mocha:value-objects": "mocha tests/domain/value-objects/**/*.test.ts",
+    "test:mocha:services": "mocha tests/application/**/*.test.ts",
+    "test:mocha:watch": "mocha --watch",
+    "test:mocha:watch:domain": "mocha --watch tests/domain/**/*.test.ts",
+
     "seed": "npx tsx src/infrastructure/database/migrations/seed_data/seed-cli.ts",
     "seed:run": "npx tsx src/infrastructure/database/migrations/seed_data/seed-cli.ts run",
     "seed:reset": "npx tsx src/infrastructure/database/migrations/seed_data/seed-cli.ts reset",
