@@ -1,6 +1,7 @@
 import { injectable, inject } from 'tsyringe';
 import { AppError, AppResult } from '@carbonteq/hexapp';
 import { matchRes } from '@carbonteq/fp';
+import { extractProp, extractProps, extractId, toSerialized } from '@carbonteq/hexapp';
 import { Document } from '../../domain/entities/Document.js';
 import { User } from '../../domain/entities/User.js';
 import { 
@@ -24,6 +25,50 @@ import jwt from 'jsonwebtoken';
 
 @injectable()
 export class DocumentApplicationService implements IDocumentApplicationService {
+  // Hexapp composition utilities
+  private readonly extractDocumentInfo = (document: Document) => ({
+    id: extractId(document),
+    name: document.name.value,
+    mimeType: document.mimeType.value,
+    size: document.size.bytes
+  });
+  
+  // Helper functions for common operations
+  private readonly findDocumentById = async (documentId: string) => {
+    const document = await this.documentRepository.findById(documentId);
+    if (!document) {
+      return AppResult.Err(AppError.NotFound(`Document not found with id: ${documentId}`));
+    }
+    return AppResult.Ok(document);
+  };
+
+  private readonly findUserById = async (userId: string) => {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      return AppResult.Err(AppError.NotFound(`User not found with id: ${userId}`));
+    }
+    return AppResult.Ok(user);
+  };
+
+  private readonly validateDocumentAccess = (user: User, document: Document, accessType: 'read' | 'write' | 'delete' = 'read') => {
+    const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
+    const hasAccess = accessType === 'read' ? accessValidation.canAccess :
+                     accessType === 'write' ? accessValidation.permissions.canWrite :
+                     accessValidation.permissions.canDelete;
+    
+    if (!hasAccess) {
+      const reason = accessType === 'read' ? accessValidation.reason : `Insufficient ${accessType} permissions`;
+      return AppResult.Err(AppError.Unauthorized(
+        `${accessType.charAt(0).toUpperCase() + accessType.slice(1)} access denied for document with id: ${extractId(document)} - ${reason}`
+      ));
+    }
+    return AppResult.Ok(undefined);
+  };
+
+  private readonly logDocumentAction = (action: string, documentId: string, userId?: string, additional?: any) => {
+    this.logger.info(`Document ${action}`, { documentId, userId, ...additional });
+  };
+
   constructor(
     @inject("IDocumentRepository") private documentRepository: IDocumentRepository,
     @inject("IUserRepository") private userRepository: IUserRepository,
@@ -47,17 +92,15 @@ export class DocumentApplicationService implements IDocumentApplicationService {
     tags: string[] = [],
     metadata: Record<string, string> = {}
   ): Promise<AppResult<Document>> {
-    this.logger.info('Creating new document', { name, filename, userId });
+    this.logDocumentAction('creation attempt', 'new', userId, { name, filename });
     
     try {
-      // Get user for validation
-      const user = await this.userRepository.findById(userId);
-      if (!user) {
-        this.logger.warn('User not found for document creation', { userId });
-        return AppResult.Err(AppError.NotFound(
-          `User not found with id: ${userId}`
-        ));
+      // Get user for validation using composition helper
+      const userResult = await this.findUserById(userId);
+      if (userResult.isErr()) {
+        return userResult as AppResult<Document>;
       }
+      const user = userResult.unwrap();
 
       // Validate user can create documents
       const canCreate = this.userDomainService.canUserPerformAction(user, 'create', 'document');
@@ -100,11 +143,9 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       // Save document
       const savedDocument = await this.documentRepository.saveWithNameCheck(document);
 
-      this.logger.info('Document created successfully', { 
-        documentId: savedDocument.id, 
-        name: savedDocument.name.value,
-        userId 
-      });
+      this.logDocumentAction('created successfully', extractId(savedDocument), userId, 
+        this.extractDocumentInfo(savedDocument)
+      );
       return AppResult.Ok(savedDocument);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { name, userId });
@@ -118,37 +159,30 @@ export class DocumentApplicationService implements IDocumentApplicationService {
    * Get document with access validation
    */
   async getDocument(documentId: string, userId: string): Promise<AppResult<Document>> {
-    this.logger.info('Getting document', { documentId, userId });
+    this.logDocumentAction('access attempt', documentId, userId);
     
     try {
-      // Get user
-      const user = await this.userRepository.findById(userId);
-      if (!user) {
-        this.logger.warn('User not found for document access', { userId });
-        return AppResult.Err(AppError.NotFound(
-          `User not found with id: ${userId}`
-        ));
+      // Get user using composition helper
+      const userResult = await this.findUserById(userId);
+      if (userResult.isErr()) {
+        return userResult as AppResult<Document>;
+      }
+      const user = userResult.unwrap();
+
+      // Get document using composition helper
+      const documentResult = await this.findDocumentById(documentId);
+      if (documentResult.isErr()) {
+        return documentResult;
+      }
+      const document = documentResult.unwrap();
+
+      // Validate access using composition helper
+      const accessResult = this.validateDocumentAccess(user, document, 'read');
+      if (accessResult.isErr()) {
+        return accessResult as AppResult<Document>;
       }
 
-      // Get document
-      const document = await this.documentRepository.findById(documentId);
-      if (!document) {
-        this.logger.warn('Document not found', { documentId });
-        return AppResult.Err(AppError.NotFound(
-          `Document not found with id: ${documentId}`
-        ));
-      }
-
-      // Validate access
-      const accessValidation = this.documentDomainService.validateDocumentAccess(user, document);
-      if (!accessValidation.canAccess) {
-        this.logger.warn('Document access denied', { documentId, userId, reason: accessValidation.reason });
-        return AppResult.Err(AppError.Unauthorized(
-          `Access denied for document with id: ${documentId}`
-        ));
-      }
-
-      this.logger.info('Document retrieved successfully', { documentId, userId });
+      this.logDocumentAction('retrieved successfully', documentId, userId);
       return AppResult.Ok(document);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, userId });

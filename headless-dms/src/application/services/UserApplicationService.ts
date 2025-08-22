@@ -1,6 +1,7 @@
 import { injectable, inject } from 'tsyringe';
 import { AppError, AppResult } from '@carbonteq/hexapp';
 import { matchRes } from '@carbonteq/fp';
+import { extractProp, extractProps, extractId, toSerialized } from '@carbonteq/hexapp';
 import { User } from '../../domain/entities/User.js';
 import { 
   UserDomainService, 
@@ -20,6 +21,44 @@ import type { IUserApplicationService } from '../../ports/input/IUserApplication
 
 @injectable()
 export class UserApplicationService implements IUserApplicationService {
+  // Hexapp composition utilities
+  private readonly extractUserInfo = (user: User) => ({
+    id: extractId(user),
+    email: user.email.value,
+    role: user.role.value
+  });
+  
+  // Helper functions for common operations
+  private readonly findUserById = async (userId: string) => {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      return AppResult.Err(AppError.NotFound(`User not found with id: ${userId}`));
+    }
+    return AppResult.Ok(user);
+  };
+
+  private readonly findUserByEmail = async (email: string) => {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) {
+      return AppResult.Err(AppError.NotFound(`User not found with email: ${email}`));
+    }
+    return AppResult.Ok(user);
+  };
+
+  private readonly validateUserAccess = (user: User, action: 'create' | 'read' | 'update' | 'delete' | 'share', resource: 'user' | 'document' | 'system') => {
+    const canPerform = this.userDomainService.canUserPerformAction(user, action, resource);
+    if (!canPerform) {
+      return AppResult.Err(AppError.Unauthorized(
+        `User with id: ${extractId(user)} does not have sufficient permissions to ${action} ${resource}`
+      ));
+    }
+    return AppResult.Ok(undefined);
+  };
+
+  private readonly logUserAction = (action: string, userId: string, additional?: any) => {
+    this.logger.info(`User ${action}`, { userId, ...additional });
+  };
+
   constructor(
     @inject("IUserRepository") private userRepository: IUserRepository,
     @inject("UserDomainService") private userDomainService: UserDomainService,
@@ -33,7 +72,7 @@ export class UserApplicationService implements IUserApplicationService {
    * Create a new user with validation
    */
   async createUser(email: string, password: string, role: 'user' | 'admin' = 'user'): Promise<AppResult<User>> {
-    this.logger.info('Creating new user', { email, role });
+    this.logUserAction('creation attempt', 'new', { email, role });
     
     try {
       // Validate password strength
@@ -45,9 +84,9 @@ export class UserApplicationService implements IUserApplicationService {
         ));
       }
 
-      // Check if user already exists
-      const existingUser = await this.userRepository.findByEmail(email);
-      if (existingUser) {
+      // Check if user already exists using composition helper
+      const existingUserResult = await this.findUserByEmail(email);
+      if (existingUserResult.isOk()) {
         this.logger.warn('User already exists', { email });
         return AppResult.Err(AppError.Generic(
           `User with this email already exists: ${email}`
@@ -74,12 +113,12 @@ export class UserApplicationService implements IUserApplicationService {
           const stateValidation = this.userDomainService.validateUserState(savedUser);
           if (!stateValidation.isValid) {
             this.logger.warn('User state validation issues', { 
-              userId: savedUser.id, 
+              userId: extractId(savedUser), 
               issues: stateValidation.issues 
             });
           }
 
-          this.logger.info('User created successfully', { userId: savedUser.id, email });
+          this.logUserAction('created successfully', extractId(savedUser), this.extractUserInfo(savedUser));
           return AppResult.Ok(savedUser);
         },
         Err: (error) => {
@@ -101,17 +140,15 @@ export class UserApplicationService implements IUserApplicationService {
    * Authenticate user with security validation
    */
   async authenticateUser(email: string, password: string): Promise<AppResult<User>> {
-    this.logger.info('Authenticating user', { email });
+    this.logUserAction('authentication attempt', 'unknown', { email });
     
     try {
-      // Find user
-      const user = await this.userRepository.findByEmail(email);
-      if (!user) {
-        this.logger.warn('User not found for authentication', { email });
-        return AppResult.Err(AppError.NotFound(
-          `User not found with email: ${email}`
-        ));
+      // Find user using composition helper
+      const userResult = await this.findUserByEmail(email);
+      if (userResult.isErr()) {
+        return userResult;
       }
+      const user = userResult.unwrap();
 
       // Validate password
       const isValidPassword = await user.verifyPassword(password);
@@ -126,12 +163,12 @@ export class UserApplicationService implements IUserApplicationService {
       const securityValidation = this.authDomainService.validateUserSecurity(user);
       if (securityValidation.riskLevel === 'high') {
         this.logger.warn('High risk user authentication', { 
-          userId: user.id, 
+          userId: extractId(user), 
           riskLevel: securityValidation.riskLevel 
         });
       }
 
-      this.logger.info('User authenticated successfully', { userId: user.id, email });
+      this.logUserAction('authenticated successfully', extractId(user), { email });
       return AppResult.Ok(user);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email });
@@ -277,19 +314,14 @@ export class UserApplicationService implements IUserApplicationService {
    * Get user by ID
    */
   async getUserById(userId: string): Promise<AppResult<User>> {
-    this.logger.info('Getting user by ID', { userId });
+    this.logUserAction('retrieval by ID', userId);
     
     try {
-      const user = await this.userRepository.findById(userId);
-      if (!user) {
-        this.logger.warn('User not found', { userId });
-        return AppResult.Err(AppError.NotFound(
-          `User not found with id: ${userId}`
-        ));
+      const userResult = await this.findUserById(userId);
+      if (userResult.isOk()) {
+        this.logUserAction('retrieved successfully', userId);
       }
-
-      this.logger.info('User retrieved successfully', { userId });
-      return AppResult.Ok(user);
+      return userResult;
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { userId });
       return AppResult.Err(AppError.Generic(
@@ -302,19 +334,14 @@ export class UserApplicationService implements IUserApplicationService {
    * Get user by email
    */
   async getUserByEmail(email: string): Promise<AppResult<User>> {
-    this.logger.info('Getting user by email', { email });
+    this.logUserAction('retrieval by email', 'unknown', { email });
     
     try {
-      const user = await this.userRepository.findByEmail(email);
-      if (!user) {
-        this.logger.warn('User not found', { email });
-        return AppResult.Err(AppError.NotFound(
-          `User not found with email: ${email}`
-        ));
+      const userResult = await this.findUserByEmail(email);
+      if (userResult.isOk()) {
+        this.logUserAction('retrieved successfully', extractId(userResult.unwrap()), { email });
       }
-
-      this.logger.info('User retrieved successfully', { email });
-      return AppResult.Ok(user);
+      return userResult;
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email });
       return AppResult.Err(AppError.Generic(
