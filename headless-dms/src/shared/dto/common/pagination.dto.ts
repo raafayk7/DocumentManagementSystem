@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AppResult } from '@carbonteq/hexapp';
+import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 // Pagination Input Schema
@@ -17,6 +18,10 @@ export type PaginationInput = z.infer<typeof PaginationInputSchema>;
  * Provides validation for pagination query parameters
  */
 export class PaginationInputDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestPagination = nestWithKey('pagination');
+  private readonly nestQuery = nestWithKey('query');
+
   constructor(
     public readonly page: number,
     public readonly limit: number,
@@ -45,6 +50,20 @@ export class PaginationInputDto extends BaseDto {
     );
 
     return AppResult.Ok(dto);
+  }
+
+  /**
+   * Create nested pagination response using nestWithKey
+   */
+  toNestedResponse() {
+    return this.nestPagination(this.toPlain());
+  }
+
+  /**
+   * Create nested query response using nestWithKey
+   */
+  toNestedQuery() {
+    return this.nestQuery(this.toPlain());
   }
 
   /**
@@ -90,6 +109,11 @@ export type PaginationOutput<T> = {
  * Provides structured response for paginated data
  */
 export class PaginationOutputDto<T> extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestData = nestWithKey('data');
+  private readonly nestResponse = nestWithKey('response');
+  private readonly nestResults = nestWithKey('results');
+
   constructor(
     public readonly data: T[],
     public readonly pagination: {
@@ -116,6 +140,27 @@ export class PaginationOutputDto<T> extends BaseDto {
     const paginationInfo = calculatePaginationMetadata(page, limit, total);
     
     return new PaginationOutputDto(data, paginationInfo);
+  }
+
+  /**
+   * Create nested data response using nestWithKey
+   */
+  toNestedData() {
+    return this.nestData(this.toPlain());
+  }
+
+  /**
+   * Create nested response using nestWithKey
+   */
+  toNestedResponse() {
+    return this.nestResponse(this.toPlain());
+  }
+
+  /**
+   * Create nested results response using nestWithKey
+   */
+  toNestedResults() {
+    return this.nestResults(this.toPlain());
   }
 
   /**

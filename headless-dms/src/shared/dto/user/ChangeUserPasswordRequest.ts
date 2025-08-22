@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AppResult } from '@carbonteq/hexapp';
+import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 export const ChangeUserPasswordRequestSchema = z.object({
@@ -15,6 +16,11 @@ export type ChangeUserPasswordRequest = z.infer<typeof ChangeUserPasswordRequest
  * Provides validation for password change requests
  */
 export class ChangeUserPasswordRequestDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestPassword = nestWithKey('password');
+  private readonly nestUpdate = nestWithKey('update');
+  private readonly nestSecurity = nestWithKey('security');
+
   constructor(
     public readonly userId: string,
     public readonly currentPassword: string,
@@ -41,6 +47,27 @@ export class ChangeUserPasswordRequestDto extends BaseDto {
     );
 
     return AppResult.Ok(dto);
+  }
+
+  /**
+   * Create nested password request using nestWithKey
+   */
+  toNestedPassword() {
+    return this.nestPassword(this.toPlain());
+  }
+
+  /**
+   * Create nested update request using nestWithKey
+   */
+  toNestedUpdate() {
+    return this.nestUpdate(this.toPlain());
+  }
+
+  /**
+   * Create nested security request using nestWithKey
+   */
+  toNestedSecurity() {
+    return this.nestSecurity(this.toPlain());
   }
 
   /**

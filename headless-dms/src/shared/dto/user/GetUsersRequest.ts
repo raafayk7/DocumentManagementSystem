@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AppResult } from '@carbonteq/hexapp';
+import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 export const GetUsersRequestSchema = z.object({
@@ -19,6 +20,11 @@ export type GetUsersRequest = z.infer<typeof GetUsersRequestSchema>;
  * Provides validation for user listing requests with filtering and pagination
  */
 export class GetUsersRequestDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestUsers = nestWithKey('users');
+  private readonly nestFilter = nestWithKey('filter');
+  private readonly nestPagination = nestWithKey('pagination');
+
   constructor(
     public readonly page: number,
     public readonly limit: number,
@@ -53,6 +59,27 @@ export class GetUsersRequestDto extends BaseDto {
     );
 
     return AppResult.Ok(dto);
+  }
+
+  /**
+   * Create nested users request using nestWithKey
+   */
+  toNestedUsers() {
+    return this.nestUsers(this.toPlain());
+  }
+
+  /**
+   * Create nested filter request using nestWithKey
+   */
+  toNestedFilter() {
+    return this.nestFilter(this.toPlain());
+  }
+
+  /**
+   * Create nested pagination request using nestWithKey
+   */
+  toNestedPagination() {
+    return this.nestPagination(this.toPlain());
   }
 
   /**

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AppResult } from '@carbonteq/hexapp';
+import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 export const UpdateDocumentNameRequestSchema = z.object({
@@ -15,6 +16,11 @@ export type UpdateDocumentNameRequest = z.infer<typeof UpdateDocumentNameRequest
  * Provides validation for document name update requests
  */
 export class UpdateDocumentNameRequestDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestName = nestWithKey('name');
+  private readonly nestUpdate = nestWithKey('update');
+  private readonly nestDocument = nestWithKey('document');
+
   constructor(
     public readonly documentId: string,
     public readonly name: string,
@@ -41,6 +47,27 @@ export class UpdateDocumentNameRequestDto extends BaseDto {
     );
 
     return AppResult.Ok(dto);
+  }
+
+  /**
+   * Create nested name request using nestWithKey
+   */
+  toNestedName() {
+    return this.nestName(this.toPlain());
+  }
+
+  /**
+   * Create nested update request using nestWithKey
+   */
+  toNestedUpdate() {
+    return this.nestUpdate(this.toPlain());
+  }
+
+  /**
+   * Create nested document request using nestWithKey
+   */
+  toNestedDocument() {
+    return this.nestDocument(this.toPlain());
   }
 
   /**

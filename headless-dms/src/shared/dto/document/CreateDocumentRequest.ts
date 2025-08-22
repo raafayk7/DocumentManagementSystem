@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AppResult } from '@carbonteq/hexapp';
+import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 // Reusing existing CreateDocumentSchema from src/documents/dto/documents.dto.ts
@@ -20,6 +21,11 @@ export type CreateDocumentRequest = z.infer<typeof CreateDocumentRequestSchema>;
  * Provides validation for document creation requests
  */
 export class CreateDocumentRequestDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestDocument = nestWithKey('document');
+  private readonly nestFile = nestWithKey('file');
+  private readonly nestUpload = nestWithKey('upload');
+
   constructor(
     public readonly name: string,
     public readonly filePath: string,
@@ -54,6 +60,27 @@ export class CreateDocumentRequestDto extends BaseDto {
     );
 
     return AppResult.Ok(dto);
+  }
+
+  /**
+   * Create nested document request using nestWithKey
+   */
+  toNestedDocument() {
+    return this.nestDocument(this.toPlain());
+  }
+
+  /**
+   * Create nested file request using nestWithKey
+   */
+  toNestedFile() {
+    return this.nestFile(this.toPlain());
+  }
+
+  /**
+   * Create nested upload request using nestWithKey
+   */
+  toNestedUpload() {
+    return this.nestUpload(this.toPlain());
   }
 
   /**

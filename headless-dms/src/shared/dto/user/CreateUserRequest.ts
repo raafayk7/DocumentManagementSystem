@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AppResult } from '@carbonteq/hexapp';
+import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 // Reusing existing RegisterSchema from src/auth/dto/register.dto.ts
@@ -16,6 +17,11 @@ export type CreateUserRequest = z.infer<typeof CreateUserRequestSchema>;
  * Provides validation for user creation requests
  */
 export class CreateUserRequestDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestUser = nestWithKey('user');
+  private readonly nestRegistration = nestWithKey('registration');
+  private readonly nestAccount = nestWithKey('account');
+
   constructor(
     public readonly email: string,
     public readonly password: string,
@@ -42,6 +48,27 @@ export class CreateUserRequestDto extends BaseDto {
     );
 
     return AppResult.Ok(dto);
+  }
+
+  /**
+   * Create nested user request using nestWithKey
+   */
+  toNestedUser() {
+    return this.nestUser(this.toPlain());
+  }
+
+  /**
+   * Create nested registration request using nestWithKey
+   */
+  toNestedRegistration() {
+    return this.nestRegistration(this.toPlain());
+  }
+
+  /**
+   * Create nested account request using nestWithKey
+   */
+  toNestedAccount() {
+    return this.nestAccount(this.toPlain());
   }
 
   /**

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AppResult } from '@carbonteq/hexapp';
+import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 export const ChangeUserRoleRequestSchema = z.object({
@@ -15,6 +16,11 @@ export type ChangeUserRoleRequest = z.infer<typeof ChangeUserRoleRequestSchema>;
  * Provides validation for role change requests
  */
 export class ChangeUserRoleRequestDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestRole = nestWithKey('role');
+  private readonly nestPermissions = nestWithKey('permissions');
+  private readonly nestAdmin = nestWithKey('admin');
+
   constructor(
     public readonly currentUserId: string,
     public readonly userId: string,
@@ -41,6 +47,27 @@ export class ChangeUserRoleRequestDto extends BaseDto {
     );
 
     return AppResult.Ok(dto);
+  }
+
+  /**
+   * Create nested role request using nestWithKey
+   */
+  toNestedRole() {
+    return this.nestRole(this.toPlain());
+  }
+
+  /**
+   * Create nested permissions request using nestWithKey
+   */
+  toNestedPermissions() {
+    return this.nestPermissions(this.toPlain());
+  }
+
+  /**
+   * Create nested admin request using nestWithKey
+   */
+  toNestedAdmin() {
+    return this.nestAdmin(this.toPlain());
   }
 
   /**

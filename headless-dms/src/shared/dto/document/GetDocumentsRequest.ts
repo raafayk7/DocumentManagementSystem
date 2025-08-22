@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AppResult } from '@carbonteq/hexapp';
+import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 export const GetDocumentsRequestSchema = z.object({
@@ -23,6 +24,11 @@ export type GetDocumentsRequest = z.infer<typeof GetDocumentsRequestSchema>;
  * Provides validation for document listing requests with filtering and pagination
  */
 export class GetDocumentsRequestDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestDocuments = nestWithKey('documents');
+  private readonly nestFilter = nestWithKey('filter');
+  private readonly nestPagination = nestWithKey('pagination');
+
   constructor(
     public readonly page: number,
     public readonly limit: number,
@@ -63,6 +69,27 @@ export class GetDocumentsRequestDto extends BaseDto {
     );
 
     return AppResult.Ok(dto);
+  }
+
+  /**
+   * Create nested documents request using nestWithKey
+   */
+  toNestedDocuments() {
+    return this.nestDocuments(this.toPlain());
+  }
+
+  /**
+   * Create nested filter request using nestWithKey
+   */
+  toNestedFilter() {
+    return this.nestFilter(this.toPlain());
+  }
+
+  /**
+   * Create nested pagination request using nestWithKey
+   */
+  toNestedPagination() {
+    return this.nestPagination(this.toPlain());
   }
 
   /**

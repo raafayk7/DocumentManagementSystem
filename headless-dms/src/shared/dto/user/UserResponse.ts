@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AppResult } from '@carbonteq/hexapp';
+import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 export const UserResponseSchema = z.object({
@@ -17,6 +18,10 @@ export type UserResponse = z.infer<typeof UserResponseSchema>;
  * Provides structured response for user data
  */
 export class UserResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestUser = nestWithKey('user');
+  private readonly nestUserData = nestWithKey('data');
+
   constructor(
     public readonly id: string,
     public readonly email: string,
@@ -25,6 +30,20 @@ export class UserResponseDto extends BaseDto {
     public readonly updatedAt: Date
   ) {
     super();
+  }
+
+  /**
+   * Create UserResponseDto from user entity using hexapp composition
+   */
+  static fromEntity(user: any): UserResponseDto {
+    const serialized = toSerialized(user) as any;
+    return new UserResponseDto(
+      extractId(user),
+      serialized.email,
+      serialized.role,
+      serialized.createdAt,
+      serialized.updatedAt
+    );
   }
 
   /**
@@ -38,6 +57,20 @@ export class UserResponseDto extends BaseDto {
     updatedAt: Date
   ): UserResponseDto {
     return new UserResponseDto(id, email, role, createdAt, updatedAt);
+  }
+
+  /**
+   * Create nested user response using nestWithKey
+   */
+  toNestedResponse() {
+    return this.nestUser(this.toPlain());
+  }
+
+  /**
+   * Create nested data response using nestWithKey
+   */
+  toNestedData() {
+    return this.nestUserData(this.toPlain());
   }
 
   /**
@@ -75,6 +108,10 @@ export type AuthenticateUserResponse = z.infer<typeof AuthenticateUserResponseSc
  * Provides structured response for user authentication
  */
 export class AuthenticateUserResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestAuth = nestWithKey('auth');
+  private readonly nestAuthData = nestWithKey('data');
+
   constructor(
     public readonly token: string,
     public readonly user: UserResponseDto,
@@ -92,6 +129,20 @@ export class AuthenticateUserResponseDto extends BaseDto {
     expiresAt: Date
   ): AuthenticateUserResponseDto {
     return new AuthenticateUserResponseDto(token, user, expiresAt);
+  }
+
+  /**
+   * Create nested auth response using nestWithKey
+   */
+  toNestedResponse() {
+    return this.nestAuth(this.toPlain());
+  }
+
+  /**
+   * Create nested data response using nestWithKey
+   */
+  toNestedData() {
+    return this.nestAuthData(this.toPlain());
   }
 
   /**
@@ -125,6 +176,11 @@ export type ChangeUserPasswordResponse = z.infer<typeof ChangeUserPasswordRespon
  * Provides structured response for password change operations
  */
 export class ChangeUserPasswordResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestPassword = nestWithKey('password');
+  private readonly nestChange = nestWithKey('change');
+  private readonly nestResult = nestWithKey('result');
+
   constructor(
     public readonly success: boolean,
     public readonly message: string
@@ -154,6 +210,27 @@ export class ChangeUserPasswordResponseDto extends BaseDto {
   }
 
   /**
+   * Create nested password response using nestWithKey
+   */
+  toNestedPassword() {
+    return this.nestPassword(this.toPlain());
+  }
+
+  /**
+   * Create nested change response using nestWithKey
+   */
+  toNestedChange() {
+    return this.nestChange(this.toPlain());
+  }
+
+  /**
+   * Create nested result response using nestWithKey
+   */
+  toNestedResult() {
+    return this.nestResult(this.toPlain());
+  }
+
+  /**
    * Convert to plain object for use with existing code
    */
   toPlain(): ChangeUserPasswordResponse {
@@ -176,6 +253,11 @@ export type ChangeUserRoleResponse = z.infer<typeof ChangeUserRoleResponseSchema
  * Provides structured response for role change operations
  */
 export class ChangeUserRoleResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestRole = nestWithKey('role');
+  private readonly nestChange = nestWithKey('change');
+  private readonly nestResult = nestWithKey('result');
+
   constructor(
     public readonly success: boolean,
     public readonly message: string
@@ -205,6 +287,27 @@ export class ChangeUserRoleResponseDto extends BaseDto {
   }
 
   /**
+   * Create nested role response using nestWithKey
+   */
+  toNestedRole() {
+    return this.nestRole(this.toPlain());
+  }
+
+  /**
+   * Create nested change response using nestWithKey
+   */
+  toNestedChange() {
+    return this.nestChange(this.toPlain());
+  }
+
+  /**
+   * Create nested result response using nestWithKey
+   */
+  toNestedResult() {
+    return this.nestResult(this.toPlain());
+  }
+
+  /**
    * Convert to plain object for use with existing code
    */
   toPlain(): ChangeUserRoleResponse {
@@ -227,6 +330,11 @@ export type DeleteUserResponse = z.infer<typeof DeleteUserResponseSchema>;
  * Provides structured response for user deletion operations
  */
 export class DeleteUserResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestDelete = nestWithKey('delete');
+  private readonly nestRemoval = nestWithKey('removal');
+  private readonly nestResult = nestWithKey('result');
+
   constructor(
     public readonly success: boolean,
     public readonly message: string
@@ -253,6 +361,27 @@ export class DeleteUserResponseDto extends BaseDto {
    */
   static error(message: string): DeleteUserResponseDto {
     return new DeleteUserResponseDto(false, message);
+  }
+
+  /**
+   * Create nested delete response using nestWithKey
+   */
+  toNestedDelete() {
+    return this.nestDelete(this.toPlain());
+  }
+
+  /**
+   * Create nested removal response using nestWithKey
+   */
+  toNestedRemoval() {
+    return this.nestRemoval(this.toPlain());
+  }
+
+  /**
+   * Create nested result response using nestWithKey
+   */
+  toNestedResult() {
+    return this.nestResult(this.toPlain());
   }
 
   /**
@@ -286,6 +415,11 @@ export type PaginatedUsersResponse = z.infer<typeof PaginatedUsersResponseSchema
  * Provides structured response for paginated user lists
  */
 export class PaginatedUsersResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestUsers = nestWithKey('users');
+  private readonly nestData = nestWithKey('data');
+  private readonly nestPaginated = nestWithKey('paginated');
+
   constructor(
     public readonly users: UserResponseDto[],
     public readonly pagination: {
@@ -323,6 +457,27 @@ export class PaginatedUsersResponseDto extends BaseDto {
   }
 
   /**
+   * Create nested users response using nestWithKey
+   */
+  toNestedUsers() {
+    return this.nestUsers(this.toPlain());
+  }
+
+  /**
+   * Create nested data response using nestWithKey
+   */
+  toNestedData() {
+    return this.nestData(this.toPlain());
+  }
+
+  /**
+   * Create nested paginated response using nestWithKey
+   */
+  toNestedPaginated() {
+    return this.nestPaginated(this.toPlain());
+  }
+
+  /**
    * Convert to plain object for use with existing code
    */
   toPlain(): PaginatedUsersResponse {
@@ -345,6 +500,11 @@ export type GetUserByIdResponse = z.infer<typeof GetUserByIdResponseSchema>;
  * Provides structured response for single user lookup
  */
 export class GetUserByIdResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestUser = nestWithKey('user');
+  private readonly nestData = nestWithKey('data');
+  private readonly nestLookup = nestWithKey('lookup');
+
   constructor(
     public readonly user: UserResponseDto
   ) {
@@ -356,6 +516,27 @@ export class GetUserByIdResponseDto extends BaseDto {
    */
   static create(user: UserResponseDto): GetUserByIdResponseDto {
     return new GetUserByIdResponseDto(user);
+  }
+
+  /**
+   * Create nested user response using nestWithKey
+   */
+  toNestedUser() {
+    return this.nestUser(this.toPlain());
+  }
+
+  /**
+   * Create nested data response using nestWithKey
+   */
+  toNestedData() {
+    return this.nestData(this.toPlain());
+  }
+
+  /**
+   * Create nested lookup response using nestWithKey
+   */
+  toNestedLookup() {
+    return this.nestLookup(this.toPlain());
   }
 
   /**
@@ -406,6 +587,11 @@ export type GetUserByEmailResponse = z.infer<typeof GetUserByEmailResponseSchema
  * Provides structured response for user lookup by email
  */
 export class GetUserByEmailResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestUser = nestWithKey('user');
+  private readonly nestEmail = nestWithKey('email');
+  private readonly nestLookup = nestWithKey('lookup');
+
   constructor(
     public readonly user: UserResponseDto
   ) {
@@ -417,6 +603,27 @@ export class GetUserByEmailResponseDto extends BaseDto {
    */
   static create(user: UserResponseDto): GetUserByEmailResponseDto {
     return new GetUserByEmailResponseDto(user);
+  }
+
+  /**
+   * Create nested user response using nestWithKey
+   */
+  toNestedUser() {
+    return this.nestUser(this.toPlain());
+  }
+
+  /**
+   * Create nested email response using nestWithKey
+   */
+  toNestedEmail() {
+    return this.nestEmail(this.toPlain());
+  }
+
+  /**
+   * Create nested lookup response using nestWithKey
+   */
+  toNestedLookup() {
+    return this.nestLookup(this.toPlain());
   }
 
   /**
@@ -442,6 +649,11 @@ export type GetUsersByRoleResponse = z.infer<typeof GetUsersByRoleResponseSchema
  * Provides structured response for user lookup by role
  */
 export class GetUsersByRoleResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestUsers = nestWithKey('users');
+  private readonly nestRole = nestWithKey('role');
+  private readonly nestFilter = nestWithKey('filter');
+
   constructor(
     public readonly users: UserResponseDto[],
     public readonly total: number
@@ -454,6 +666,27 @@ export class GetUsersByRoleResponseDto extends BaseDto {
    */
   static create(users: UserResponseDto[], total: number): GetUsersByRoleResponseDto {
     return new GetUsersByRoleResponseDto(users, total);
+  }
+
+  /**
+   * Create nested users response using nestWithKey
+   */
+  toNestedUsers() {
+    return this.nestUsers(this.toPlain());
+  }
+
+  /**
+   * Create nested role response using nestWithKey
+   */
+  toNestedRole() {
+    return this.nestRole(this.toPlain());
+  }
+
+  /**
+   * Create nested filter response using nestWithKey
+   */
+  toNestedFilter() {
+    return this.nestFilter(this.toPlain());
   }
 
   /**
@@ -480,6 +713,11 @@ export type ValidateUserCredentialsResponse = z.infer<typeof ValidateUserCredent
  * Provides structured response for credential validation
  */
 export class ValidateUserCredentialsResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestValidation = nestWithKey('validation');
+  private readonly nestCredentials = nestWithKey('credentials');
+  private readonly nestVerify = nestWithKey('verify');
+
   constructor(
     public readonly isValid: boolean,
     public readonly user?: UserResponseDto
@@ -506,6 +744,27 @@ export class ValidateUserCredentialsResponseDto extends BaseDto {
    */
   static failure(): ValidateUserCredentialsResponseDto {
     return new ValidateUserCredentialsResponseDto(false);
+  }
+
+  /**
+   * Create nested validation response using nestWithKey
+   */
+  toNestedValidation() {
+    return this.nestValidation(this.toPlain());
+  }
+
+  /**
+   * Create nested credentials response using nestWithKey
+   */
+  toNestedCredentials() {
+    return this.nestCredentials(this.toPlain());
+  }
+
+  /**
+   * Create nested verify response using nestWithKey
+   */
+  toNestedVerify() {
+    return this.nestVerify(this.toPlain());
   }
 
   /**

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AppResult } from '@carbonteq/hexapp';
+import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 export const GetUserByIdRequestSchema = z.object({
@@ -13,6 +14,11 @@ export type GetUserByIdRequest = z.infer<typeof GetUserByIdRequestSchema>;
  * Provides validation for user lookup requests
  */
 export class GetUserByIdRequestDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestUser = nestWithKey('user');
+  private readonly nestLookup = nestWithKey('lookup');
+  private readonly nestQuery = nestWithKey('query');
+
   constructor(
     public readonly userId: string
   ) {
@@ -33,6 +39,27 @@ export class GetUserByIdRequestDto extends BaseDto {
     const dto = new GetUserByIdRequestDto(validated.userId);
 
     return AppResult.Ok(dto);
+  }
+
+  /**
+   * Create nested user request using nestWithKey
+   */
+  toNestedUser() {
+    return this.nestUser(this.toPlain());
+  }
+
+  /**
+   * Create nested lookup request using nestWithKey
+   */
+  toNestedLookup() {
+    return this.nestLookup(this.toPlain());
+  }
+
+  /**
+   * Create nested query request using nestWithKey
+   */
+  toNestedQuery() {
+    return this.nestQuery(this.toPlain());
   }
 
   /**

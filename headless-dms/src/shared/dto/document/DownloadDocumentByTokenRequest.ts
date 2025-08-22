@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AppResult } from '@carbonteq/hexapp';
+import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 export const DownloadDocumentByTokenRequestSchema = z.object({
@@ -13,6 +14,11 @@ export type DownloadDocumentByTokenRequest = z.infer<typeof DownloadDocumentByTo
  * Provides validation for token-based document download requests
  */
 export class DownloadDocumentByTokenRequestDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestToken = nestWithKey('token');
+  private readonly nestDownload = nestWithKey('download');
+  private readonly nestSecure = nestWithKey('secure');
+
   constructor(
     public readonly token: string
   ) {
@@ -33,6 +39,27 @@ export class DownloadDocumentByTokenRequestDto extends BaseDto {
     const dto = new DownloadDocumentByTokenRequestDto(validated.token);
 
     return AppResult.Ok(dto);
+  }
+
+  /**
+   * Create nested token request using nestWithKey
+   */
+  toNestedToken() {
+    return this.nestToken(this.toPlain());
+  }
+
+  /**
+   * Create nested download request using nestWithKey
+   */
+  toNestedDownload() {
+    return this.nestDownload(this.toPlain());
+  }
+
+  /**
+   * Create nested secure request using nestWithKey
+   */
+  toNestedSecure() {
+    return this.nestSecure(this.toPlain());
   }
 
   /**

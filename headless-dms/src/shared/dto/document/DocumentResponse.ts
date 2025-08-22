@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AppResult } from '@carbonteq/hexapp';
+import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 // Reusing existing DocumentSchema from src/documents/dto/documents.dto.ts
@@ -23,6 +24,10 @@ export type DocumentResponse = z.infer<typeof DocumentResponseSchema>;
  * Provides structured response for document data
  */
 export class DocumentResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestDocument = nestWithKey('document');
+  private readonly nestDocumentData = nestWithKey('data');
+
   constructor(
     public readonly id: string,
     public readonly name: string,
@@ -35,6 +40,24 @@ export class DocumentResponseDto extends BaseDto {
     public readonly metadata: Record<string, string>
   ) {
     super();
+  }
+
+  /**
+   * Create DocumentResponseDto from document entity using hexapp composition
+   */
+  static fromEntity(document: any): DocumentResponseDto {
+    const serialized = toSerialized(document) as any;
+    return new DocumentResponseDto(
+      extractId(document),
+      serialized.name,
+      serialized.filePath,
+      serialized.mimeType,
+      serialized.size,
+      serialized.createdAt,
+      serialized.updatedAt,
+      serialized.tags || [],
+      serialized.metadata || {}
+    );
   }
 
   /**
@@ -62,6 +85,20 @@ export class DocumentResponseDto extends BaseDto {
       tags,
       metadata
     );
+  }
+
+  /**
+   * Create nested document response using nestWithKey
+   */
+  toNestedResponse() {
+    return this.nestDocument(this.toPlain());
+  }
+
+  /**
+   * Create nested data response using nestWithKey
+   */
+  toNestedData() {
+    return this.nestDocumentData(this.toPlain());
   }
 
   /**
@@ -111,6 +148,11 @@ export type GetDocumentsResponse = z.infer<typeof GetDocumentsResponseSchema>;
  * Provides structured response for document listing with pagination
  */
 export class GetDocumentsResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestDocuments = nestWithKey('documents');
+  private readonly nestData = nestWithKey('data');
+  private readonly nestPaginated = nestWithKey('paginated');
+
   constructor(
     public readonly document: DocumentResponseDto[],
     public readonly pagination: { page: number; limit: number; total: number }
@@ -126,6 +168,27 @@ export class GetDocumentsResponseDto extends BaseDto {
     pagination: { page: number; limit: number; total: number }
   ): GetDocumentsResponseDto {
     return new GetDocumentsResponseDto(documents, pagination);
+  }
+
+  /**
+   * Create nested documents response using nestWithKey
+   */
+  toNestedDocuments() {
+    return this.nestDocuments(this.toPlain());
+  }
+
+  /**
+   * Create nested data response using nestWithKey
+   */
+  toNestedData() {
+    return this.nestData(this.toPlain());
+  }
+
+  /**
+   * Create nested paginated response using nestWithKey
+   */
+  toNestedPaginated() {
+    return this.nestPaginated(this.toPlain());
   }
 
   /**
@@ -151,6 +214,11 @@ export type GetDocumentByIdResponse = z.infer<typeof GetDocumentByIdResponseSche
  * Provides structured response for single document lookup
  */
 export class GetDocumentByIdResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestDocument = nestWithKey('document');
+  private readonly nestData = nestWithKey('data');
+  private readonly nestLookup = nestWithKey('lookup');
+
   constructor(
     public readonly document: DocumentResponseDto
   ) {
@@ -162,6 +230,27 @@ export class GetDocumentByIdResponseDto extends BaseDto {
    */
   static create(document: DocumentResponseDto): GetDocumentByIdResponseDto {
     return new GetDocumentByIdResponseDto(document);
+  }
+
+  /**
+   * Create nested document response using nestWithKey
+   */
+  toNestedDocument() {
+    return this.nestDocument(this.toPlain());
+  }
+
+  /**
+   * Create nested data response using nestWithKey
+   */
+  toNestedData() {
+    return this.nestData(this.toPlain());
+  }
+
+  /**
+   * Create nested lookup response using nestWithKey
+   */
+  toNestedLookup() {
+    return this.nestLookup(this.toPlain());
   }
 
   /**
@@ -187,6 +276,11 @@ export type DeleteDocumentResponse = z.infer<typeof DeleteDocumentResponseSchema
  * Provides structured response for document deletion operations
  */
 export class DeleteDocumentResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestDelete = nestWithKey('delete');
+  private readonly nestRemoval = nestWithKey('removal');
+  private readonly nestResult = nestWithKey('result');
+
   constructor(
     public readonly success: boolean,
     public readonly message: string
@@ -216,6 +310,27 @@ export class DeleteDocumentResponseDto extends BaseDto {
   }
 
   /**
+   * Create nested delete response using nestWithKey
+   */
+  toNestedDelete() {
+    return this.nestDelete(this.toPlain());
+  }
+
+  /**
+   * Create nested removal response using nestWithKey
+   */
+  toNestedRemoval() {
+    return this.nestRemoval(this.toPlain());
+  }
+
+  /**
+   * Create nested result response using nestWithKey
+   */
+  toNestedResult() {
+    return this.nestResult(this.toPlain());
+  }
+
+  /**
    * Convert to plain object for use with existing code
    */
   toPlain(): DeleteDocumentResponse {
@@ -238,6 +353,11 @@ export type UploadDocumentResponse = z.infer<typeof UploadDocumentResponseSchema
  * Provides structured response for document upload operations
  */
 export class UploadDocumentResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestUpload = nestWithKey('upload');
+  private readonly nestFile = nestWithKey('file');
+  private readonly nestResult = nestWithKey('result');
+
   constructor(
     public readonly success: boolean,
     public readonly message: string
@@ -267,6 +387,27 @@ export class UploadDocumentResponseDto extends BaseDto {
   }
 
   /**
+   * Create nested upload response using nestWithKey
+   */
+  toNestedUpload() {
+    return this.nestUpload(this.toPlain());
+  }
+
+  /**
+   * Create nested file response using nestWithKey
+   */
+  toNestedFile() {
+    return this.nestFile(this.toPlain());
+  }
+
+  /**
+   * Create nested result response using nestWithKey
+   */
+  toNestedResult() {
+    return this.nestResult(this.toPlain());
+  }
+
+  /**
    * Convert to plain object for use with existing code
    */
   toPlain(): UploadDocumentResponse {
@@ -292,6 +433,11 @@ export type DownloadDocumentResponse = z.infer<typeof DownloadDocumentResponseSc
  * Provides structured response for document download operations
  */
 export class DownloadDocumentResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestDownload = nestWithKey('download');
+  private readonly nestFile = nestWithKey('file');
+  private readonly nestContent = nestWithKey('content');
+
   constructor(
     public readonly filePath: string,
     public readonly filename: string,
@@ -311,6 +457,27 @@ export class DownloadDocumentResponseDto extends BaseDto {
     size: number
   ): DownloadDocumentResponseDto {
     return new DownloadDocumentResponseDto(filePath, filename, mimeType, size);
+  }
+
+  /**
+   * Create nested download response using nestWithKey
+   */
+  toNestedDownload() {
+    return this.nestDownload(this.toPlain());
+  }
+
+  /**
+   * Create nested file response using nestWithKey
+   */
+  toNestedFile() {
+    return this.nestFile(this.toPlain());
+  }
+
+  /**
+   * Create nested content response using nestWithKey
+   */
+  toNestedContent() {
+    return this.nestContent(this.toPlain());
   }
 
   /**
@@ -340,6 +507,11 @@ export type GenerateDownloadLinkResponse = z.infer<typeof GenerateDownloadLinkRe
  * Provides structured response for download link generation
  */
 export class GenerateDownloadLinkResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestLink = nestWithKey('link');
+  private readonly nestGenerate = nestWithKey('generate');
+  private readonly nestTemporary = nestWithKey('temporary');
+
   constructor(
     public readonly downloadUrl: string,
     public readonly expiresAt: Date,
@@ -357,6 +529,27 @@ export class GenerateDownloadLinkResponseDto extends BaseDto {
     token: string
   ): GenerateDownloadLinkResponseDto {
     return new GenerateDownloadLinkResponseDto(downloadUrl, expiresAt, token);
+  }
+
+  /**
+   * Create nested link response using nestWithKey
+   */
+  toNestedLink() {
+    return this.nestLink(this.toPlain());
+  }
+
+  /**
+   * Create nested generate response using nestWithKey
+   */
+  toNestedGenerate() {
+    return this.nestGenerate(this.toPlain());
+  }
+
+  /**
+   * Create nested temporary response using nestWithKey
+   */
+  toNestedTemporary() {
+    return this.nestTemporary(this.toPlain());
   }
 
   /**
@@ -384,6 +577,11 @@ export type DownloadDocumentByTokenResponse = z.infer<typeof DownloadDocumentByT
  * Provides structured response for token-based document downloads with file content
  */
 export class DownloadDocumentByTokenResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestToken = nestWithKey('token');
+  private readonly nestSecure = nestWithKey('secure');
+  private readonly nestDownload = nestWithKey('download');
+
   constructor(
     public readonly document: DocumentResponseDto,
     public readonly file: Buffer
@@ -399,6 +597,27 @@ export class DownloadDocumentByTokenResponseDto extends BaseDto {
     file: Buffer
   ): DownloadDocumentByTokenResponseDto {
     return new DownloadDocumentByTokenResponseDto(document, file);
+  }
+
+  /**
+   * Create nested token response using nestWithKey
+   */
+  toNestedToken() {
+    return this.nestToken(this.toPlain());
+  }
+
+  /**
+   * Create nested secure response using nestWithKey
+   */
+  toNestedSecure() {
+    return this.nestSecure(this.toPlain());
+  }
+
+  /**
+   * Create nested download response using nestWithKey
+   */
+  toNestedDownload() {
+    return this.nestDownload(this.toPlain());
   }
 
   /**
@@ -427,6 +646,11 @@ export type UpdateDocumentNameResponse = z.infer<typeof UpdateDocumentNameRespon
  * Provides structured response for document name update operations
  */
 export class UpdateDocumentNameResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestName = nestWithKey('name');
+  private readonly nestUpdate = nestWithKey('update');
+  private readonly nestResult = nestWithKey('result');
+
   constructor(
     public readonly success: boolean,
     public readonly message: string
@@ -456,6 +680,27 @@ export class UpdateDocumentNameResponseDto extends BaseDto {
   }
 
   /**
+   * Create nested name response using nestWithKey
+   */
+  toNestedName() {
+    return this.nestName(this.toPlain());
+  }
+
+  /**
+   * Create nested update response using nestWithKey
+   */
+  toNestedUpdate() {
+    return this.nestUpdate(this.toPlain());
+  }
+
+  /**
+   * Create nested result response using nestWithKey
+   */
+  toNestedResult() {
+    return this.nestResult(this.toPlain());
+  }
+
+  /**
    * Convert to plain object for use with existing code
    */
   toPlain(): UpdateDocumentNameResponse {
@@ -478,6 +723,11 @@ export type AddTagsToDocumentResponse = z.infer<typeof AddTagsToDocumentResponse
  * Provides structured response for adding tags to document operations
  */
 export class AddTagsToDocumentResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestTags = nestWithKey('tags');
+  private readonly nestAdd = nestWithKey('add');
+  private readonly nestResult = nestWithKey('result');
+
   constructor(
     public readonly success: boolean,
     public readonly message: string
@@ -507,6 +757,27 @@ export class AddTagsToDocumentResponseDto extends BaseDto {
   }
 
   /**
+   * Create nested tags response using nestWithKey
+   */
+  toNestedTags() {
+    return this.nestTags(this.toPlain());
+  }
+
+  /**
+   * Create nested add response using nestWithKey
+   */
+  toNestedAdd() {
+    return this.nestAdd(this.toPlain());
+  }
+
+  /**
+   * Create nested result response using nestWithKey
+   */
+  toNestedResult() {
+    return this.nestResult(this.toPlain());
+  }
+
+  /**
    * Convert to plain object for use with existing code
    */
   toPlain(): AddTagsToDocumentResponse {
@@ -529,6 +800,11 @@ export type RemoveTagsFromDocumentResponse = z.infer<typeof RemoveTagsFromDocume
  * Provides structured response for removing tags from document operations
  */
 export class RemoveTagsFromDocumentResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestTags = nestWithKey('tags');
+  private readonly nestRemove = nestWithKey('remove');
+  private readonly nestResult = nestWithKey('result');
+
   constructor(
     public readonly success: boolean,
     public readonly message: string
@@ -558,6 +834,27 @@ export class RemoveTagsFromDocumentResponseDto extends BaseDto {
   }
 
   /**
+   * Create nested tags response using nestWithKey
+   */
+  toNestedTags() {
+    return this.nestTags(this.toPlain());
+  }
+
+  /**
+   * Create nested remove response using nestWithKey
+   */
+  toNestedRemove() {
+    return this.nestRemove(this.toPlain());
+  }
+
+  /**
+   * Create nested result response using nestWithKey
+   */
+  toNestedResult() {
+    return this.nestResult(this.toPlain());
+  }
+
+  /**
    * Convert to plain object for use with existing code
    */
   toPlain(): RemoveTagsFromDocumentResponse {
@@ -580,6 +877,11 @@ export type ReplaceTagsinDocumentResponse = z.infer<typeof ReplaceTagsinDocument
  * Provides structured response for replacing tags in document operations
  */
 export class ReplaceTagsinDocumentResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestTags = nestWithKey('tags');
+  private readonly nestReplace = nestWithKey('replace');
+  private readonly nestResult = nestWithKey('result');
+
   constructor(
     public readonly success: boolean,
     public readonly message: string
@@ -609,6 +911,27 @@ export class ReplaceTagsinDocumentResponseDto extends BaseDto {
   }
 
   /**
+   * Create nested tags response using nestWithKey
+   */
+  toNestedTags() {
+    return this.nestTags(this.toPlain());
+  }
+
+  /**
+   * Create nested replace response using nestWithKey
+   */
+  toNestedReplace() {
+    return this.nestReplace(this.toPlain());
+  }
+
+  /**
+   * Create nested result response using nestWithKey
+   */
+  toNestedResult() {
+    return this.nestResult(this.toPlain());
+  }
+
+  /**
    * Convert to plain object for use with existing code
    */
   toPlain(): ReplaceTagsinDocumentResponse {
@@ -631,6 +954,11 @@ export type UpdateDocumentMetadataResponse = z.infer<typeof UpdateDocumentMetada
  * Provides structured response for updating document metadata operations
  */
 export class UpdateDocumentMetadataResponseDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestMetadata = nestWithKey('metadata');
+  private readonly nestUpdate = nestWithKey('update');
+  private readonly nestResult = nestWithKey('result');
+
   constructor(
     public readonly success: boolean,
     public readonly message: string
@@ -657,6 +985,27 @@ export class UpdateDocumentMetadataResponseDto extends BaseDto {
    */
   static error(message: string): UpdateDocumentMetadataResponseDto {
     return new UpdateDocumentMetadataResponseDto(false, message);
+  }
+
+  /**
+   * Create nested metadata response using nestWithKey
+   */
+  toNestedMetadata() {
+    return this.nestMetadata(this.toPlain());
+  }
+
+  /**
+   * Create nested update response using nestWithKey
+   */
+  toNestedUpdate() {
+    return this.nestUpdate(this.toPlain());
+  }
+
+  /**
+   * Create nested result response using nestWithKey
+   */
+  toNestedResult() {
+    return this.nestResult(this.toPlain());
   }
 
   /**

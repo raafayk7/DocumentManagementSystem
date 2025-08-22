@@ -79,7 +79,7 @@ export class ValidationBridge {
           field: issue.path.join('.') || 'root',
           message: issue.message,
           code: issue.code,
-          received: issue.received
+          received: 'received' in issue ? issue.received : undefined
         }))
       } : undefined
     };
@@ -99,9 +99,12 @@ export class ValidationBridge {
         request.validatedBody = validationResult.unwrap();
         done();
       } else {
-        const error = validationResult.unwrapErr();
-        const formattedError = ValidationBridge.formatValidationError(error);
-        reply.code(400).send(formattedError);
+        // Create a simple error response for validation failures
+        reply.code(400).send({
+          success: false,
+          message: 'Validation failed',
+          error: 'Invalid request body data'
+        });
       }
     };
   }
@@ -120,9 +123,12 @@ export class ValidationBridge {
         request.validatedQuery = validationResult.unwrap();
         done();
       } else {
-        const error = validationResult.unwrapErr();
-        const formattedError = ValidationBridge.formatValidationError(error);
-        reply.code(400).send(formattedError);
+        // Create a simple error response for validation failures
+        reply.code(400).send({
+          success: false,
+          message: 'Validation failed',
+          error: 'Invalid query parameters'
+        });
       }
     };
   }
@@ -141,9 +147,12 @@ export class ValidationBridge {
         request.validatedParams = validationResult.unwrap();
         done();
       } else {
-        const error = validationResult.unwrapErr();
-        const formattedError = ValidationBridge.formatValidationError(error);
-        reply.code(400).send(formattedError);
+        // Create a simple error response for validation failures
+        reply.code(400).send({
+          success: false,
+          message: 'Validation failed',
+          error: 'Invalid path parameters'
+        });
       }
     };
   }
@@ -172,10 +181,10 @@ export class LegacyBridge {
       };
     }
 
-    const error = appResult.unwrapErr();
+    // For AppResult, unwrapErr() returns AppError, so we'll use a generic message
     const validationError = {
       field: 'input',
-      message: error.message,
+      message: 'Validation failed',
       code: 'VALIDATION_ERROR',
       type: technicalOnly ? 'technical' as const : 'business' as const,
       severity: 'error' as const
@@ -186,7 +195,7 @@ export class LegacyBridge {
       errors: [validationError],
       technicalErrors: technicalOnly ? [validationError] : [],
       businessErrors: technicalOnly ? [] : [validationError],
-      message: error.message
+      message: 'Validation failed'
     };
   }
 

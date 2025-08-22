@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AppResult } from '@carbonteq/hexapp';
+import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 export const DownloadDocumentRequestSchema = z.object({
@@ -14,6 +15,11 @@ export type DownloadDocumentRequest = z.infer<typeof DownloadDocumentRequestSche
  * Provides validation for document download requests
  */
 export class DownloadDocumentRequestDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestDownload = nestWithKey('download');
+  private readonly nestDocument = nestWithKey('document');
+  private readonly nestAccess = nestWithKey('access');
+
   constructor(
     public readonly documentId: string,
     public readonly userId: string
@@ -38,6 +44,27 @@ export class DownloadDocumentRequestDto extends BaseDto {
     );
 
     return AppResult.Ok(dto);
+  }
+
+  /**
+   * Create nested download request using nestWithKey
+   */
+  toNestedDownload() {
+    return this.nestDownload(this.toPlain());
+  }
+
+  /**
+   * Create nested document request using nestWithKey
+   */
+  toNestedDocument() {
+    return this.nestDocument(this.toPlain());
+  }
+
+  /**
+   * Create nested access request using nestWithKey
+   */
+  toNestedAccess() {
+    return this.nestAccess(this.toPlain());
   }
 
   /**

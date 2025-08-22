@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AppResult } from '@carbonteq/hexapp';
+import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 export const GenerateDownloadLinkRequestSchema = z.object({
@@ -14,6 +15,11 @@ export type GenerateDownloadLinkRequest = z.infer<typeof GenerateDownloadLinkReq
  * Provides validation for download link generation requests
  */
 export class GenerateDownloadLinkRequestDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestLink = nestWithKey('link');
+  private readonly nestGenerate = nestWithKey('generate');
+  private readonly nestTemporary = nestWithKey('temporary');
+
   constructor(
     public readonly documentId: string,
     public readonly expiresInMinutes: number
@@ -38,6 +44,27 @@ export class GenerateDownloadLinkRequestDto extends BaseDto {
     );
 
     return AppResult.Ok(dto);
+  }
+
+  /**
+   * Create nested link request using nestWithKey
+   */
+  toNestedLink() {
+    return this.nestLink(this.toPlain());
+  }
+
+  /**
+   * Create nested generate request using nestWithKey
+   */
+  toNestedGenerate() {
+    return this.nestGenerate(this.toPlain());
+  }
+
+  /**
+   * Create nested temporary request using nestWithKey
+   */
+  toNestedTemporary() {
+    return this.nestTemporary(this.toPlain());
   }
 
   /**

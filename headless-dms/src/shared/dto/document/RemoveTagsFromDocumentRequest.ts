@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AppResult } from '@carbonteq/hexapp';
+import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 export const RemoveTagsFromDocumentRequestSchema = z.object({
@@ -15,6 +16,11 @@ export type RemoveTagsFromDocumentRequest = z.infer<typeof RemoveTagsFromDocumen
  * Provides validation for removing tags from document requests
  */
 export class RemoveTagsFromDocumentRequestDto extends BaseDto {
+  // Hexapp composition utilities
+  private readonly nestTags = nestWithKey('tags');
+  private readonly nestRemove = nestWithKey('remove');
+  private readonly nestUpdate = nestWithKey('update');
+
   constructor(
     public readonly documentId: string,
     public readonly tags: string[],
@@ -41,6 +47,27 @@ export class RemoveTagsFromDocumentRequestDto extends BaseDto {
     );
 
     return AppResult.Ok(dto);
+  }
+
+  /**
+   * Create nested tags request using nestWithKey
+   */
+  toNestedTags() {
+    return this.nestTags(this.toPlain());
+  }
+
+  /**
+   * Create nested remove request using nestWithKey
+   */
+  toNestedRemove() {
+    return this.nestRemove(this.toPlain());
+  }
+
+  /**
+   * Create nested update request using nestWithKey
+   */
+  toNestedUpdate() {
+    return this.nestUpdate(this.toPlain());
   }
 
   /**
