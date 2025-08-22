@@ -35,6 +35,7 @@
     "test:mocha:domain": "mocha tests/domain/**/*.test.ts",
     "test:mocha:entities": "mocha tests/domain/entities/**/*.test.ts",
     "test:mocha:value-objects": "mocha tests/domain/value-objects/**/*.test.ts",
+    "test:mocha:domain:services": "mocha tests/domain/services/**/*.test.ts",
     
     "_comment:application": "=== APPLICATION LAYER (Step 9) ===",
     "test:mocha:application": "mocha tests/application/**/*.test.ts",
