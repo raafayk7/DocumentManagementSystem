@@ -10,18 +10,72 @@ import { PaginationInput, PaginationOutput, calculatePaginationMetadata } from '
 import { Document } from '../../../../domain/entities/Document.js';
 import { RepositoryResult } from '@carbonteq/hexapp';
 import { Result } from '@carbonteq/fp';
+import { extractId, toSerialized, filterMap } from '@carbonteq/hexapp';
 
 @injectable()
 export class DrizzleDocumentRepository implements IDocumentRepository {
+  // Hexapp utility functions - field selection for queries
+  private readonly documentFields = {
+    id: documents.id,
+    name: documents.name,
+    filePath: documents.filePath,
+    mimeType: documents.mimeType,
+    size: documents.size,
+    tags: documents.tags,
+    metadata: documents.metadata,
+    createdAt: documents.createdAt,
+    updatedAt: documents.updatedAt,
+  };
+  
+  // Helper function for building query conditions
+  private buildQueryConditions = (query?: DocumentFilterQuery) => {
+    const queryFields = [
+      { key: 'name', value: query?.name, condition: () => query?.name ? sql`${documents.name} ILIKE ${`%${query.name}%`}` : null },
+      { key: 'mimeType', value: query?.mimeType, condition: () => eq(documents.mimeType, query!.mimeType!) },
+      { key: 'from', value: query?.from, condition: () => gte(documents.createdAt, new Date(query!.from!)) },
+      { key: 'to', value: query?.to, condition: () => lte(documents.createdAt, new Date(query!.to!)) },
+      { key: 'tags', value: query?.tags, condition: () => {
+        if (!query?.tags || query.tags.length === 0) return null;
+        const tagsArray = Array.isArray(query.tags) ? query.tags : [query.tags];
+        return arrayOverlaps(documents.tags, tagsArray);
+      }}
+    ];
+    
+    const conditions = filterMap(
+      queryFields,
+      (field) => field.value !== undefined && field.value !== null && (Array.isArray(field.value) ? field.value.length > 0 : true),
+      (field) => field.condition()
+    ).filter(condition => condition !== null);
+
+    // Handle metadata separately as it's more complex
+    if (query?.metadata && Object.keys(query.metadata).length > 0) {
+      for (const [key, value] of Object.entries(query.metadata)) {
+        conditions.push(sql`${documents.metadata}->>${key} = ${value}`);
+      }
+    }
+
+    return conditions;
+  };
+
+  // Helper function for transforming database results to Document entities
+  private transformToDocument = (dbDoc: any): Document => {
+    return Document.fromRepository({
+      ...dbDoc,
+      tags: dbDoc.tags as string[],
+      metadata: dbDoc.metadata as Record<string, string>,
+    }).unwrap();
+  };
+
   // Required abstract methods from BaseRepository<Document>
   async insert(document: Document): Promise<RepositoryResult<Document, any>> {
     try {
-      const documentData = document.toRepository();
+      const documentId = extractId(document);
+      const documentData = toSerialized(document);
       
       // Check if document already exists
-      const existing = await db.select().from(documents).where(eq(documents.id, documentData.id)).execute();
+      const existing = await db.select().from(documents).where(eq(documents.id, documentId)).execute();
       if (existing.length > 0) {
-        return Result.Err(new Error(`Document with ID ${documentData.id} already exists`));
+        return Result.Err(new Error(`Document with ID ${documentId} already exists`));
       }
       
       const newDocuments = await db.insert(documents).values({
@@ -40,12 +94,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
         return Result.Err(new Error('Failed to create document'));
       }
       
-      const savedData = newDocuments[0];
-      const createdDocument = Document.fromRepository({
-        ...savedData,
-        tags: savedData.tags as string[],
-        metadata: savedData.metadata as Record<string, string>,
-      }).unwrap();
+      const createdDocument = this.transformToDocument(newDocuments[0]);
       
       return Result.Ok(createdDocument);
     } catch (error) {
@@ -55,14 +104,15 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
 
   async update(document: Document): Promise<RepositoryResult<Document, any>> {
     try {
-      const documentData = document.toRepository();
+      const documentId = extractId(document);
+      const documentData = toSerialized(document);
       
       // Check if document exists
-      const existing = await db.select().from(documents).where(eq(documents.id, documentData.id)).execute();
-      if (existing.length === 0) {
-        return Result.Err(new Error(`Document with ID ${documentData.id} not found`));
+      const existing = await db.select().from(documents).where(eq(documents.id, documentId)).execute();
+            if (existing.length === 0) {
+        return Result.Err(new Error(`Document with ID ${documentId} not found`));
       }
-      
+
       const updatedDocuments = await db.update(documents)
         .set({
           name: documentData.name,
@@ -73,7 +123,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
           metadata: documentData.metadata,
           updatedAt: new Date()
         })
-        .where(eq(documents.id, documentData.id))
+        .where(eq(documents.id, documentId))
         .returning()
         .execute();
 
@@ -81,12 +131,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
         return Result.Err(new Error('Failed to update document'));
       }
 
-      const updatedData = updatedDocuments[0];
-      const updatedDocument = Document.fromRepository({
-        ...updatedData,
-        tags: updatedData.tags as string[],
-        metadata: updatedData.metadata as Record<string, string>,
-      }).unwrap();
+      const updatedDocument = this.transformToDocument(updatedDocuments[0]);
       
       return Result.Ok(updatedDocument);
     } catch (error) {
@@ -96,7 +141,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
 
   // Existing custom methods (preserved for backward compatibility)
   async save(document: Document): Promise<Document> {
-    const documentData = document.toRepository();
+    const documentData = toSerialized(document);
     
     const newDocuments = await db.insert(documents).values({
       id: documentData.id,
@@ -114,16 +159,11 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       throw new Error('Failed to create document');
     }
     
-    const savedData = newDocuments[0];
-    return Document.fromRepository({
-      ...savedData,
-      tags: savedData.tags as string[],
-      metadata: savedData.metadata as Record<string, string>,
-    }).unwrap();
+    return this.transformToDocument(newDocuments[0]);
   }
 
   async saveWithNameCheck(document: Document): Promise<Document> {
-    const documentData = document.toRepository();
+    const documentData = toSerialized(document);
     
     // Use database transaction for atomic operation (thread-safe)
     return await db.transaction(async (tx) => {
@@ -154,41 +194,12 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
         throw new Error('Failed to create document');
       }
       
-      const savedData = newDocuments[0];
-      return Document.fromRepository({
-        ...savedData,
-        tags: savedData.tags as string[],
-        metadata: savedData.metadata as Record<string, string>,
-      }).unwrap();
+      return this.transformToDocument(newDocuments[0]);
     });
   }
 
   async find(query?: DocumentFilterQuery, pagination?: PaginationInput): Promise<PaginationOutput<Document>> {
-    const conditions = [];
-    
-    if (query?.name) {
-      conditions.push(sql`${documents.name} ILIKE ${`%${query.name}%`}`);
-    }
-    if (query?.mimeType) {
-      conditions.push(eq(documents.mimeType, query.mimeType));
-    }
-    if (query?.from) {
-      conditions.push(gte(documents.createdAt, new Date(query.from)));
-    }
-    if (query?.to) {
-      conditions.push(lte(documents.createdAt, new Date(query.to)));
-    }
-    if (query?.tags && query.tags.length > 0) {
-      const tagsArray = Array.isArray(query.tags) ? query.tags : [query.tags];
-      conditions.push(arrayOverlaps(documents.tags, tagsArray));
-    }
-    if (query?.metadata && Object.keys(query.metadata).length > 0) {
-      // For metadata, we'll do a simple contains check
-      for (const [key, value] of Object.entries(query.metadata)) {
-        conditions.push(sql`${documents.metadata}->>${key} = ${value}`);
-      }
-    }
-
+    const conditions = this.buildQueryConditions(query);
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     // Get total count
@@ -228,17 +239,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
     }
 
     // Get paginated results
-    const results = await db.select({
-      id: documents.id,
-      name: documents.name,
-      filePath: documents.filePath,
-      mimeType: documents.mimeType,
-      size: documents.size,
-      tags: documents.tags,
-      metadata: documents.metadata,
-      createdAt: documents.createdAt,
-      updatedAt: documents.updatedAt,
-    })
+    const results = await db.select(this.documentFields)
       .from(documents)
       .where(whereClause)
       .limit(limit)
@@ -246,11 +247,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       .orderBy(orderByClause)
       .execute();
 
-    const documentsList = results.map(doc => Document.fromRepository({
-      ...doc,
-      tags: doc.tags as string[],
-      metadata: doc.metadata as Record<string, string>,
-    }).unwrap());
+    const documentsList = results.map(this.transformToDocument);
 
     return {
       data: documentsList,
@@ -259,43 +256,10 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
   }
 
   async findOne(query: DocumentFilterQuery): Promise<Document | null> {
-    const conditions = [];
-    
-    if (query?.name) {
-      conditions.push(eq(documents.name, query.name));
-    }
-    if (query?.mimeType) {
-      conditions.push(eq(documents.mimeType, query.mimeType));
-    }
-    if (query?.from) {
-      conditions.push(gte(documents.createdAt, new Date(query.from)));
-    }
-    if (query?.to) {
-      conditions.push(lte(documents.createdAt, new Date(query.to)));
-    }
-    if (query?.tags && query.tags.length > 0) {
-      const tagsArray = Array.isArray(query.tags) ? query.tags : [query.tags];
-      conditions.push(arrayOverlaps(documents.tags, tagsArray));
-    }
-    if (query?.metadata && Object.keys(query.metadata).length > 0) {
-      for (const [key, value] of Object.entries(query.metadata)) {
-        conditions.push(sql`${documents.metadata}->>${key} = ${value}`);
-      }
-    }
-
+    const conditions = this.buildQueryConditions(query);
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const result = await db.select({
-      id: documents.id,
-      name: documents.name,
-      filePath: documents.filePath,
-      mimeType: documents.mimeType,
-      size: documents.size,
-      tags: documents.tags,
-      metadata: documents.metadata,
-      createdAt: documents.createdAt,
-      updatedAt: documents.updatedAt,
-    })
+    const result = await db.select(this.documentFields)
       .from(documents)
       .where(whereClause)
       .limit(1)
@@ -305,26 +269,11 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       return null;
     }
 
-    const doc = result[0];
-    return Document.fromRepository({
-      ...doc,
-      tags: doc.tags as string[],
-      metadata: doc.metadata as Record<string, string>,
-    }).unwrap();
+    return this.transformToDocument(result[0]);
   }
 
   async findById(id: string): Promise<Document | null> {
-    const result = await db.select({
-      id: documents.id,
-      name: documents.name,
-      filePath: documents.filePath,
-      mimeType: documents.mimeType,
-      size: documents.size,
-      tags: documents.tags,
-      metadata: documents.metadata,
-      createdAt: documents.createdAt,
-      updatedAt: documents.updatedAt,
-    })
+    const result = await db.select(this.documentFields)
       .from(documents)
       .where(eq(documents.id, id))
       .execute();
@@ -333,26 +282,11 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       return null;
     }
 
-    const doc = result[0];
-    return Document.fromRepository({
-      ...doc,
-      tags: doc.tags as string[],
-      metadata: doc.metadata as Record<string, string>,
-    }).unwrap();
+    return this.transformToDocument(result[0]);
   }
 
   async findByName(name: string): Promise<Document | null> {
-    const result = await db.select({
-      id: documents.id,
-      name: documents.name,
-      filePath: documents.filePath,
-      mimeType: documents.mimeType,
-      size: documents.size,
-      tags: documents.tags,
-      metadata: documents.metadata,
-      createdAt: documents.createdAt,
-      updatedAt: documents.updatedAt,
-    })
+    const result = await db.select(this.documentFields)
       .from(documents)
       .where(eq(documents.name, name))
       .execute();
@@ -361,58 +295,25 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
       return null;
     }
 
-    const doc = result[0];
-    return Document.fromRepository({
-      ...doc,
-      tags: doc.tags as string[],
-      metadata: doc.metadata as Record<string, string>,
-    }).unwrap();
+    return this.transformToDocument(result[0]);
   }
 
   async findByTags(tags: string[]): Promise<Document[]> {
-    const result = await db.select({
-      id: documents.id,
-      name: documents.name,
-      filePath: documents.filePath,
-      mimeType: documents.mimeType,
-      size: documents.size,
-      tags: documents.tags,
-      metadata: documents.metadata,
-      createdAt: documents.createdAt,
-      updatedAt: documents.updatedAt,
-    })
+    const result = await db.select(this.documentFields)
       .from(documents)
       .where(arrayOverlaps(documents.tags, tags))
       .execute();
 
-    return result.map(doc => Document.fromRepository({
-      ...doc,
-      tags: doc.tags as string[],
-      metadata: doc.metadata as Record<string, string>,
-    }).unwrap());
+    return result.map(this.transformToDocument);
   }
 
   async findByMimeType(mimeType: string): Promise<Document[]> {
-    const result = await db.select({
-      id: documents.id,
-      name: documents.name,
-      filePath: documents.filePath,
-      mimeType: documents.mimeType,
-      size: documents.size,
-      tags: documents.tags,
-      metadata: documents.metadata,
-      createdAt: documents.createdAt,
-      updatedAt: documents.updatedAt,
-    })
+    const result = await db.select(this.documentFields)
       .from(documents)
       .where(eq(documents.mimeType, mimeType))
       .execute();
 
-    return result.map(doc => Document.fromRepository({
-      ...doc,
-      tags: doc.tags as string[],
-      metadata: doc.metadata as Record<string, string>,
-    }).unwrap());
+    return result.map(this.transformToDocument);
   }
 
   async delete(id: string): Promise<boolean> {
@@ -437,30 +338,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
   }
 
   async exists(query: DocumentFilterQuery): Promise<boolean> {
-    const conditions = [];
-    
-    if (query?.name) {
-      conditions.push(eq(documents.name, query.name));
-    }
-    if (query?.mimeType) {
-      conditions.push(eq(documents.mimeType, query.mimeType));
-    }
-    if (query?.from) {
-      conditions.push(gte(documents.createdAt, new Date(query.from)));
-    }
-    if (query?.to) {
-      conditions.push(lte(documents.createdAt, new Date(query.to)));
-    }
-    if (query?.tags && query.tags.length > 0) {
-      const tagsArray = Array.isArray(query.tags) ? query.tags : [query.tags];
-      conditions.push(arrayOverlaps(documents.tags, tagsArray));
-    }
-    if (query?.metadata && Object.keys(query.metadata).length > 0) {
-      for (const [key, value] of Object.entries(query.metadata)) {
-        conditions.push(sql`${documents.metadata}->>${key} = ${value}`);
-      }
-    }
-
+    const conditions = this.buildQueryConditions(query);
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     const result = await db.select({ count: sql<number>`count(*)` })
@@ -472,30 +350,7 @@ export class DrizzleDocumentRepository implements IDocumentRepository {
   }
 
   async count(query?: DocumentFilterQuery): Promise<number> {
-    const conditions = [];
-    
-    if (query?.name) {
-      conditions.push(sql`${documents.name} ILIKE ${`%${query.name}%`}`);
-    }
-    if (query?.mimeType) {
-      conditions.push(eq(documents.mimeType, query.mimeType));
-    }
-    if (query?.from) {
-      conditions.push(gte(documents.createdAt, new Date(query.from)));
-    }
-    if (query?.to) {
-      conditions.push(lte(documents.createdAt, new Date(query.to)));
-    }
-    if (query?.tags && query.tags.length > 0) {
-      const tagsArray = Array.isArray(query.tags) ? query.tags : [query.tags];
-      conditions.push(arrayOverlaps(documents.tags, tagsArray));
-    }
-    if (query?.metadata && Object.keys(query.metadata).length > 0) {
-      for (const [key, value] of Object.entries(query.metadata)) {
-        conditions.push(sql`${documents.metadata}->>${key} = ${value}`);
-      }
-    }
-
+    const conditions = this.buildQueryConditions(query);
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     const result = await db.select({ count: sql<number>`count(*)` })

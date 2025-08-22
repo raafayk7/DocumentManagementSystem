@@ -9,18 +9,53 @@ import { PaginationInput, PaginationOutput, calculatePaginationMetadata } from '
 import { sql } from 'drizzle-orm';
 import { RepositoryResult } from '@carbonteq/hexapp';
 import { Result } from '@carbonteq/fp';
+import { extractId, toSerialized, filterMap } from '@carbonteq/hexapp';
 
 @injectable()
 export class DrizzleUserRepository implements IUserRepository {
+  // Hexapp utility functions - field selection for queries
+  private readonly userFields = {
+    id: users.id,
+    email: users.email,
+    passwordHash: users.passwordHash,
+    role: users.role,
+    createdAt: users.createdAt,
+    updatedAt: users.updatedAt,
+  };
+
+  
+  // Helper function for building query conditions
+  private buildQueryConditions = (query?: UserFilterQuery) => {
+    const queryFields = [
+      { key: 'email', value: query?.email, condition: () => eq(users.email, query!.email!) },
+      { key: 'role', value: query?.role, condition: () => eq(users.role, query!.role!) }
+    ];
+    
+    return filterMap(
+      queryFields,
+      (field) => field.value !== undefined,
+      (field) => field.condition()
+    );
+  };
+
+  // Helper function for transforming database results to User entities
+  private transformToUser = (dbUser: any): User => {
+    return User.fromRepository({
+      ...dbUser,
+      role: dbUser.role as 'user' | 'admin'
+    }).unwrap();
+  };
+
   // Required abstract methods from BaseRepository<User>
   async insert(user: User): Promise<RepositoryResult<User, any>> {
     try {
-      const userData = user.toRepository();
+      const userId = extractId(user);
+      const userData = toSerialized(user);
       
       // Check if user already exists
-      const existing = await db.select().from(users).where(eq(users.id, userData.id)).execute();
+      const existing = await db.select().from(users).where(eq(users.id, userId)).execute();
       if (existing.length > 0) {
-        return Result.Err(new Error(`User with ID ${userData.id} already exists`));
+        return Result.Err(new Error(`User with ID ${userId} already exists`));
       }
 
       const newUsers = await db.insert(users).values({
@@ -36,10 +71,7 @@ export class DrizzleUserRepository implements IUserRepository {
         return Result.Err(new Error('Failed to create user'));
       }
       
-      const createdUser = User.fromRepository({
-        ...newUsers[0],
-        role: newUsers[0].role as 'user' | 'admin'
-      }).unwrap();
+      const createdUser = this.transformToUser(newUsers[0]);
       
       return Result.Ok(createdUser);
     } catch (error) {
@@ -49,12 +81,13 @@ export class DrizzleUserRepository implements IUserRepository {
 
   async update(user: User): Promise<RepositoryResult<User, any>> {
     try {
-      const userData = user.toRepository();
+      const userId = extractId(user);
+      const userData = toSerialized(user);
       
       // Check if user exists
-      const existing = await db.select().from(users).where(eq(users.id, userData.id)).execute();
+      const existing = await db.select().from(users).where(eq(users.id, userId)).execute();
       if (existing.length === 0) {
-        return Result.Err(new Error(`User with ID ${userData.id} not found`));
+        return Result.Err(new Error(`User with ID ${userId} not found`));
       }
 
       const updatedUsers = await db.update(users)
@@ -64,7 +97,7 @@ export class DrizzleUserRepository implements IUserRepository {
           role: userData.role,
           updatedAt: new Date()
         })
-        .where(eq(users.id, userData.id))
+        .where(eq(users.id, userId))
         .returning()
         .execute();
       
@@ -72,10 +105,7 @@ export class DrizzleUserRepository implements IUserRepository {
         return Result.Err(new Error('Failed to update user'));
       }
       
-      const updatedUser = User.fromRepository({
-        ...updatedUsers[0],
-        role: updatedUsers[0].role as 'user' | 'admin'
-      }).unwrap();
+      const updatedUser = this.transformToUser(updatedUsers[0]);
       
       return Result.Ok(updatedUser);
     } catch (error) {
@@ -85,10 +115,11 @@ export class DrizzleUserRepository implements IUserRepository {
 
   // Existing custom methods (preserved for backward compatibility)
   async saveUser(user: User): Promise<User> {
-    const userData = user.toRepository();
+    const userId = extractId(user);
+    const userData = toSerialized(user);
     
     // Check if user exists to determine insert vs update
-    const existing = await db.select().from(users).where(eq(users.id, userData.id)).execute();
+    const existing = await db.select().from(users).where(eq(users.id, userId)).execute();
     
     if (existing.length === 0) {
       // Create new user
@@ -105,10 +136,7 @@ export class DrizzleUserRepository implements IUserRepository {
         throw new Error('Failed to create user');
       }
       
-      return User.fromRepository({
-        ...newUsers[0],
-        role: newUsers[0].role as 'user' | 'admin'
-      }).unwrap();
+      return this.transformToUser(newUsers[0]);
     } else {
       // Update existing user
       const updatedUsers = await db.update(users)
@@ -118,7 +146,7 @@ export class DrizzleUserRepository implements IUserRepository {
           role: userData.role,
           updatedAt: new Date()
         })
-        .where(eq(users.id, userData.id))
+        .where(eq(users.id, userId))
         .returning()
         .execute();
       
@@ -126,23 +154,12 @@ export class DrizzleUserRepository implements IUserRepository {
         throw new Error('Failed to update user');
       }
       
-      return User.fromRepository({
-        ...updatedUsers[0],
-        role: updatedUsers[0].role as 'user' | 'admin'
-      }).unwrap();
+      return this.transformToUser(updatedUsers[0]);
     }
   }
 
   async find(query?: UserFilterQuery, pagination?: PaginationInput): Promise<PaginationOutput<User>> {
-    const conditions = [];
-    
-    if (query?.email) {
-      conditions.push(eq(users.email, query.email));
-    }
-    if (query?.role) {
-      conditions.push(eq(users.role, query.role));
-    }
-
+    const conditions = this.buildQueryConditions(query);
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     // Get total count
@@ -158,14 +175,7 @@ export class DrizzleUserRepository implements IUserRepository {
     const offset = (page - 1) * limit;
 
     // Get paginated results
-    const results = await db.select({
-      id: users.id,
-      email: users.email,
-      passwordHash: users.passwordHash,
-      role: users.role,
-      createdAt: users.createdAt,
-      updatedAt: users.updatedAt,
-    })
+    const results = await db.select(this.userFields)
       .from(users)
       .where(whereClause)
       .limit(limit)
@@ -173,10 +183,7 @@ export class DrizzleUserRepository implements IUserRepository {
       .orderBy(users.createdAt)
       .execute();
 
-    const usersList = results.map(user => User.fromRepository({
-      ...user,
-      role: user.role as 'user' | 'admin'
-    }).unwrap());
+    const usersList = results.map(this.transformToUser);
 
     return {
       data: usersList,
@@ -185,25 +192,10 @@ export class DrizzleUserRepository implements IUserRepository {
   }
 
   async findOne(query: UserFilterQuery): Promise<User | null> {
-    const conditions = [];
-    
-    if (query?.email) {
-      conditions.push(eq(users.email, query.email));
-    }
-    if (query?.role) {
-      conditions.push(eq(users.role, query.role));
-    }
-
+    const conditions = this.buildQueryConditions(query);
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const result = await db.select({
-      id: users.id,
-      email: users.email,
-      passwordHash: users.passwordHash,
-      role: users.role,
-      createdAt: users.createdAt,
-      updatedAt: users.updatedAt,
-    })
+    const result = await db.select(this.userFields)
       .from(users)
       .where(whereClause)
       .limit(1)
@@ -213,22 +205,11 @@ export class DrizzleUserRepository implements IUserRepository {
       return null;
     }
 
-    const user = result[0];
-    return User.fromRepository({
-      ...user,
-      role: user.role as 'user' | 'admin'
-    }).unwrap();
+    return this.transformToUser(result[0]);
   }
 
   async findById(id: string): Promise<User | null> {
-    const result = await db.select({
-      id: users.id,
-      email: users.email,
-      passwordHash: users.passwordHash,
-      role: users.role,
-      createdAt: users.createdAt,
-      updatedAt: users.updatedAt,
-    })
+    const result = await db.select(this.userFields)
       .from(users)
       .where(eq(users.id, id))
       .execute();
@@ -237,22 +218,11 @@ export class DrizzleUserRepository implements IUserRepository {
       return null;
     }
 
-    const user = result[0];
-    return User.fromRepository({
-      ...user,
-      role: user.role as 'user' | 'admin'
-    }).unwrap();
+    return this.transformToUser(result[0]);
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const result = await db.select({
-      id: users.id,
-      email: users.email,
-      passwordHash: users.passwordHash,
-      role: users.role,
-      createdAt: users.createdAt,
-      updatedAt: users.updatedAt,
-    })
+    const result = await db.select(this.userFields)
       .from(users)
       .where(eq(users.email, email))
       .execute();
@@ -261,42 +231,20 @@ export class DrizzleUserRepository implements IUserRepository {
       return null;
     }
 
-    const user = result[0];
-    return User.fromRepository({
-      ...user,
-      role: user.role as 'user' | 'admin'
-    }).unwrap();
+    return this.transformToUser(result[0]);
   }
 
   async findByRole(role: 'user' | 'admin'): Promise<User[]> {
-    const result = await db.select({
-      id: users.id,
-      email: users.email,
-      passwordHash: users.passwordHash,
-      role: users.role,
-      createdAt: users.createdAt,
-      updatedAt: users.updatedAt,
-    })
+    const result = await db.select(this.userFields)
       .from(users)
       .where(eq(users.role, role))
       .execute();
 
-    return result.map(user => User.fromRepository({
-      ...user,
-      role: user.role as 'user' | 'admin'
-    }).unwrap());
+    return result.map(this.transformToUser);
   }
 
   async exists(query: UserFilterQuery): Promise<boolean> {
-    const conditions = [];
-    
-    if (query?.email) {
-      conditions.push(eq(users.email, query.email));
-    }
-    if (query?.role) {
-      conditions.push(eq(users.role, query.role));
-    }
-
+    const conditions = this.buildQueryConditions(query);
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     const result = await db.select({ count: sql<number>`count(*)` })
@@ -308,15 +256,7 @@ export class DrizzleUserRepository implements IUserRepository {
   }
 
   async count(query?: UserFilterQuery): Promise<number> {
-    const conditions = [];
-    
-    if (query?.email) {
-      conditions.push(eq(users.email, query.email));
-    }
-    if (query?.role) {
-      conditions.push(eq(users.role, query.role));
-    }
-
+    const conditions = this.buildQueryConditions(query);
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     const result = await db.select({ count: sql<number>`count(*)` })
