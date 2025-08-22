@@ -1,0 +1,2 @@
+# Secondary Mock Adapters Tests Directory
+# Tests for mock implementations (MockUserRepository, MockDocumentRepository, etc.)

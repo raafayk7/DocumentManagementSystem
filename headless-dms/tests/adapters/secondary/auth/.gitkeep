@@ -1,0 +1,2 @@
+# Secondary Auth Adapters Tests Directory
+# Tests for AuthHandler, JwtAuthStrategy, LocalAuthStrategy implementations

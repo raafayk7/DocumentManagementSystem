@@ -1,0 +1,2 @@
+# Primary HTTP Adapters Tests Directory
+# Tests for HTTP handlers, middleware, route validation, FastifyHttpServer implementation

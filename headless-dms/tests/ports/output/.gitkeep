@@ -1,0 +1,2 @@
+# Output Ports Tests Directory  
+# Tests for repository and service interfaces (IUserRepository, IDocumentRepository, IFileService, etc.)
