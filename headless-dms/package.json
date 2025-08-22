@@ -8,7 +8,6 @@
     "build": "tsc --noEmit",
     "start": "node dist/app.js",
     "start:dev": "tsx --watch src/app.ts",
-
     "test": "node tests/run-all-tests.js",
     "test:domain": "tsx tests/domain/user.test.ts && tsx tests/domain/document.test.ts",
     "test:validators": "tsx tests/validators/user-validator.test.ts && tsx tests/validators/document-validator.test.ts",
@@ -26,27 +25,22 @@
     "test:entities": "npx tsx tests/domain/entities/run-all-entity-tests.ts",
     "test:user-entity": "npx tsx src/tests/domain/entities/user.entity.test.ts",
     "test:document-entity": "npx tsx tests/domain/entities/document.entity.test.ts",
-
     "_comment": "=== NEW MOCHA TESTS (Steps 7-10) ===",
     "test:mocha": "mocha",
     "test:mocha:all": "mocha tests/**/*.test.ts --ignore tests/_legacy/**/*",
-    
     "_comment:domain": "=== DOMAIN LAYER (Step 8) ===",
     "test:mocha:domain": "mocha tests/domain/**/*.test.ts",
     "test:mocha:entities": "mocha tests/domain/entities/**/*.test.ts",
     "test:mocha:value-objects": "mocha tests/domain/value-objects/**/*.test.ts",
     "test:mocha:domain:services": "mocha tests/domain/services/**/*.test.ts",
-    
     "_comment:application": "=== APPLICATION LAYER (Step 9) ===",
     "test:mocha:application": "mocha tests/application/**/*.test.ts",
     "test:mocha:services": "mocha tests/application/services/**/*.test.ts",
     "test:mocha:use-cases": "mocha tests/application/use-cases/**/*.test.ts",
-    
     "_comment:ports": "=== PORTS LAYER (Step 10) ===",
     "test:mocha:ports": "mocha tests/ports/**/*.test.ts",
     "test:mocha:ports:input": "mocha tests/ports/input/**/*.test.ts",
     "test:mocha:ports:output": "mocha tests/ports/output/**/*.test.ts",
-    
     "_comment:adapters": "=== ADAPTERS LAYER (Step 10) ===",
     "test:mocha:adapters": "mocha tests/adapters/**/*.test.ts",
     "test:mocha:adapters:primary": "mocha tests/adapters/primary/**/*.test.ts",
@@ -55,18 +49,15 @@
     "test:mocha:adapters:database": "mocha tests/adapters/secondary/database/**/*.test.ts",
     "test:mocha:adapters:auth": "mocha tests/adapters/secondary/auth/**/*.test.ts",
     "test:mocha:adapters:mocks": "mocha tests/adapters/secondary/mocks/**/*.test.ts",
-    
     "_comment:shared": "=== SHARED LAYER (Step 10) ===",
     "test:mocha:shared": "mocha tests/shared/**/*.test.ts",
     "test:mocha:shared:dto": "mocha tests/shared/dto/**/*.test.ts",
     "test:mocha:shared:config": "mocha tests/shared/config/**/*.test.ts",
     "test:mocha:shared:utilities": "mocha tests/shared/utilities/**/*.test.ts",
-    
     "_comment:watch": "=== WATCH MODE ===",
     "test:mocha:watch": "mocha --watch",
     "test:mocha:watch:domain": "mocha --watch tests/domain/**/*.test.ts",
     "test:mocha:watch:application": "mocha --watch tests/application/**/*.test.ts",
-
     "seed": "npx tsx src/infrastructure/database/migrations/seed_data/seed-cli.ts",
     "seed:run": "npx tsx src/infrastructure/database/migrations/seed_data/seed-cli.ts run",
     "seed:reset": "npx tsx src/infrastructure/database/migrations/seed_data/seed-cli.ts reset",
@@ -107,6 +98,7 @@
     "mocha": "^11.7.1",
     "reflect-metadata": "^0.2.2",
     "sinon": "^21.0.0",
+    "sinon-chai": "^4.0.1",
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.20.3",
     "tsyringe": "^4.10.0",

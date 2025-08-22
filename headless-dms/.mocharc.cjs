@@ -1,7 +1,7 @@
 module.exports = {
   extension: ['ts'],
   spec: 'tests/**/*.test.ts',
-  require: ['reflect-metadata', 'tsx/esm'],
+  require: ['reflect-metadata', 'tsx/esm', 'sinon-chai'],
   timeout: 5000,
   reporter: 'spec',
   ui: 'bdd',
