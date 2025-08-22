@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { AppResult } from '@carbonteq/hexapp';
+import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 export const GetUsersRequestSchema = z.object({
   page: z.number().min(1).default(1),
@@ -10,4 +12,61 @@ export const GetUsersRequestSchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });
 
-export type GetUsersRequest = z.infer<typeof GetUsersRequestSchema>; 
+export type GetUsersRequest = z.infer<typeof GetUsersRequestSchema>;
+
+/**
+ * Get Users Request DTO that extends BaseDto
+ * Provides validation for user listing requests with filtering and pagination
+ */
+export class GetUsersRequestDto extends BaseDto {
+  constructor(
+    public readonly page: number,
+    public readonly limit: number,
+    public readonly search?: string,
+    public readonly email?: string,
+    public readonly role?: 'user' | 'admin',
+    public readonly sortBy: 'email' | 'role' | 'createdAt' | 'updatedAt' = 'createdAt',
+    public readonly sortOrder: 'asc' | 'desc' = 'desc'
+  ) {
+    super();
+  }
+
+  /**
+   * Validate and create GetUsersRequestDto from unknown data
+   */
+  static create(data: unknown): DtoValidationResult<GetUsersRequestDto> {
+    const validationResult = this.validate(GetUsersRequestSchema, data);
+    
+    if (validationResult.isErr()) {
+      return validationResult as DtoValidationResult<GetUsersRequestDto>;
+    }
+
+    const validated = validationResult.unwrap();
+    const dto = new GetUsersRequestDto(
+      validated.page,
+      validated.limit,
+      validated.search,
+      validated.email,
+      validated.role,
+      validated.sortBy,
+      validated.sortOrder
+    );
+
+    return AppResult.Ok(dto);
+  }
+
+  /**
+   * Convert to plain object for use with existing code
+   */
+  toPlain(): GetUsersRequest {
+    return {
+      page: this.page,
+      limit: this.limit,
+      search: this.search,
+      email: this.email,
+      role: this.role,
+      sortBy: this.sortBy,
+      sortOrder: this.sortOrder
+    };
+  }
+} 

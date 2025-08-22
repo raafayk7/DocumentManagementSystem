@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { AppResult } from '@carbonteq/hexapp';
+import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 export const GetDocumentsRequestSchema = z.object({
     page: z.number().min(1).default(1),
@@ -15,4 +17,70 @@ export const GetDocumentsRequestSchema = z.object({
 });
 
 export type GetDocumentsRequest = z.infer<typeof GetDocumentsRequestSchema>;
+
+/**
+ * Get Documents Request DTO that extends BaseDto
+ * Provides validation for document listing requests with filtering and pagination
+ */
+export class GetDocumentsRequestDto extends BaseDto {
+  constructor(
+    public readonly page: number,
+    public readonly limit: number,
+    public readonly sortBy: 'name' | 'createdAt' | 'updatedAt',
+    public readonly sortOrder: 'asc' | 'desc',
+    public readonly name?: string,
+    public readonly mimeType?: string,
+    public readonly tags?: string[],
+    public readonly metadata?: Record<string, string>,
+    public readonly fromDate?: string,
+    public readonly toDate?: string
+  ) {
+    super();
+  }
+
+  /**
+   * Validate and create GetDocumentsRequestDto from unknown data
+   */
+  static create(data: unknown): DtoValidationResult<GetDocumentsRequestDto> {
+    const validationResult = this.validate(GetDocumentsRequestSchema, data);
+    
+    if (validationResult.isErr()) {
+      return validationResult as DtoValidationResult<GetDocumentsRequestDto>;
+    }
+
+    const validated = validationResult.unwrap();
+    const dto = new GetDocumentsRequestDto(
+      validated.page,
+      validated.limit,
+      validated.sortBy,
+      validated.sortOrder,
+      validated.name,
+      validated.mimeType,
+      validated.tags,
+      validated.metadata,
+      validated.fromDate,
+      validated.toDate
+    );
+
+    return AppResult.Ok(dto);
+  }
+
+  /**
+   * Convert to plain object for use with existing code
+   */
+  toPlain(): GetDocumentsRequest {
+    return {
+      page: this.page,
+      limit: this.limit,
+      sortBy: this.sortBy,
+      sortOrder: this.sortOrder,
+      name: this.name,
+      mimeType: this.mimeType,
+      tags: this.tags,
+      metadata: this.metadata,
+      fromDate: this.fromDate,
+      toDate: this.toDate
+    };
+  }
+}
 

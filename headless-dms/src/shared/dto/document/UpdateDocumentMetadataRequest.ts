@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { AppResult } from '@carbonteq/hexapp';
+import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 export const UpdateDocumentMetadataRequestSchema = z.object({
     documentId: z.string().uuid('Invalid document ID'),
@@ -7,4 +9,49 @@ export const UpdateDocumentMetadataRequestSchema = z.object({
 });
 
 export type UpdateDocumentMetadataRequest = z.infer<typeof UpdateDocumentMetadataRequestSchema>;
+
+/**
+ * Update Document Metadata Request DTO that extends BaseDto
+ * Provides validation for updating document metadata requests
+ */
+export class UpdateDocumentMetadataRequestDto extends BaseDto {
+  constructor(
+    public readonly documentId: string,
+    public readonly userId: string,
+    public readonly metadata?: Record<string, string>
+  ) {
+    super();
+  }
+
+  /**
+   * Validate and create UpdateDocumentMetadataRequestDto from unknown data
+   */
+  static create(data: unknown): DtoValidationResult<UpdateDocumentMetadataRequestDto> {
+    const validationResult = this.validate(UpdateDocumentMetadataRequestSchema, data);
+    
+    if (validationResult.isErr()) {
+      return validationResult as DtoValidationResult<UpdateDocumentMetadataRequestDto>;
+    }
+
+    const validated = validationResult.unwrap();
+    const dto = new UpdateDocumentMetadataRequestDto(
+      validated.documentId,
+      validated.userId,
+      validated.metadata
+    );
+
+    return AppResult.Ok(dto);
+  }
+
+  /**
+   * Convert to plain object for use with existing code
+   */
+  toPlain(): UpdateDocumentMetadataRequest {
+    return {
+      documentId: this.documentId,
+      metadata: this.metadata,
+      userId: this.userId
+    };
+  }
+}
 

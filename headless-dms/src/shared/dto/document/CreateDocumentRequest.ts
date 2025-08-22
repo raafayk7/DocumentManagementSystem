@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { AppResult } from '@carbonteq/hexapp';
+import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 // Reusing existing CreateDocumentSchema from src/documents/dto/documents.dto.ts
 export const CreateDocumentRequestSchema = z.object({
@@ -12,3 +14,60 @@ export const CreateDocumentRequestSchema = z.object({
 });
 
 export type CreateDocumentRequest = z.infer<typeof CreateDocumentRequestSchema>;
+
+/**
+ * Create Document Request DTO that extends BaseDto
+ * Provides validation for document creation requests
+ */
+export class CreateDocumentRequestDto extends BaseDto {
+  constructor(
+    public readonly name: string,
+    public readonly filePath: string,
+    public readonly mimeType: string,
+    public readonly size: string,
+    public readonly userId: string,
+    public readonly tags: string[] = [],
+    public readonly metadata: Record<string, string> = {}
+  ) {
+    super();
+  }
+
+  /**
+   * Validate and create CreateDocumentRequestDto from unknown data
+   */
+  static create(data: unknown): DtoValidationResult<CreateDocumentRequestDto> {
+    const validationResult = this.validate(CreateDocumentRequestSchema, data);
+    
+    if (validationResult.isErr()) {
+      return validationResult as DtoValidationResult<CreateDocumentRequestDto>;
+    }
+
+    const validated = validationResult.unwrap();
+    const dto = new CreateDocumentRequestDto(
+      validated.name,
+      validated.filePath,
+      validated.mimeType,
+      validated.size,
+      validated.userId,
+      validated.tags || [],
+      validated.metadata || {}
+    );
+
+    return AppResult.Ok(dto);
+  }
+
+  /**
+   * Convert to plain object for use with existing code
+   */
+  toPlain(): CreateDocumentRequest {
+    return {
+      name: this.name,
+      filePath: this.filePath,
+      mimeType: this.mimeType,
+      size: this.size,
+      userId: this.userId,
+      tags: this.tags,
+      metadata: this.metadata
+    };
+  }
+}

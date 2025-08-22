@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { AppResult } from '@carbonteq/hexapp';
+import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 // Pagination Input Schema
 export const PaginationInputSchema = z.object({
@@ -9,6 +11,54 @@ export const PaginationInputSchema = z.object({
 });
 
 export type PaginationInput = z.infer<typeof PaginationInputSchema>;
+
+/**
+ * Pagination Input DTO that extends BaseDto
+ * Provides validation for pagination query parameters
+ */
+export class PaginationInputDto extends BaseDto {
+  constructor(
+    public readonly page: number,
+    public readonly limit: number,
+    public readonly sort?: string,
+    public readonly order: 'asc' | 'desc' = 'desc'
+  ) {
+    super();
+  }
+
+  /**
+   * Validate and create PaginationInputDto from unknown data
+   */
+  static create(data: unknown): DtoValidationResult<PaginationInputDto> {
+    const validationResult = this.validate(PaginationInputSchema, data);
+    
+    if (validationResult.isErr()) {
+      return validationResult as DtoValidationResult<PaginationInputDto>;
+    }
+
+    const validated = validationResult.unwrap();
+    const dto = new PaginationInputDto(
+      validated.page,
+      validated.limit,
+      validated.sort,
+      validated.order
+    );
+
+    return AppResult.Ok(dto);
+  }
+
+  /**
+   * Convert to plain object for use with existing code
+   */
+  toPlain(): PaginationInput {
+    return {
+      page: this.page,
+      limit: this.limit,
+      sort: this.sort,
+      order: this.order
+    };
+  }
+}
 
 // Pagination Output Schema
 export const PaginationOutputSchema = z.object({
@@ -34,6 +84,58 @@ export type PaginationOutput<T> = {
     hasPrev: boolean;
   };
 };
+
+/**
+ * Pagination Output DTO that extends BaseDto
+ * Provides structured response for paginated data
+ */
+export class PaginationOutputDto<T> extends BaseDto {
+  constructor(
+    public readonly data: T[],
+    public readonly pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    }
+  ) {
+    super();
+  }
+
+  /**
+   * Create PaginationOutputDto from data and pagination info
+   */
+  static create<T>(
+    data: T[],
+    page: number,
+    limit: number,
+    total: number
+  ): PaginationOutputDto<T> {
+    const paginationInfo = calculatePaginationMetadata(page, limit, total);
+    
+    return new PaginationOutputDto(data, paginationInfo);
+  }
+
+  /**
+   * Convert to plain object for use with existing code
+   */
+  toPlain(): PaginationOutput<T> {
+    return {
+      data: this.data,
+      pagination: this.pagination
+    };
+  }
+
+  /**
+   * Validate pagination output structure
+   * Note: This is mainly for response validation if needed
+   */
+  static validateStructure(data: unknown): DtoValidationResult<PaginationOutput<any>> {
+    return BaseDto.validate(PaginationOutputSchema, data);
+  }
+}
 
 // Helper function to calculate pagination metadata
 export function calculatePaginationMetadata(
