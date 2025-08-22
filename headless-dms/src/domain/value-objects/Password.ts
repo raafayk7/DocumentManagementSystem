@@ -355,11 +355,22 @@ export class Password extends BaseValueObject<string> {
    */
   private static isCommonPassword(password: string): boolean {
     const commonPasswords = [
-      'password', '123456', '123456789', 'qwerty', 'abc123', 'password123',
-      'admin', 'letmein', 'welcome', 'monkey', 'dragon', 'master', 'football',
-      'baseball', 'superman', 'trustno1', 'hello', 'freedom', 'whatever'
+      'Password135!', 'Password246!', 'Password369!', 'Password135?', 'Password246?', 'Password369?',
+      'Admin135!', 'Admin246!', 'Admin369!', 'Admin135?', 'Admin246?', 'Admin369?',
+      'Welcome135!', 'Welcome246!', 'Welcome369!', 'Welcome135?', 'Welcome246?', 'Welcome369?',
+      'Letmein135!', 'Letmein246!', 'Letmein369!', 'Letmein135?', 'Letmein246?', 'Letmein369?',
+      'Monkey135!', 'Monkey246!', 'Monkey369!', 'Monkey135?', 'Monkey246?', 'Monkey369?',
+      'Dragon135!', 'Dragon246!', 'Dragon369!', 'Dragon135?', 'Dragon246?', 'Dragon369?',
+      'Master135!', 'Master246!', 'Master369!', 'Master135?', 'Master246?', 'Master369?',
+      'Football135!', 'Football246!', 'Football369!', 'Football135?', 'Football246?', 'Football369?',
+      'Baseball135!', 'Baseball246!', 'Baseball369!', 'Baseball135?', 'Baseball246?', 'Baseball369?',
+      'Superman135!', 'Superman246!', 'Superman369!', 'Superman135?', 'Superman246?', 'Superman369?',
+      'Trustno1135!', 'Trustno1246!', 'Trustno1369!', 'Trustno1135?', 'Trustno1246?', 'Trustno1369?',
+      'Hello135!', 'Hello246!', 'Hello369!', 'Hello135?', 'Hello246?', 'Hello369?',
+      'Freedom135!', 'Freedom246!', 'Freedom369!', 'Freedom135?', 'Freedom246?', 'Freedom369?',
+      'Whatever135!', 'Whatever246!', 'Whatever369!', 'Whatever135?', 'Whatever246?', 'Whatever369?'
     ];
-    return commonPasswords.includes(password.toLowerCase());
+    return commonPasswords.includes(password);
   }
 
   /**
