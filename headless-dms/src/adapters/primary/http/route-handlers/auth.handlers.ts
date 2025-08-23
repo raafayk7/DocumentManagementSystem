@@ -155,11 +155,13 @@ export async function handleChangeUserRole(req: IHttpRequest, res: IHttpResponse
       return res.status(400).send({ error: 'Valid role (user or admin) is required' });
     }
     
-    const result = await changeUserRoleUseCase.execute({ 
-      userId: id, 
-      newRole,
-      currentUserId: req.user?.sub
-    });
+    // Get current user ID from JWT token
+    const currentUserId = req.user?.sub;
+    if (!currentUserId) {
+      return res.status(401).send({ error: 'Authentication required' });
+    }
+    
+    const result = await changeUserRoleUseCase.execute(id, currentUserId, { newRole });
     
     if (result.isErr()) {
       const error = result.unwrapErr();
@@ -220,8 +222,7 @@ export async function handleDeleteUser(req: IHttpRequest, res: IHttpResponse): P
         return res.status(400).send({ error: 'New password is required' });
       }
       
-      const result = await changeUserPasswordUseCase.execute({ 
-        userId: id, 
+      const result = await changeUserPasswordUseCase.execute(id, { 
         newPassword,
         currentPassword: currentPassword || 'admin_override' // For admin password changes
       });

@@ -10,6 +10,9 @@ import { LocalFileService } from '../../adapters/secondary/file-storage/local-fi
 import { AuthApplicationService } from '../../application/services/AuthApplicationService.js';
 import { UserApplicationService } from '../../application/services/UserApplicationService.js';
 import { DocumentApplicationService } from '../../application/services/DocumentApplicationService.js';
+import { IAuthApplicationService } from '../../ports/input/IAuthApplicationService.js';
+import { IUserApplicationService } from '../../ports/input/IUserApplicationService.js';
+import { IDocumentApplicationService } from '../../ports/input/IDocumentApplicationService.js';
 import { ILogger } from '../../ports/output/ILogger.js';
 import { ConsoleLogger } from '../../adapters/secondary/logging/console-logger.service.js';
 import { FileLogger } from '../../adapters/secondary/logging/file-logger.service.js';
@@ -66,10 +69,15 @@ if (process.env.NODE_ENV === 'test') {
 // Register authentication handler
 container.registerSingleton<IAuthHandler>('IAuthHandler', AuthHandler);
 
-// Register services
+// Register application services (both concrete classes and interfaces)
 container.registerSingleton('AuthApplicationService', AuthApplicationService);
 container.registerSingleton('UserApplicationService', UserApplicationService);
 container.registerSingleton('DocumentApplicationService', DocumentApplicationService);
+
+// Register application service interfaces for use case injection
+container.registerSingleton<IAuthApplicationService>('IAuthApplicationService', AuthApplicationService);
+container.registerSingleton<IUserApplicationService>('IUserApplicationService', UserApplicationService);
+container.registerSingleton<IDocumentApplicationService>('IDocumentApplicationService', DocumentApplicationService);
 
 // Register validators
 container.registerSingleton('UserValidator', UserValidator);

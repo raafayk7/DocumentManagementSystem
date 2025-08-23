@@ -13,21 +13,21 @@ export class ChangeUserPasswordUseCase {
     this.logger = this.logger.child({ useCase: 'ChangeUserPasswordUseCase' });
   }
 
-  async execute(request: ChangeUserPasswordRequest): Promise<AppResult<ChangeUserPasswordResponse>> {
-    this.logger.info('Executing change user password use case', { userId: request.userId });
+  async execute(targetUserId: string, request: ChangeUserPasswordRequest): Promise<AppResult<ChangeUserPasswordResponse>> {
+    this.logger.info('Executing change user password use case', { userId: targetUserId });
 
     try {
       const passwordChangeResult = await this.userApplicationService.changeUserPassword(
-        request.userId,
+        targetUserId,
         request.currentPassword,
         request.newPassword
       );
       
       if (passwordChangeResult.isErr()) {
-        this.logger.warn('User password change failed', { userId: request.userId });
-        return AppResult.Err(AppError.InvalidOperation(
-          `Password change failed for user ID: ${request.userId}`
-        ));
+        const error = passwordChangeResult.unwrapErr();
+        this.logger.warn('User password change failed', { userId: targetUserId });
+        // Preserve the original error message instead of wrapping it
+        return AppResult.Err(error);
       }
 
       const response: ChangeUserPasswordResponse = {
@@ -35,13 +35,12 @@ export class ChangeUserPasswordUseCase {
         message: 'Password changed successfully'
       };
 
-      this.logger.info('User password changed successfully', { userId: request.userId });
+      this.logger.info('User password changed successfully', { userId: targetUserId });
       return AppResult.Ok(response);
     } catch (error) {
-      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { userId: request.userId });
-      return AppResult.Err(AppError.Generic(
-        `Failed to execute change user password use case for user ID: ${request.userId}`
-      ));
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { userId: targetUserId });
+      // Preserve the original error message instead of wrapping it
+      return AppResult.Err(error instanceof Error ? error : new Error('Unknown error'));
     }
   }
 }

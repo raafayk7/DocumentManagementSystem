@@ -11,12 +11,14 @@ import { DocumentName } from '../../../../src/domain/value-objects/DocumentName.
 import { MimeType } from '../../../../src/domain/value-objects/MimeType.js';
 import { FileSize } from '../../../../src/domain/value-objects/FileSize.js';
 import type { IDocumentApplicationService } from '../../../../src/ports/input/IDocumentApplicationService.js';
+import type { IFileService } from '../../../../src/ports/output/IFileService.js';
 import type { ILogger, LogContext } from '../../../../src/ports/output/ILogger.js';
 import { UploadDocumentRequest, UploadDocumentResponse } from '../../../../src/shared/dto/document/index.js';
 
 describe('UploadDocumentUseCase', () => {
   let useCase: UploadDocumentUseCase;
   let mockDocumentApplicationService: sinon.SinonStubbedInstance<IDocumentApplicationService>;
+  let mockFileService: sinon.SinonStubbedInstance<IFileService>;
   let mockLogger: sinon.SinonStubbedInstance<ILogger>;
   let mockChildLogger: sinon.SinonStubbedInstance<ILogger>;
   let mockDocument: Document;
@@ -42,6 +44,17 @@ describe('UploadDocumentUseCase', () => {
       getDocumentByName: sinon.stub(),
       getDocumentsByTags: sinon.stub(),
       getDocumentsByMimeType: sinon.stub()
+    };
+
+    mockFileService = {
+      saveFile: sinon.stub(),
+      saveFileFromRequest: sinon.stub(),
+      getFile: sinon.stub(),
+      fileExists: sinon.stub(),
+      deleteFile: sinon.stub(),
+      streamFile: sinon.stub(),
+      generateDownloadLink: sinon.stub(),
+      getFileInfo: sinon.stub()
     };
 
     // Create child logger mock
@@ -108,6 +121,7 @@ describe('UploadDocumentUseCase', () => {
     // Create use case instance
     useCase = new UploadDocumentUseCase(
       mockDocumentApplicationService as IDocumentApplicationService,
+      mockFileService as IFileService,
       mockLogger as ILogger
     );
   });
@@ -119,6 +133,14 @@ describe('UploadDocumentUseCase', () => {
   describe('execute', () => {
     it('should successfully upload a document and return response', async () => {
       // Arrange
+      const mockFileInfo = {
+        path: '/uploads/test-document.pdf',
+        name: 'test-document.pdf',
+        mimeType: 'application/pdf',
+        size: '1024',
+        fields: {}
+      };
+      mockFileService.saveFile.resolves(AppResult.Ok(mockFileInfo));
       mockDocumentApplicationService.createDocument.resolves(AppResult.Ok(mockDocument));
 
       // Act
@@ -129,20 +151,29 @@ describe('UploadDocumentUseCase', () => {
       expect(result.isErr()).to.be.false;
 
       const response = result.unwrap();
-      expect(response).to.deep.equal({
-        success: true,
-        message: 'Document uploaded successfully'
-      });
+      expect(response.success).to.be.true;
+      expect(response.message).to.equal('Document uploaded successfully');
+      expect(response.document).to.exist;
+      expect(response.document?.id).to.equal(mockDocument.id);
+      expect(response.document?.name).to.equal('test-document.pdf');
+      expect(response.document?.filePath).to.equal('/uploads/test-document.pdf');
+
+      // Verify file service call
+      expect(mockFileService.saveFile.calledWith(
+        mockRequest.file,
+        mockRequest.filename,
+        mockRequest.mimeType
+      )).to.be.true;
 
       // Verify service call
       expect(mockDocumentApplicationService.createDocument.calledWith(
         'test-user-id',
-        'test-document.pdf',
-        '/uploads/test-document.pdf',
+        'test-document.pdf', // document name
+        '/uploads/test-document.pdf', // Should use the saved file path  
         'application/pdf',
         '1024',
-        ['test', 'document'],
-        { category: 'test', priority: 'high' }
+        sinon.match(['test', 'document']),
+        sinon.match({ category: 'test', priority: 'high' })
       )).to.be.true;
 
       // Verify logging
@@ -150,21 +181,42 @@ describe('UploadDocumentUseCase', () => {
         'Executing upload document use case',
         { 
           name: 'test-document.pdf', 
-          filePath: '/uploads/test-document.pdf',
+          filename: '/uploads/test-document.pdf',
           mimeType: 'application/pdf',
           size: 1024,
           userId: 'test-user-id' 
         }
       )).to.be.true;
       expect(mockChildLogger.info.calledWith(
+        'File saved successfully',
+        { 
+          filename: '/uploads/test-document.pdf', 
+          savedPath: '/uploads/test-document.pdf',
+          fileSize: '1024' 
+        }
+      )).to.be.true;
+      expect(mockChildLogger.info.calledWith(
         'Document uploaded successfully',
-        { name: 'test-document.pdf', userId: 'test-user-id' }
+        { 
+          name: 'test-document.pdf', 
+          userId: 'test-user-id',
+          documentId: mockDocument.id,
+          filePath: '/uploads/test-document.pdf'
+        }
       )).to.be.true;
     });
 
     it('should handle document upload failure and return error', async () => {
       // Arrange
+      const mockFileInfo = {
+        path: '/uploads/test-document.pdf',
+        name: 'test-document.pdf',
+        mimeType: 'application/pdf',
+        size: '1024',
+        fields: {}
+      };
       const serviceError = AppError.InvalidData('Document upload failed');
+      mockFileService.saveFile.resolves(AppResult.Ok(mockFileInfo));
       mockDocumentApplicationService.createDocument.resolves(AppResult.Err(serviceError));
 
       // Act
@@ -176,14 +228,14 @@ describe('UploadDocumentUseCase', () => {
 
       const error = result.unwrapErr();
       expect(error.status).to.equal(AppError.InvalidData().status);
-      expect(error.message).to.include('Document upload failed for name: test-document.pdf, filePath: /uploads/test-document.pdf');
+      expect(error.message).to.equal('Document upload failed'); // Preserve original error message
 
       // Verify service call
       expect(mockDocumentApplicationService.createDocument.calledOnce).to.be.true;
 
       // Verify logging
       expect(mockChildLogger.warn.calledWith(
-        'Document upload failed',
+        'Document creation failed',
         { 
           name: 'test-document.pdf', 
           filePath: '/uploads/test-document.pdf',
@@ -194,7 +246,15 @@ describe('UploadDocumentUseCase', () => {
 
     it('should handle service errors and return generic error', async () => {
       // Arrange
+      const mockFileInfo = {
+        path: '/uploads/test-document.pdf',
+        name: 'test-document.pdf',
+        mimeType: 'application/pdf',
+        size: '1024',
+        fields: {}
+      };
       const serviceError = new Error('Service error');
+      mockFileService.saveFile.resolves(AppResult.Ok(mockFileInfo));
       mockDocumentApplicationService.createDocument.rejects(serviceError);
 
       // Act
@@ -205,8 +265,7 @@ describe('UploadDocumentUseCase', () => {
       expect(result.isOk()).to.be.false;
 
       const error = result.unwrapErr();
-      expect(error.status).to.equal(AppError.Generic('Service error').status);
-      expect(error.message).to.include('Failed to execute upload document use case for name: test-document.pdf, filePath: /uploads/test-document.pdf');
+      expect(error.message).to.equal('Service error'); // Preserve original error message
 
       // Verify service call
       expect(mockDocumentApplicationService.createDocument.calledOnce).to.be.true;
@@ -216,7 +275,7 @@ describe('UploadDocumentUseCase', () => {
         'Service error',
         { 
           name: 'test-document.pdf', 
-          filePath: '/uploads/test-document.pdf',
+          filename: '/uploads/test-document.pdf',
           userId: 'test-user-id' 
         }
       )).to.be.true;
@@ -224,7 +283,15 @@ describe('UploadDocumentUseCase', () => {
 
     it('should handle unknown errors and return generic error', async () => {
       // Arrange
+      const mockFileInfo = {
+        path: '/uploads/test-document.pdf',
+        name: 'test-document.pdf',
+        mimeType: 'application/pdf',
+        size: '1024',
+        fields: {}
+      };
       const unknownError = new Error('Unknown error string');
+      mockFileService.saveFile.resolves(AppResult.Ok(mockFileInfo));
       mockDocumentApplicationService.createDocument.rejects(unknownError);
 
       // Act
@@ -235,8 +302,7 @@ describe('UploadDocumentUseCase', () => {
       expect(result.isOk()).to.be.false;
 
       const error = result.unwrapErr();
-      expect(error.status).to.equal(AppError.Generic('Unknown error string').status);
-      expect(error.message).to.include('Failed to execute upload document use case for name: test-document.pdf, filePath: /uploads/test-document.pdf');
+      expect(error.message).to.equal('Unknown error string'); // Preserve original error message
 
       // Verify service call
       expect(mockDocumentApplicationService.createDocument.calledOnce).to.be.true;
@@ -246,7 +312,7 @@ describe('UploadDocumentUseCase', () => {
         'Unknown error string',
         { 
           name: 'test-document.pdf', 
-          filePath: '/uploads/test-document.pdf',
+          filename: '/uploads/test-document.pdf',
           userId: 'test-user-id' 
         }
       )).to.be.true;
@@ -264,6 +330,14 @@ describe('UploadDocumentUseCase', () => {
         // tags and metadata are optional
       };
 
+      const mockFileInfo = {
+        path: '/uploads/simple-document.pdf',
+        name: 'simple-document.pdf',
+        mimeType: 'application/pdf',
+        size: '512',
+        fields: {}
+      };
+
       const simpleDocument = {
         ...mockDocument,
         name: { value: 'simple-document.pdf' } as DocumentName,
@@ -271,6 +345,7 @@ describe('UploadDocumentUseCase', () => {
         metadata: {}
       } as unknown as Document;
 
+      mockFileService.saveFile.resolves(AppResult.Ok(mockFileInfo));
       mockDocumentApplicationService.createDocument.resolves(AppResult.Ok(simpleDocument));
 
       // Act
@@ -305,6 +380,15 @@ describe('UploadDocumentUseCase', () => {
         size: 2048
       };
 
+      const mockImageFileInfo = {
+        path: '/uploads/test-image.jpg',
+        name: 'test-image.jpg',
+        mimeType: 'image/jpeg',
+        size: '2048',
+        fields: {}
+      };
+
+      mockFileService.saveFile.resolves(AppResult.Ok(mockImageFileInfo));
       mockDocumentApplicationService.createDocument.resolves(AppResult.Ok(mockDocument));
 
       // Act
@@ -332,6 +416,15 @@ describe('UploadDocumentUseCase', () => {
         size: 1048576 // 1MB
       };
 
+      const mockLargeFileInfo = {
+        path: '/uploads/test-document.pdf',
+        name: 'test-document.pdf',
+        mimeType: 'application/pdf',
+        size: '1048576',
+        fields: {}
+      };
+
+      mockFileService.saveFile.resolves(AppResult.Ok(mockLargeFileInfo));
       mockDocumentApplicationService.createDocument.resolves(AppResult.Ok(mockDocument));
 
       // Act

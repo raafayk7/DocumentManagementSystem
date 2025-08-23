@@ -82,8 +82,6 @@ describe('ChangeUserRoleUseCase', () => {
 
     // Create mock request
     mockRequest = {
-      currentUserId: 'admin-user-id',
-      userId: 'target-user-id',
       newRole: 'admin'
     };
 
@@ -105,7 +103,7 @@ describe('ChangeUserRoleUseCase', () => {
       mockUserApplicationService.changeUserRole.resolves(AppResult.Ok(mockUser));
 
       // Act
-      const result = await useCase.execute(mockRequest);
+      const result = await useCase.execute('target-user-id', 'admin-user-id', mockRequest);
 
       // Assert
       expect(result.isOk()).to.be.true;
@@ -119,7 +117,7 @@ describe('ChangeUserRoleUseCase', () => {
         'Executing change user role use case',
         { 
           currentUserId: 'admin-user-id', 
-          userId: 'target-user-id', 
+          targetUserId: 'target-user-id', 
           newRole: 'admin' 
         }
       )).to.be.true;
@@ -147,7 +145,7 @@ describe('ChangeUserRoleUseCase', () => {
       mockUserApplicationService.changeUserRole.resolves(AppResult.Err(roleChangeError));
 
       // Act
-      const result = await useCase.execute(mockRequest);
+      const result = await useCase.execute('target-user-id', 'admin-user-id', mockRequest);
 
       // Assert
       expect(result.isErr()).to.be.true;
@@ -159,7 +157,7 @@ describe('ChangeUserRoleUseCase', () => {
         'User role change failed',
         { 
           currentUserId: 'admin-user-id', 
-          userId: 'target-user-id', 
+          targetUserId: 'target-user-id', 
           newRole: 'admin' 
         }
       )).to.be.true;
@@ -171,7 +169,7 @@ describe('ChangeUserRoleUseCase', () => {
       mockUserApplicationService.changeUserRole.rejects(error);
 
       // Act
-      const result = await useCase.execute(mockRequest);
+      const result = await useCase.execute('target-user-id', 'admin-user-id', mockRequest);
 
       // Assert
       expect(result.isErr()).to.be.true;
@@ -183,7 +181,7 @@ describe('ChangeUserRoleUseCase', () => {
         'Database connection failed',
         { 
           currentUserId: 'admin-user-id', 
-          userId: 'target-user-id', 
+          targetUserId: 'target-user-id', 
           newRole: 'admin' 
         }
       )).to.be.true;
@@ -198,7 +196,7 @@ describe('ChangeUserRoleUseCase', () => {
       mockUserApplicationService.changeUserRole.resolves(AppResult.Ok(mockUser));
 
       // Act
-      const result = await useCase.execute(userToAdminRequest as ChangeUserRoleRequest);
+      const result = await useCase.execute('target-user-id', 'admin-user-id', userToAdminRequest as ChangeUserRoleRequest);
 
       // Assert
       expect(result.isOk()).to.be.true;
@@ -213,7 +211,7 @@ describe('ChangeUserRoleUseCase', () => {
       mockUserApplicationService.changeUserRole.resolves(AppResult.Ok(adminUser as unknown as User));
 
       // Act
-      const result = await useCase.execute(adminToUserRequest as ChangeUserRoleRequest);
+      const result = await useCase.execute('target-user-id', 'admin-user-id', adminToUserRequest as ChangeUserRoleRequest);
 
       // Assert
       expect(result.isOk()).to.be.true;
@@ -222,12 +220,12 @@ describe('ChangeUserRoleUseCase', () => {
 
     it('should handle empty currentUserId in request', async () => {
       // Arrange
-      const emptyCurrentUserIdRequest = { ...mockRequest, currentUserId: '' };
+      const emptyCurrentUserIdRequest = { newRole: 'admin' as const };
       const userResult = Result.Ok(mockUser);
       mockUserApplicationService.changeUserRole.resolves(AppResult.Ok(mockUser));
 
       // Act
-      const result = await useCase.execute(emptyCurrentUserIdRequest);
+      const result = await useCase.execute('target-user-id', '', emptyCurrentUserIdRequest);
 
       // Assert
       expect(result.isOk()).to.be.true;
@@ -236,12 +234,12 @@ describe('ChangeUserRoleUseCase', () => {
 
     it('should handle empty userId in request', async () => {
       // Arrange
-      const emptyUserIdRequest = { ...mockRequest, userId: '' };
+      const emptyUserIdRequest = { newRole: 'admin' as const };
       const userResult = Result.Ok(mockUser);
       mockUserApplicationService.changeUserRole.resolves(AppResult.Ok(mockUser));
 
       // Act
-      const result = await useCase.execute(emptyUserIdRequest);
+      const result = await useCase.execute('', 'admin-user-id', emptyUserIdRequest);
 
       // Assert
       expect(result.isOk()).to.be.true;
@@ -260,7 +258,7 @@ describe('ChangeUserRoleUseCase', () => {
       mockUserApplicationService.changeUserRole.resolves(AppResult.Ok(moderatorUser as unknown as User));
 
       // Act
-      const result = await useCase.execute(mockRequest);
+      const result = await useCase.execute('target-user-id', 'admin-user-id', mockRequest);
 
       // Assert
       expect(result.isOk()).to.be.true;

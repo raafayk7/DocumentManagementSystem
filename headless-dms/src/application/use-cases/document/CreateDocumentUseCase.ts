@@ -32,14 +32,15 @@ export class CreateDocumentUseCase {
         );
       
       if (documentResult.isErr()) {
+        const error = documentResult.unwrapErr();
         this.logger.warn('Document creation failed', { 
           name: request.name, 
           filePath: request.filePath,
-          userId: request.userId 
+          userId: request.userId,
+          error: error.message || error.toString()
         });
-        return AppResult.Err(AppError.InvalidData(
-          `Document creation failed for name: ${request.name}, filePath: ${request.filePath}`
-        ));
+        // Preserve the original error message instead of wrapping it
+        return AppResult.Err(error);
       }
 
       const document = documentResult.unwrap();
@@ -67,9 +68,8 @@ export class CreateDocumentUseCase {
         filePath: request.filePath,
         userId: request.userId 
       });
-      return AppResult.Err(AppError.Generic(
-        `Failed to execute create document use case for name: ${request.name}, filePath: ${request.filePath}`
-      ));
+      // Preserve the original error message instead of wrapping it
+      return AppResult.Err(error instanceof Error ? error : new Error('Unknown error'));
     }
   }
 }

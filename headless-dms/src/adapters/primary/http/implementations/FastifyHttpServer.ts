@@ -106,9 +106,50 @@ export class FastifyHttpServer implements IHttpServer {
         const response = new FastifyHttpResponse(fastifyReply);
         
         await handler(request, response);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Route handler error:', error);
-        fastifyReply.status(500).send({ error: 'Internal server error' });
+        
+        // Try to extract meaningful error information
+        let errorMessage = 'Internal server error';
+        let statusCode = 500;
+        
+        if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        if (error.statusCode) {
+          statusCode = error.statusCode;
+        }
+        
+        // Check if it's a validation error
+        if (error.validation) {
+          statusCode = 400;
+          errorMessage = error.message || 'Validation error';
+        }
+        
+        // Check if it's an authentication error
+        if (error.statusCode === 401) {
+          statusCode = 401;
+          errorMessage = error.message || 'Authentication required';
+        }
+        
+        // Check if it's an authorization error
+        if (error.statusCode === 403) {
+          statusCode = 403;
+          errorMessage = error.message || 'Insufficient permissions';
+        }
+        
+        // Check if it's a not found error
+        if (error.statusCode === 404) {
+          statusCode = 404;
+          errorMessage = error.message || 'Resource not found';
+        }
+        
+        fastifyReply.status(statusCode).send({ 
+          error: errorMessage,
+          statusCode,
+          timestamp: new Date().toISOString()
+        });
       }
     };
 

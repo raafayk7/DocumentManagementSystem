@@ -16,7 +16,6 @@ export class GenerateDownloadLinkUseCase {
   async execute(request: GenerateDownloadLinkRequest): Promise<AppResult<GenerateDownloadLinkResponse>> {
     this.logger.info('Executing generate download link use case', { 
       documentId: request.documentId,
-      // userId: request.userId 
       expiresInMinutes: request.expiresInMinutes
     });
 
@@ -27,27 +26,30 @@ export class GenerateDownloadLinkUseCase {
       );
       
       if (downloadLinkResult.isErr()) {
+        const error = downloadLinkResult.unwrapErr();
         this.logger.warn('Download link generation failed', { 
           documentId: request.documentId,
-          expiresInMinutes: request.expiresInMinutes
+          expiresInMinutes: request.expiresInMinutes,
+          error: error.message || error.toString()
         });
-        return AppResult.Err(AppError.InvalidOperation(
-          `Download link generation failed for document ID: ${request.documentId}`
-        ));
+        // Preserve the original error message instead of wrapping it
+        return AppResult.Err(error);
       }
 
-      const downloadInfo = downloadLinkResult.unwrap();
+      const token = downloadLinkResult.unwrap();
+      
+      // Construct the download URL using the JWT token
+      const downloadUrl = `/documents/download?token=${encodeURIComponent(token)}`;
       
       const response: GenerateDownloadLinkResponse = {
-        downloadUrl: '',
+        downloadUrl,
         expiresAt: new Date(Date.now() + (request.expiresInMinutes || 5) * 60000),
-        token: downloadInfo
-        // message: 'Download link generated successfully'
+        token
       };
 
       this.logger.info('Download link generated successfully', { 
         documentId: request.documentId,
-        // userId: request.userId,
+        downloadUrl,
         expiresAt: response.expiresAt
       });
       
@@ -57,9 +59,8 @@ export class GenerateDownloadLinkUseCase {
         documentId: request.documentId,
         expiresInMinutes: request.expiresInMinutes
       });
-      return AppResult.Err(AppError.Generic(
-        `Failed to execute generate download link use case for document ID: ${request.documentId}`
-      ));
+      // Preserve the original error message instead of wrapping it
+      return AppResult.Err(error instanceof Error ? error : new Error('Unknown error'));
     }
   }
 }

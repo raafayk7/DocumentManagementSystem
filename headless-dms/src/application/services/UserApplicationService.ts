@@ -96,10 +96,14 @@ export class UserApplicationService implements IUserApplicationService {
       // Create user entity
       const userResult = await User.create(email, password, role);
       if (userResult.isErr()) {
-        this.logger.error('Failed to create user entity', { email, error: userResult.unwrapErr() });
-        return AppResult.Err(AppError.Generic(
-          `Failed to create user entity with email: ${email}`
-        ));
+        const error = userResult.unwrapErr();
+        this.logger.error('Failed to create user entity', { 
+          email, 
+          error: error.message || error.toString(),
+          errorDetails: error
+        });
+        // Preserve the original error message instead of wrapping it
+        return AppResult.Err(error);
       }
 
       const user = userResult.unwrap();
@@ -122,10 +126,13 @@ export class UserApplicationService implements IUserApplicationService {
           return AppResult.Ok(savedUser);
         },
         Err: (error) => {
-          this.logger.error('Failed to save user', { email, error: error.message });
-          return AppResult.Err(AppError.Generic(
-            `Failed to save user with email: ${email}`
-          ));
+          this.logger.error('Failed to save user', { 
+            email, 
+            error: error.message || error.toString(),
+            errorDetails: error
+          });
+          // Preserve the original error message instead of wrapping it
+          return AppResult.Err(error);
         }
       });
     } catch (error) {
@@ -215,10 +222,10 @@ export class UserApplicationService implements IUserApplicationService {
       // Update password
       const changePasswordResult = await user.changePassword(newPassword);
       if (changePasswordResult.isErr()) {
-        this.logger.error('Failed to change password', { userId, error: changePasswordResult.unwrapErr() });
-        return AppResult.Err(AppError.Generic(
-          `Failed to change password for user with id: ${userId}`
-        ));
+        const error = changePasswordResult.unwrapErr();
+        this.logger.error('Failed to change password', { userId, error: error.message || error.toString() });
+        // Preserve the original error message instead of wrapping it
+        return AppResult.Err(error);
       }
 
       const updatedUser = changePasswordResult.unwrap();
@@ -230,17 +237,15 @@ export class UserApplicationService implements IUserApplicationService {
           return AppResult.Ok(savedUser);
         },
         Err: (error) => {
-          this.logger.error('Failed to save user after password change', { userId, error: error.message });
-          return AppResult.Err(AppError.Generic(
-            `Failed to save user after password change with id: ${userId}`
-          ));
+          this.logger.error('Failed to save user after password change', { userId, error: error.message || error.toString() });
+          // Preserve the original error message instead of wrapping it
+          return AppResult.Err(error);
         }
       });
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { userId });
-      return AppResult.Err(AppError.Generic(
-        `Failed to change password for user with id: ${userId}`
-      ));
+      // Preserve the original error message instead of wrapping it
+      return AppResult.Err(error instanceof Error ? error : new Error('Unknown error'));
     }
   }
 
@@ -281,10 +286,10 @@ export class UserApplicationService implements IUserApplicationService {
       // Update role
       const changeRoleResult = targetUser.changeRole(newRole);
       if (changeRoleResult.isErr()) {
-        this.logger.error('Failed to change role', { targetUserId, error: changeRoleResult.unwrapErr() });
-        return AppResult.Err(AppError.Generic(
-          `Failed to change role for user with id: ${targetUserId}`
-        ));
+        const error = changeRoleResult.unwrapErr();
+        this.logger.error('Failed to change role', { targetUserId, error: error.message || error.toString() });
+        // Preserve the original error message instead of wrapping it
+        return AppResult.Err(error);
       }
 
       const updatedUser = changeRoleResult.unwrap();
@@ -296,17 +301,15 @@ export class UserApplicationService implements IUserApplicationService {
           return AppResult.Ok(savedUser);
         },
         Err: (error) => {
-          this.logger.error('Failed to save user after role change', { targetUserId, error: error.message });
-          return AppResult.Err(AppError.Generic(
-            `Failed to save user after role change with id: ${targetUserId}`
-          ));
+          this.logger.error('Failed to save user after role change', { targetUserId, error: error.message || error.toString() });
+          // Preserve the original error message instead of wrapping it
+          return AppResult.Err(error);
         }
       });
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { currentUserId, targetUserId });
-      return AppResult.Err(AppError.Generic(
-        `Failed to change user role for user with id: ${targetUserId}`
-      ));
+      // Preserve the original error message instead of wrapping it
+      return AppResult.Err(error instanceof Error ? error : new Error('Unknown error'));
     }
   }
 

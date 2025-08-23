@@ -24,10 +24,13 @@ export class CreateUserUseCase {
       );
       
       if (userResult.isErr()) {
-        this.logger.warn('User creation failed', { email: request.email });
-        return AppResult.Err(AppError.InvalidData(
-          `User creation failed for email: ${request.email}`
-        ));
+        const error = userResult.unwrapErr();
+        this.logger.warn('User creation failed', { 
+          email: request.email, 
+          error: error.message || error.toString() 
+        });
+        // Preserve the original error message instead of wrapping it
+        return AppResult.Err(error);
       }
 
       const user = userResult.unwrap();
@@ -43,9 +46,7 @@ export class CreateUserUseCase {
       return AppResult.Ok(response);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { email: request.email });
-      return AppResult.Err(AppError.Generic(
-        `Failed to execute create user use case for email: ${request.email}`
-      ));
+      return AppResult.Err(error instanceof Error ? error : new Error('Unknown error'));
     }
   }
 }

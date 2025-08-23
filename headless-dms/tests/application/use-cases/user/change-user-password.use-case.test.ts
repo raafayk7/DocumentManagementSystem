@@ -82,7 +82,6 @@ describe('ChangeUserPasswordUseCase', () => {
 
     // Create mock request
     mockRequest = {
-      userId: 'test-user-id',
       currentPassword: 'oldpassword123',
       newPassword: 'newpassword456'
     };
@@ -105,7 +104,7 @@ describe('ChangeUserPasswordUseCase', () => {
       mockUserApplicationService.changeUserPassword.resolves(AppResult.Ok(mockUser));
 
       // Act
-      const result = await useCase.execute(mockRequest);
+      const result = await useCase.execute('test-user-id', mockRequest);
 
       // Assert
       expect(result.isOk()).to.be.true;
@@ -139,12 +138,12 @@ describe('ChangeUserPasswordUseCase', () => {
       mockUserApplicationService.changeUserPassword.resolves(AppResult.Err(passwordChangeError));
 
       // Act
-      const result = await useCase.execute(mockRequest);
+      const result = await useCase.execute('test-user-id', mockRequest);
 
       // Assert
       expect(result.isErr()).to.be.true;
       expect(result.unwrapErr().status).to.equal('InvalidOperation');
-      expect(result.unwrapErr().message).to.include('Password change failed for user ID: test-user-id');
+      expect(result.unwrapErr().message).to.equal('Current password is incorrect');
 
       // Verify logging
       expect(mockChildLogger.warn.calledWith(
@@ -159,12 +158,12 @@ describe('ChangeUserPasswordUseCase', () => {
       mockUserApplicationService.changeUserPassword.rejects(error);
 
       // Act
-      const result = await useCase.execute(mockRequest);
+      const result = await useCase.execute('test-user-id', mockRequest);
 
       // Assert
       expect(result.isErr()).to.be.true;
       expect(result.unwrapErr().status).to.equal('Generic');
-      expect(result.unwrapErr().message).to.include('Failed to execute change user password use case for user ID: test-user-id');
+      expect(result.unwrapErr().message).to.equal('Database connection failed');
 
       // Verify logging
       expect(mockChildLogger.error.calledWith(
@@ -177,12 +176,12 @@ describe('ChangeUserPasswordUseCase', () => {
 
     it('should handle empty userId in request', async () => {
       // Arrange
-      const emptyUserIdRequest = { ...mockRequest, userId: '' };
+      const emptyUserIdRequest = { ...mockRequest };
       const passwordChangeResult = Result.Ok(mockUser);
       mockUserApplicationService.changeUserPassword.resolves(AppResult.Ok(mockUser));
 
       // Act
-      const result = await useCase.execute(emptyUserIdRequest);
+      const result = await useCase.execute('', emptyUserIdRequest);
 
       // Assert
       expect(result.isOk()).to.be.true;
@@ -196,7 +195,7 @@ describe('ChangeUserPasswordUseCase', () => {
       mockUserApplicationService.changeUserPassword.resolves(AppResult.Ok(mockUser));
 
       // Act
-      const result = await useCase.execute(emptyCurrentPasswordRequest);
+      const result = await useCase.execute('test-user-id', emptyCurrentPasswordRequest);
 
       // Assert
       expect(result.isOk()).to.be.true;
@@ -210,7 +209,7 @@ describe('ChangeUserPasswordUseCase', () => {
       mockUserApplicationService.changeUserPassword.resolves(AppResult.Ok(mockUser));
 
       // Act
-      const result = await useCase.execute(emptyNewPasswordRequest);
+      const result = await useCase.execute('test-user-id', emptyNewPasswordRequest);
 
       // Assert
       expect(result.isOk()).to.be.true;
@@ -233,7 +232,7 @@ describe('ChangeUserPasswordUseCase', () => {
       mockUserApplicationService.changeUserPassword.resolves(AppResult.Ok(mockUser));
 
       // Act
-      const result = await useCase.execute(specialCharRequest);
+      const result = await useCase.execute('test-user-id', specialCharRequest);
 
       // Assert
       expect(result.isOk()).to.be.true;
@@ -255,7 +254,7 @@ describe('ChangeUserPasswordUseCase', () => {
       mockUserApplicationService.changeUserPassword.resolves(AppResult.Ok(mockUser));
 
       // Act
-      const result = await useCase.execute(longPasswordRequest);
+      const result = await useCase.execute('test-user-id', longPasswordRequest);
 
       // Assert
       expect(result.isOk()).to.be.true;
@@ -277,7 +276,7 @@ describe('ChangeUserPasswordUseCase', () => {
       mockUserApplicationService.changeUserPassword.resolves(AppResult.Ok(mockUser));
 
       // Act
-      const result = await useCase.execute(numericPasswordRequest);
+      const result = await useCase.execute('test-user-id', numericPasswordRequest);
 
       // Assert
       expect(result.isOk()).to.be.true;

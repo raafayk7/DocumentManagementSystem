@@ -114,10 +114,14 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       // Create document entity
       const documentResult = Document.create(name, filename, mimeType, size, tags, metadata);
       if (documentResult.isErr()) {
-        this.logger.error('Failed to create document entity', { name, error: documentResult.unwrapErr() });
-        return AppResult.Err(AppError.Generic(
-          `Failed to create document entity with name: ${name}`
-        ));
+        const error = documentResult.unwrapErr();
+        this.logger.error('Failed to create document entity', { 
+          name, 
+          error: error.message || error.toString(),
+          errorDetails: error
+        });
+        // Preserve the original error message instead of wrapping it
+        return AppResult.Err(error);
       }
 
       const document = documentResult.unwrap();
@@ -747,10 +751,14 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       // Create document entity
       const documentResult = Document.create(name, fileInfo.path, mimeType, fileInfo.size, tags, metadata);
       if (documentResult.isErr()) {
-        this.logger.error('Failed to create document entity', { name, error: documentResult.unwrapErr() });
-        return AppResult.Err(AppError.Generic(
-          `Failed to create document entity: ${name}`
-        ));
+        const error = documentResult.unwrapErr();
+        this.logger.error('Failed to create document entity', { 
+          name, 
+          error: error.message || error.toString(),
+          errorDetails: error
+        });
+        // Preserve the original error message instead of wrapping it
+        return AppResult.Err(error);
       }
 
       const document = documentResult.unwrap();
@@ -826,11 +834,10 @@ export class DocumentApplicationService implements IDocumentApplicationService {
    * Download document by token
    */
   async downloadDocumentByToken(token: string): Promise<AppResult<{ document: Document; file: Buffer }>> {
-    this.logger.info('Downloading document by token', { token });
+    this.logger.info('Downloading document by token', { token: token.substring(0, 20) + '...' });
     
     try {
       // Decode token to get document ID
-      // This would typically use a JWT service or similar
       const documentId = this.decodeToken(token);
       
       // Get document
@@ -845,20 +852,19 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       // Get file from storage
       const fileResult = await this.fileService.getFile(document.filePath);
       if (fileResult.isErr()) {
-        this.logger.error('Failed to get file from storage', { documentId, error: fileResult.unwrapErr().message });
-        return AppResult.Err(AppError.Generic(
-          `Failed to read file from storage: ${documentId}`
-        ));
+        const error = fileResult.unwrapErr();
+        this.logger.error('Failed to get file from storage', { documentId, error: error.message || error.toString() });
+        // Preserve the original error message instead of wrapping it
+        return AppResult.Err(error);
       }
 
       const file = fileResult.unwrap();
-      this.logger.info('Document downloaded by token successfully', { documentId });
+      this.logger.info('Document downloaded by token successfully', { documentId, fileSize: file.length });
       return AppResult.Ok({ document, file });
     } catch (error) {
-      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { token });
-      return AppResult.Err(AppError.Generic(
-        `Failed to download document by token: ${token}`
-      ));
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { token: token.substring(0, 20) + '...' });
+      // Preserve the original error message instead of wrapping it
+      return AppResult.Err(error instanceof Error ? error : new Error('Unknown error'));
     }
   }
 
@@ -881,13 +887,12 @@ export class DocumentApplicationService implements IDocumentApplicationService {
       // Generate token (this would typically use a JWT service)
       const token = this.generateToken(documentId, expiresInMinutes);
 
-      this.logger.info('Download link generated successfully', { documentId });
+      this.logger.info('Download link generated successfully', { documentId, expiresInMinutes });
       return AppResult.Ok(token);
     } catch (error) {
-      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId });
-      return AppResult.Err(AppError.Generic(
-        `Failed to generate download link: ${documentId}`
-      ));
+      this.logger.error(error instanceof Error ? error.message : 'Unknown error', { documentId, expiresInMinutes });
+      // Preserve the original error message instead of wrapping it
+      return AppResult.Err(error instanceof Error ? error : new Error('Unknown error'));
     }
   }
 
@@ -962,29 +967,51 @@ export class DocumentApplicationService implements IDocumentApplicationService {
   // Helper methods for token handling (these would typically be in a separate service)
   private decodeToken(token: string): string {
     try {
-      // Decode JWT token to get document ID
-      const payload = jwt.verify(token, process.env.DOWNLOAD_JWT_SECRET!) as any;
-      return payload.documentId;
-    } catch (error) {
-      throw new Error('Invalid or expired download token');
-    }
-  }
-
-  private generateToken(documentId: string, expiresInMinutes: number): string {
-    try {
-      const payload = {
-        documentId,
-        exp: Math.floor(Date.now() / 1000) + (expiresInMinutes * 60) // Convert minutes to seconds
-      };
-      
       const secret = process.env.DOWNLOAD_JWT_SECRET;
       if (!secret) {
         throw new Error('Download JWT secret not configured');
       }
       
+      // Decode JWT token to get document ID
+      const payload = jwt.verify(token, secret) as any;
+      
+      if (!payload.documentId) {
+        throw new Error('Invalid token payload - missing document ID');
+      }
+      
+      return payload.documentId;
+    } catch (error) {
+      if (error instanceof jwt.JsonWebTokenError) {
+        throw new Error('Invalid download token');
+      } else if (error instanceof jwt.TokenExpiredError) {
+        throw new Error('Download token has expired');
+      } else if (error instanceof jwt.NotBeforeError) {
+        throw new Error('Download token not yet valid');
+      } else {
+        throw new Error('Invalid or expired download token');
+      }
+    }
+  }
+
+  private generateToken(documentId: string, expiresInMinutes: number): string {
+    try {
+      const secret = process.env.DOWNLOAD_JWT_SECRET;
+      if (!secret) {
+        throw new Error('Download JWT secret not configured');
+      }
+      
+      const payload = {
+        documentId,
+        exp: Math.floor(Date.now() / 1000) + (expiresInMinutes * 60) // Convert minutes to seconds
+      };
+      
       return jwt.sign(payload, secret);
     } catch (error) {
-      throw new Error('Failed to generate download token');
+      if (error instanceof Error) {
+        throw error; // Re-throw the error with its original message
+      } else {
+        throw new Error('Failed to generate download token');
+      }
     }
   }
 }

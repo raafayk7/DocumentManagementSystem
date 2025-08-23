@@ -13,28 +13,32 @@ export class ChangeUserRoleUseCase {
     this.logger = this.logger.child({ useCase: 'ChangeUserRoleUseCase' });
   }
 
-  async execute(request: ChangeUserRoleRequest): Promise<AppResult<ChangeUserRoleResponse>> {
+  async execute(
+    targetUserId: string, 
+    currentUserId: string, 
+    request: ChangeUserRoleRequest
+  ): Promise<AppResult<ChangeUserRoleResponse>> {
     this.logger.info('Executing change user role use case', { 
-      currentUserId: request.currentUserId, 
-      userId: request.userId, 
+      currentUserId, 
+      targetUserId, 
       newRole: request.newRole 
     });
 
     try {
       const userResult = await this.userApplicationService.changeUserRole(
-        request.currentUserId,
-        request.userId,
+        currentUserId,
+        targetUserId,
         request.newRole
       );
       
       if (userResult.isErr()) {
         this.logger.warn('User role change failed', { 
-          currentUserId: request.currentUserId, 
-          userId: request.userId, 
+          currentUserId, 
+          targetUserId, 
           newRole: request.newRole 
         });
         return AppResult.Err(AppError.InvalidOperation(
-          `User role change failed for user ID: ${request.userId} to role: ${request.newRole}`
+          `User role change failed for user ID: ${targetUserId} to role: ${request.newRole}`
         ));
       }
 
@@ -52,12 +56,12 @@ export class ChangeUserRoleUseCase {
       return AppResult.Ok(response);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
-        currentUserId: request.currentUserId, 
-        userId: request.userId, 
+        currentUserId, 
+        targetUserId, 
         newRole: request.newRole 
       });
       return AppResult.Err(AppError.Generic(
-        `Failed to execute change user role use case for user ID: ${request.userId}`
+        `Failed to execute change user role use case for user ID: ${targetUserId}`
       ));
     }
   }

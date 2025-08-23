@@ -4,8 +4,6 @@ import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 export const ChangeUserRoleRequestSchema = z.object({
-  currentUserId: z.string().uuid('Invalid current user ID'),
-  userId: z.string().uuid('Invalid user ID'),
   newRole: z.enum(['user', 'admin'], 'Invalid role'),
 });
 
@@ -22,8 +20,6 @@ export class ChangeUserRoleRequestDto extends BaseDto {
   private readonly nestAdmin = nestWithKey('admin');
 
   constructor(
-    public readonly currentUserId: string,
-    public readonly userId: string,
     public readonly newRole: 'user' | 'admin'
   ) {
     super();
@@ -41,8 +37,6 @@ export class ChangeUserRoleRequestDto extends BaseDto {
 
     const validated = validationResult.unwrap();
     const dto = new ChangeUserRoleRequestDto(
-      validated.currentUserId,
-      validated.userId,
       validated.newRole
     );
 
@@ -75,8 +69,6 @@ export class ChangeUserRoleRequestDto extends BaseDto {
    */
   toPlain(): ChangeUserRoleRequest {
     return {
-      currentUserId: this.currentUserId,
-      userId: this.userId,
       newRole: this.newRole
     };
   }

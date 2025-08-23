@@ -205,7 +205,11 @@ describe('FastifyHttpServer Adapter', () => {
       expect(mockFastifyReply.status.callCount).to.equal(1);
       expect(mockFastifyReply.status.firstCall.args[0]).to.equal(500);
       expect(mockFastifyReply.send.callCount).to.equal(1);
-      expect(mockFastifyReply.send.firstCall.args[0]).to.deep.equal({ error: 'Internal server error' });
+      expect(mockFastifyReply.send.firstCall.args[0]).to.deep.include({ 
+        error: 'Handler error',
+        statusCode: 500
+      });
+      expect(mockFastifyReply.send.firstCall.args[0]).to.have.property('timestamp');
     });
   });
 

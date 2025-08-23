@@ -96,7 +96,7 @@ describe('GenerateDownloadLinkUseCase', () => {
 
       const response = result.unwrap();
       expect(response.token).to.equal(mockToken);
-      expect(response.downloadUrl).to.equal('');
+      expect(response.downloadUrl).to.equal(`/documents/download?token=${encodeURIComponent(mockToken)}`);
       expect(response.expiresAt).to.be.instanceOf(Date);
 
       // Verify expiration time calculation
@@ -121,6 +121,7 @@ describe('GenerateDownloadLinkUseCase', () => {
         'Download link generated successfully',
         { 
           documentId: 'test-document-id',
+          downloadUrl: response.downloadUrl,
           expiresAt: response.expiresAt
         }
       )).to.be.true;
@@ -140,7 +141,7 @@ describe('GenerateDownloadLinkUseCase', () => {
 
       const error = result.unwrapErr();
       expect(error.status).to.equal(AppError.InvalidOperation().status);
-      expect(error.message).to.include('Download link generation failed for document ID: test-document-id');
+      expect(error.message).to.equal('Download link generation failed'); // Preserve original error message
 
       // Verify service call
       expect(mockDocumentApplicationService.generateDownloadLink.calledOnce).to.be.true;
@@ -150,7 +151,8 @@ describe('GenerateDownloadLinkUseCase', () => {
         'Download link generation failed',
         { 
           documentId: 'test-document-id',
-          expiresInMinutes: 30
+          expiresInMinutes: 30,
+          error: 'Download link generation failed'
         }
       )).to.be.true;
     });
@@ -168,8 +170,7 @@ describe('GenerateDownloadLinkUseCase', () => {
       expect(result.isOk()).to.be.false;
 
       const error = result.unwrapErr();
-      expect(error.status).to.equal(AppError.Generic('Service error').status);
-      expect(error.message).to.include('Failed to execute generate download link use case for document ID: test-document-id');
+      expect(error.message).to.equal('Service error'); // Preserve original error message
 
       // Verify service call
       expect(mockDocumentApplicationService.generateDownloadLink.calledWith(
@@ -200,8 +201,7 @@ describe('GenerateDownloadLinkUseCase', () => {
       expect(result.isOk()).to.be.false;
 
       const error = result.unwrapErr();
-      expect(error.status).to.equal(AppError.Generic('Unknown error string').status);
-      expect(error.message).to.include('Failed to execute generate download link use case for document ID: test-document-id');
+      expect(error.message).to.equal('Unknown error string'); // Preserve original error message
 
       // Verify service call
       expect(mockDocumentApplicationService.generateDownloadLink.calledWith(

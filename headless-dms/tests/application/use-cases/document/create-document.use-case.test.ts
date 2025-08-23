@@ -176,7 +176,7 @@ describe('CreateDocumentUseCase', () => {
 
       const error = result.unwrapErr();
       expect(error.status).to.equal(AppError.InvalidData().status);
-      expect(error.message).to.include('Document creation failed for name: test-document.pdf');
+      expect(error.message).to.equal('Document creation failed');
 
       // Verify service call
       expect(mockDocumentApplicationService.createDocument.calledOnce).to.be.true;
@@ -184,7 +184,7 @@ describe('CreateDocumentUseCase', () => {
       // Verify logging
       expect(mockChildLogger.warn.calledWith(
         'Document creation failed',
-        { name: 'test-document.pdf', filePath: '/uploads/test-document.pdf', userId: 'test-user-id' }
+        { name: 'test-document.pdf', filePath: '/uploads/test-document.pdf', userId: 'test-user-id', error: 'Document creation failed' }
       )).to.be.true;
     });
 
@@ -201,8 +201,7 @@ describe('CreateDocumentUseCase', () => {
       expect(result.isOk()).to.be.false;
 
       const error = result.unwrapErr();
-      expect(error.status).to.equal(AppError.Generic('Service error').status);
-      expect(error.message).to.include('Failed to execute create document use case for name: test-document.pdf');
+      expect(error.message).to.equal('Service error');
 
       // Verify service call
       expect(mockDocumentApplicationService.createDocument.calledOnce).to.be.true;
@@ -227,8 +226,7 @@ describe('CreateDocumentUseCase', () => {
       expect(result.isOk()).to.be.false;
 
       const error = result.unwrapErr();
-      expect(error.status).to.equal(AppError.Generic('Unknown error string').status);
-      expect(error.message).to.include('Failed to execute create document use case for name: test-document.pdf');
+      expect(error.message).to.equal('Unknown error string');
 
       // Verify service call
       expect(mockDocumentApplicationService.createDocument.calledOnce).to.be.true;

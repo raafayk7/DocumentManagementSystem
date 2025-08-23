@@ -4,7 +4,6 @@ import { nestWithKey, extractId, toSerialized } from '@carbonteq/hexapp';
 import { BaseDto, type DtoValidationResult } from '../base/index.js';
 
 export const ChangeUserPasswordRequestSchema = z.object({
-  userId: z.string().uuid('Invalid user ID'),
   currentPassword: z.string().min(1, 'Current password is required'),
   newPassword: z.string().min(8, 'Password must be at least 8 characters'),
 });
@@ -22,7 +21,6 @@ export class ChangeUserPasswordRequestDto extends BaseDto {
   private readonly nestSecurity = nestWithKey('security');
 
   constructor(
-    public readonly userId: string,
     public readonly currentPassword: string,
     public readonly newPassword: string
   ) {
@@ -41,7 +39,6 @@ export class ChangeUserPasswordRequestDto extends BaseDto {
 
     const validated = validationResult.unwrap();
     const dto = new ChangeUserPasswordRequestDto(
-      validated.userId,
       validated.currentPassword,
       validated.newPassword
     );
@@ -75,7 +72,6 @@ export class ChangeUserPasswordRequestDto extends BaseDto {
    */
   toPlain(): ChangeUserPasswordRequest {
     return {
-      userId: this.userId,
       currentPassword: this.currentPassword,
       newPassword: this.newPassword
     };

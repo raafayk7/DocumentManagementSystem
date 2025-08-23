@@ -147,12 +147,12 @@ describe('CreateUserUseCase', () => {
       // Assert
       expect(result.isErr()).to.be.true;
       expect(result.unwrapErr().status).to.equal('InvalidData');
-      expect(result.unwrapErr().message).to.include('User creation failed for email: newuser@example.com');
+      expect(result.unwrapErr().message).to.equal('Email already exists');
 
       // Verify logging
       expect(mockChildLogger.warn.calledWith(
         'User creation failed',
-        { email: 'newuser@example.com' }
+        { email: 'newuser@example.com', error: 'Email already exists' }
       )).to.be.true;
     });
 
@@ -167,7 +167,7 @@ describe('CreateUserUseCase', () => {
       // Assert
       expect(result.isErr()).to.be.true;
       expect(result.unwrapErr().status).to.equal('Generic');
-      expect(result.unwrapErr().message).to.include('Failed to execute create user use case for email: newuser@example.com');
+      expect(result.unwrapErr().message).to.equal('Database connection failed');
 
       // Verify logging
       expect(mockChildLogger.error.calledWith(
@@ -221,7 +221,7 @@ describe('CreateUserUseCase', () => {
 
       const error = result.unwrapErr();
       expect(error.status).to.equal(AppError.InvalidData().status);
-      expect(error.message).to.include('User creation failed for email: newuser@example.com');
+      expect(error.message).to.equal('User creation failed');
 
       // Verify service call with invalid role (should fail validation)
       expect(mockUserApplicationService.createUser.calledWith('newuser@example.com', 'newpassword123', 'invalid-role' as unknown as 'user' | 'admin')).to.be.true;

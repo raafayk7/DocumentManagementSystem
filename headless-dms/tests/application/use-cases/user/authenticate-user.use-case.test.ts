@@ -12,12 +12,14 @@ import { Email } from '../../../../src/domain/value-objects/Email.js';
 import { Password } from '../../../../src/domain/value-objects/Password.js';
 import { UserRole } from '../../../../src/domain/value-objects/UserRole.js';
 import type { IUserApplicationService } from '../../../../src/ports/input/IUserApplicationService.js';
+import type { IAuthStrategy } from '../../../../src/ports/output/IAuthStrategy.js';
 import type { ILogger, LogContext } from '../../../../src/ports/output/ILogger.js';
 import { AuthenticateUserRequest, AuthenticateUserResponse } from '../../../../src/shared/dto/user/index.js';
 
 describe('AuthenticateUserUseCase', () => {
   let useCase: AuthenticateUserUseCase;
   let mockUserApplicationService: sinon.SinonStubbedInstance<IUserApplicationService>;
+  let mockAuthStrategy: sinon.SinonStubbedInstance<IAuthStrategy>;
   let mockLogger: sinon.SinonStubbedInstance<ILogger>;
   let mockChildLogger: sinon.SinonStubbedInstance<ILogger>;
   let mockUser: User;
@@ -36,6 +38,16 @@ describe('AuthenticateUserUseCase', () => {
       validateUserCredentials: sinon.stub(),
       getUserByEmail: sinon.stub(),
       getUsersByRole: sinon.stub()
+    };
+
+    mockAuthStrategy = {
+      getStrategyName: sinon.stub(),
+      authenticate: sinon.stub(),
+      generateToken: sinon.stub(),
+      verifyToken: sinon.stub(),
+      register: sinon.stub(),
+      refreshToken: sinon.stub(),
+      invalidateToken: sinon.stub()
     };
 
     // Create child logger mock
@@ -89,6 +101,7 @@ describe('AuthenticateUserUseCase', () => {
     // Create use case instance
     useCase = new AuthenticateUserUseCase(
       mockUserApplicationService as IUserApplicationService,
+      mockAuthStrategy as IAuthStrategy,
       mockLogger as ILogger
     );
   });
@@ -100,8 +113,17 @@ describe('AuthenticateUserUseCase', () => {
   describe('execute', () => {
     it('should successfully authenticate a user and return response', async () => {
       // Arrange
-      const userResult = Result.Ok(mockUser);
-      mockUserApplicationService.authenticateUser.resolves(AppResult.Ok(mockUser));
+      const authResult = {
+        token: 'dummy-token',
+        user: {
+          id: 'test-user-id',
+          email: 'test@example.com',
+          role: 'user'
+        },
+        expiresAt: new Date(Date.now() + 3600000) // 1 hour from now
+      };
+      mockAuthStrategy.authenticate.resolves(AppResult.Ok(authResult));
+      mockUserApplicationService.getUserByEmail.resolves(AppResult.Ok(mockUser));
 
       // Act
       const result = await useCase.execute(mockRequest);
@@ -131,18 +153,20 @@ describe('AuthenticateUserUseCase', () => {
         { userId: 'test-user-id', email: 'test@example.com' }
       )).to.be.true;
 
+      // Verify auth strategy call
+      expect(mockAuthStrategy.authenticate.calledWith({
+        email: 'test@example.com',
+        password: 'testpassword123'
+      })).to.be.true;
+
       // Verify service call
-      expect(mockUserApplicationService.authenticateUser.calledWith(
-        'test@example.com',
-        'testpassword123'
-      )).to.be.true;
+      expect(mockUserApplicationService.getUserByEmail.calledWith('test@example.com')).to.be.true;
     });
 
     it('should return Unauthorized error when authentication fails', async () => {
       // Arrange
       const authError = AppError.Unauthorized('Invalid credentials');
-      const userResult = Result.Err(authError);
-      mockUserApplicationService.authenticateUser.resolves(AppResult.Err(authError));
+      mockAuthStrategy.authenticate.resolves(AppResult.Err(authError));
 
       // Act
       const result = await useCase.execute(mockRequest);
@@ -150,7 +174,7 @@ describe('AuthenticateUserUseCase', () => {
       // Assert
       expect(result.isErr()).to.be.true;
       expect(result.unwrapErr().status).to.equal('Unauthorized');
-      expect(result.unwrapErr().message).to.include('Authentication failed for email: test@example.com');
+      expect(result.unwrapErr().message).to.equal('Invalid credentials');
 
       // Verify logging
       expect(mockChildLogger.warn.calledWith(
@@ -162,15 +186,14 @@ describe('AuthenticateUserUseCase', () => {
     it('should return Generic error when an exception occurs', async () => {
       // Arrange
       const error = new Error('Database connection failed');
-      mockUserApplicationService.authenticateUser.rejects(error);
+      mockAuthStrategy.authenticate.rejects(error);
 
       // Act
       const result = await useCase.execute(mockRequest);
 
       // Assert
       expect(result.isErr()).to.be.true;
-      expect(result.unwrapErr().status).to.equal('Generic');
-      expect(result.unwrapErr().message).to.include('Failed to execute authenticate user use case for email: test@example.com');
+      expect(result.unwrapErr().message).to.equal('Database connection failed');
 
       // Verify logging
       expect(mockChildLogger.error.calledWith(
@@ -184,29 +207,39 @@ describe('AuthenticateUserUseCase', () => {
     it('should handle empty email in request', async () => {
       // Arrange
       const emptyEmailRequest = { ...mockRequest, email: '' };
-      const userResult = Result.Ok(mockUser);
-      mockUserApplicationService.authenticateUser.resolves(AppResult.Ok(mockUser));
+      const authResult = {
+        token: 'dummy-token',
+        user: { id: 'test-user-id', email: '', role: 'user' },
+        expiresAt: new Date(Date.now() + 3600000)
+      };
+      mockAuthStrategy.authenticate.resolves(AppResult.Ok(authResult));
+      mockUserApplicationService.getUserByEmail.resolves(AppResult.Ok(mockUser));
 
       // Act
       const result = await useCase.execute(emptyEmailRequest);
 
       // Assert
       expect(result.isOk()).to.be.true;
-      expect(mockUserApplicationService.authenticateUser.calledWith('', 'testpassword123')).to.be.true;
+      expect(mockAuthStrategy.authenticate.calledWith({ email: '', password: 'testpassword123' })).to.be.true;
     });
 
     it('should handle empty password in request', async () => {
       // Arrange
       const emptyPasswordRequest = { ...mockRequest, password: '' };
-      const userResult = Result.Ok(mockUser);
-      mockUserApplicationService.authenticateUser.resolves(AppResult.Ok(mockUser));
+      const authResult = {
+        token: 'dummy-token',
+        user: { id: 'test-user-id', email: 'test@example.com', role: 'user' },
+        expiresAt: new Date(Date.now() + 3600000)
+      };
+      mockAuthStrategy.authenticate.resolves(AppResult.Ok(authResult));
+      mockUserApplicationService.getUserByEmail.resolves(AppResult.Ok(mockUser));
 
       // Act
       const result = await useCase.execute(emptyPasswordRequest);
 
       // Assert
       expect(result.isOk()).to.be.true;
-      expect(mockUserApplicationService.authenticateUser.calledWith('test@example.com', '')).to.be.true;
+      expect(mockAuthStrategy.authenticate.calledWith({ email: 'test@example.com', password: '' })).to.be.true;
     });
 
     it('should create child logger with correct context', () => {
@@ -220,8 +253,13 @@ describe('AuthenticateUserUseCase', () => {
         ...mockUser,
         role: { value: 'admin' } as UserRole
       };
-      const userResult = Result.Ok(adminUser);
-      mockUserApplicationService.authenticateUser.resolves(AppResult.Ok(adminUser as unknown as User));
+      const authResult = {
+        token: 'dummy-token',
+        user: { id: 'test-user-id', email: 'test@example.com', role: 'admin' },
+        expiresAt: new Date(Date.now() + 3600000)
+      };
+      mockAuthStrategy.authenticate.resolves(AppResult.Ok(authResult));
+      mockUserApplicationService.getUserByEmail.resolves(AppResult.Ok(adminUser as unknown as User));
 
       // Act
       const result = await useCase.execute(mockRequest);

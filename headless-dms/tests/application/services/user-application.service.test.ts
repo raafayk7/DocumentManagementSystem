@@ -265,7 +265,7 @@ describe('UserApplicationService', () => {
       expect(result.isErr()).to.be.true;
       const error = result.unwrapErr();
       expect(error.status).to.equal('Generic');
-      expect(error.message).to.include('Failed to create user entity');
+      expect(error.message).to.equal('Invalid email format');
 
       // Restore original method
       User.create = originalCreate;
@@ -296,8 +296,8 @@ describe('UserApplicationService', () => {
       expect(result.isErr()).to.be.true;
       const error = result.unwrapErr();
       expect(error.status).to.equal('Generic');
-      expect(error.message).to.include('Failed to save user');
-      expect(mockChildLogger.error.calledWith('Failed to save user', { email, error: 'Database error' })).to.be.true;
+      expect(error.message).to.equal('Database error');
+      expect(mockChildLogger.error.calledWith('Failed to save user', { email, error: 'Database error', errorDetails: sinon.match.instanceOf(Error) })).to.be.true;
 
       // Restore original method
       User.create = originalCreate;

@@ -345,6 +345,17 @@ export class DeleteDocumentResponseDto extends BaseDto {
 export const UploadDocumentResponseSchema=z.object({
   success:z.boolean(),
   message:z.string(),
+  document: z.object({
+    id: z.string(),
+    name: z.string(),
+    filePath: z.string(),
+    mimeType: z.string(),
+    size: z.number(),
+    tags: z.array(z.string()),
+    metadata: z.record(z.string(), z.string()),
+    createdAt: z.date(),
+    updatedAt: z.date()
+  }).optional()
 });
 export type UploadDocumentResponse = z.infer<typeof UploadDocumentResponseSchema>;
 
@@ -360,7 +371,18 @@ export class UploadDocumentResponseDto extends BaseDto {
 
   constructor(
     public readonly success: boolean,
-    public readonly message: string
+    public readonly message: string,
+    public readonly document?: {
+      id: string;
+      name: string;
+      filePath: string;
+      mimeType: string;
+      size: number;
+      tags: string[];
+      metadata: Record<string, string>;
+      createdAt: Date;
+      updatedAt: Date;
+    }
   ) {
     super();
   }
@@ -368,15 +390,15 @@ export class UploadDocumentResponseDto extends BaseDto {
   /**
    * Create UploadDocumentResponseDto from operation result
    */
-  static create(success: boolean, message: string): UploadDocumentResponseDto {
-    return new UploadDocumentResponseDto(success, message);
+  static create(success: boolean, message: string, document?: any): UploadDocumentResponseDto {
+    return new UploadDocumentResponseDto(success, message, document);
   }
 
   /**
    * Create success response
    */
-  static success(message: string = 'Document uploaded successfully'): UploadDocumentResponseDto {
-    return new UploadDocumentResponseDto(true, message);
+  static success(message: string = 'Document uploaded successfully', document?: any): UploadDocumentResponseDto {
+    return new UploadDocumentResponseDto(true, message, document);
   }
 
   /**
@@ -413,7 +435,8 @@ export class UploadDocumentResponseDto extends BaseDto {
   toPlain(): UploadDocumentResponse {
     return {
       success: this.success,
-      message: this.message
+      message: this.message,
+      document: this.document
     };
   }
 }
