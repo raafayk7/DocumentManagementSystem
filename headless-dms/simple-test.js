@@ -37,4 +37,32 @@ console.log('validateFileType("text/plain"):', fileTypeResult.isOk() ? 'PASS' : 
 const invalidFileTypeResult = DocumentValidator.validateFileType('application/exe');
 console.log('validateFileType("application/exe"):', invalidFileTypeResult.isErr() ? 'PASS' : 'FAIL');
 
-console.log('\nAll tests completed!'); 
+console.log('\nAll tests completed!');
+
+const { User } = require('./dist/domain/entities/User.js');
+
+console.log('Testing User.fromRepository...');
+
+try {
+  const userResult = User.fromRepository({
+    id: 'user123',
+    email: 'test@example.com',
+    passwordHash: 'hashedpassword',
+    role: 'user',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  });
+  
+  console.log('User result:', userResult);
+  console.log('Is Ok?', userResult.isOk());
+  
+  if (userResult.isOk()) {
+    const user = userResult.unwrap();
+    console.log('User created successfully:', user);
+    console.log('User instanceof User:', user instanceof User);
+  } else {
+    console.log('Error creating user:', userResult.unwrapErr());
+  }
+} catch (error) {
+  console.error('Error:', error);
+} 
