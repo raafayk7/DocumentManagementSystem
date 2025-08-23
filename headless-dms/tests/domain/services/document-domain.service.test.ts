@@ -241,7 +241,7 @@ describe('Domain > Services > DocumentDomainService', () => {
           'invalid key with spaces': 'value',
           'verylongkeynameexceedingfiftycharacterslimitwhichshouldtriggeravalidationerror': 'value'
         }
-      } as Document;
+      } as unknown as Document;
 
       // Act
       const validation = documentDomainService.validateDocumentMetadata(problematicDoc);

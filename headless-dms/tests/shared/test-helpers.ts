@@ -63,6 +63,29 @@ export const AppResultTestUtils = {
 };
 
 /**
+ * Test utilities for hexapp Result type
+ */
+export const HexappResultTestUtils = {
+  /**
+   * Assert that hexapp Result is Ok and return the value
+   */
+  expectOk<T, E>(result: { isOk: () => boolean; isErr: () => boolean; unwrap: () => T; unwrapErr: () => E }): T {
+    expect(result.isOk()).to.be.true;
+    expect(result.isErr()).to.be.false;
+    return result.unwrap();
+  },
+
+  /**
+   * Assert that hexapp Result is Err and return the error
+   */
+  expectErr<T, E>(result: { isOk: () => boolean; isErr: () => boolean; unwrap: () => T; unwrapErr: () => E }): E {
+    expect(result.isErr()).to.be.true;
+    expect(result.isOk()).to.be.false;
+    return result.unwrapErr();
+  }
+};
+
+/**
  * Test utilities for AppError
  */
 export const AppErrorTestUtils = {
@@ -193,6 +216,7 @@ export const TestDataUtils = {
     return {
       id: ValueObjectTestUtils.createTestUuid(),
       email: 'test@example.com',
+      passwordHash: '$2b$10$hashedPassword',
       role: 'user',
       createdAt: new Date(),
       updatedAt: new Date(),

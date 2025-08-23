@@ -12,6 +12,7 @@ import {
   UUID,
   DateTime,
   AppResultTestUtils,
+  HexappResultTestUtils,
   AppErrorTestUtils,
   ValueObjectTestUtils,
   TestDataUtils,
@@ -64,7 +65,7 @@ describe('Domain > Value Objects > UUID (Hexapp Refined Type)', () => {
       const result = UUID.create(validUuidString);
       
       // Assert
-      const uuid = AppResultTestUtils.expectOk(result);
+      const uuid = HexappResultTestUtils.expectOk(result);
       expect(uuid).to.equal(validUuidString);
     });
 
@@ -79,7 +80,7 @@ describe('Domain > Value Objects > UUID (Hexapp Refined Type)', () => {
 
       validUuids.forEach(uuidStr => {
         const result = UUID.create(uuidStr);
-        const uuid = AppResultTestUtils.expectOk(result);
+        const uuid = HexappResultTestUtils.expectOk(result);
         expect(uuid).to.equal(uuidStr);
       });
     });
@@ -98,7 +99,7 @@ describe('Domain > Value Objects > UUID (Hexapp Refined Type)', () => {
 
       invalidUuids.forEach(uuidStr => {
         const result = UUID.create(uuidStr);
-        AppResultTestUtils.expectErr(result);
+        HexappResultTestUtils.expectErr(result);
       });
     });
 
@@ -107,32 +108,32 @@ describe('Domain > Value Objects > UUID (Hexapp Refined Type)', () => {
       const result = UUID.create('invalid-uuid');
       
       // Assert
-      const error = AppResultTestUtils.expectErr(result);
+      const error = HexappResultTestUtils.expectErr(result);
       expect(error.message).to.include('Invalid UUID');
     });
 
     it('should handle null and undefined input', () => {
       // Test null
       const nullResult = UUID.create(null as any);
-      AppResultTestUtils.expectErr(nullResult);
+      HexappResultTestUtils.expectErr(nullResult);
       
       // Test undefined
       const undefinedResult = UUID.create(undefined as any);
-      AppResultTestUtils.expectErr(undefinedResult);
+      HexappResultTestUtils.expectErr(undefinedResult);
     });
 
     it('should handle non-string input types', () => {
       // Test number
       const numberResult = UUID.create(123 as any);
-      AppResultTestUtils.expectErr(numberResult);
+      HexappResultTestUtils.expectErr(numberResult);
       
       // Test object
       const objectResult = UUID.create({} as any);
-      AppResultTestUtils.expectErr(objectResult);
+      HexappResultTestUtils.expectErr(objectResult);
       
       // Test array
       const arrayResult = UUID.create(['uuid'] as any);
-      AppResultTestUtils.expectErr(arrayResult);
+      HexappResultTestUtils.expectErr(arrayResult);
     });
   });
 
@@ -210,7 +211,7 @@ describe('Domain > Value Objects > UUID (Hexapp Refined Type)', () => {
       
       // Act
       const createResult = UUID.create(validUuidString);
-      const uuid = AppResultTestUtils.expectOk(createResult);
+      const uuid = HexappResultTestUtils.expectOk(createResult);
       
       // Assert - Should maintain branded type
       expect(typeof uuid).to.equal('string');
@@ -286,7 +287,7 @@ describe('Domain > Value Objects > UUID (Hexapp Refined Type)', () => {
 
       invalidInputs.forEach(({ input, expectedMessage }) => {
         const result = UUID.create(input);
-        const error = AppResultTestUtils.expectErr(result);
+        const error = HexappResultTestUtils.expectErr(result);
         expect(error.message).to.include(expectedMessage);
       });
     });
@@ -300,20 +301,20 @@ describe('Domain > Value Objects > UUID (Hexapp Refined Type)', () => {
       const lowerResult = UUID.create(lowerCaseUuid);
       
       // Both should be valid
-      AppResultTestUtils.expectOk(mixedResult);
-      AppResultTestUtils.expectOk(lowerResult);
+      HexappResultTestUtils.expectOk(mixedResult);
+      HexappResultTestUtils.expectOk(lowerResult);
     });
 
     it('should handle boundary conditions', () => {
       // Test nil UUID (all zeros)
       const nilUuid = '00000000-0000-0000-0000-000000000000';
       const nilResult = UUID.create(nilUuid);
-      AppResultTestUtils.expectOk(nilResult);
+      HexappResultTestUtils.expectOk(nilResult);
       
       // Test max UUID (all F's)
       const maxUuid = 'ffffffff-ffff-ffff-ffff-ffffffffffff';
       const maxResult = UUID.create(maxUuid);
-      AppResultTestUtils.expectOk(maxResult);
+      HexappResultTestUtils.expectOk(maxResult);
     });
 
     it('should handle whitespace in input', () => {
@@ -326,10 +327,10 @@ describe('Domain > Value Objects > UUID (Hexapp Refined Type)', () => {
       // If it does trim, it should succeed
       // Document current behavior
       if (result.isErr()) {
-        const error = AppResultTestUtils.expectErr(result);
+        const error = HexappResultTestUtils.expectErr(result);
         expect(error.message).to.include('Invalid UUID');
       } else {
-        const uuid = AppResultTestUtils.expectOk(result);
+        const uuid = HexappResultTestUtils.expectOk(result);
         expect(uuid).to.include('123e4567-e89b-12d3-a456-426614174000');
       }
     });

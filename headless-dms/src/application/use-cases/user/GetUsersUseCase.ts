@@ -26,7 +26,12 @@ export class GetUsersUseCase {
       const usersResult = await this.userApplicationService.getUsers(
         request.page,
         request.limit,
-        request.role
+        request.sortBy,
+        request.sortOrder,
+        {
+          email: request.email,
+          role: request.role
+        }
       );
       
       if (usersResult.isErr()) {

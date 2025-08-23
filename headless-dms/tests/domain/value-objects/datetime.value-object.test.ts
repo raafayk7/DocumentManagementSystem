@@ -12,6 +12,7 @@ import {
   UUID,
   DateTime,
   AppResultTestUtils,
+  HexappResultTestUtils,
   AppErrorTestUtils,
   ValueObjectTestUtils,
   TestDataUtils,
@@ -81,7 +82,7 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
       const result = DateTime.create(validDate);
       
       // Assert
-      const dateTime = AppResultTestUtils.expectOk(result);
+      const dateTime = HexappResultTestUtils.expectOk(result);
       expect(dateTime).to.be.instanceOf(Date);
       expect(dateTime.getTime()).to.equal(validDate.getTime());
     });
@@ -94,7 +95,7 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
       const result = DateTime.create(timestamp);
       
       // Assert
-      const dateTime = AppResultTestUtils.expectOk(result);
+      const dateTime = HexappResultTestUtils.expectOk(result);
       expect(dateTime).to.be.instanceOf(Date);
       expect(dateTime.getTime()).to.equal(timestamp);
     });
@@ -111,7 +112,7 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
 
       validDateStrings.forEach(dateStr => {
         const result = DateTime.create(dateStr);
-        const dateTime = AppResultTestUtils.expectOk(result);
+        const dateTime = HexappResultTestUtils.expectOk(result);
         expect(dateTime).to.be.instanceOf(Date);
         expect(dateTime.getTime()).to.be.a('number');
         expect(isNaN(dateTime.getTime())).to.be.false;
@@ -131,7 +132,7 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
 
       invalidInputs.forEach(input => {
         const result = DateTime.create(input);
-        AppResultTestUtils.expectErr(result);
+        HexappResultTestUtils.expectErr(result);
       });
     });
 
@@ -140,23 +141,23 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
       const result = DateTime.create('invalid-date');
       
       // Assert
-      const error = AppResultTestUtils.expectErr(result);
+      const error = HexappResultTestUtils.expectErr(result);
       expect(error.message).to.include('Invalid DateTime');
     });
 
     it('should handle edge case date values', () => {
       // Test Unix epoch
       const epochResult = DateTime.create(0);
-      const epochDateTime = AppResultTestUtils.expectOk(epochResult);
+      const epochDateTime = HexappResultTestUtils.expectOk(epochResult);
       expect(epochDateTime.getTime()).to.equal(0);
       
       // Test far future date
       const futureResult = DateTime.create('2099-12-31T23:59:59Z');
-      AppResultTestUtils.expectOk(futureResult);
+      HexappResultTestUtils.expectOk(futureResult);
       
       // Test far past date
       const pastResult = DateTime.create('1900-01-01T00:00:00Z');
-      AppResultTestUtils.expectOk(pastResult);
+      HexappResultTestUtils.expectOk(pastResult);
     });
   });
 
@@ -196,7 +197,7 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
       
       // Act
       const createResult = DateTime.create(validDate);
-      const dateTime = AppResultTestUtils.expectOk(createResult);
+      const dateTime = HexappResultTestUtils.expectOk(createResult);
       
       // Assert - Should maintain branded type
       expect(dateTime).to.be.instanceOf(Date);
@@ -224,9 +225,9 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
       const date2 = DateTime.create('2024-01-15T11:30:00Z');
       const date3 = DateTime.create('2024-01-15T10:30:00Z');
       
-      const dateTime1 = AppResultTestUtils.expectOk(date1);
-      const dateTime2 = AppResultTestUtils.expectOk(date2);
-      const dateTime3 = AppResultTestUtils.expectOk(date3);
+      const dateTime1 = HexappResultTestUtils.expectOk(date1);
+      const dateTime2 = HexappResultTestUtils.expectOk(date2);
+      const dateTime3 = HexappResultTestUtils.expectOk(date3);
       
       // Act & Assert - Comparison operations
       expect(dateTime1.getTime()).to.be.lessThan(dateTime2.getTime());
@@ -237,7 +238,7 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
     it('should work with date arithmetic and business logic', () => {
       // Arrange
       const baseDate = DateTime.create('2024-01-15T10:30:00Z');
-      const dateTime = AppResultTestUtils.expectOk(baseDate);
+      const dateTime = HexappResultTestUtils.expectOk(baseDate);
       
       // Act - Business logic examples
       const oneDayLater = new Date(dateTime.getTime() + 24 * 60 * 60 * 1000);
@@ -255,7 +256,7 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
     it('should support date formatting for various contexts', () => {
       // Arrange
       const dateTime = DateTime.create('2024-01-15T10:30:00Z');
-      const dt = AppResultTestUtils.expectOk(dateTime);
+      const dt = HexappResultTestUtils.expectOk(dateTime);
       
       // Act & Assert - Various formatting options
       expect(dt.toISOString()).to.equal('2024-01-15T10:30:00.000Z');
@@ -276,7 +277,7 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
     it('should serialize to ISO string for JSON', () => {
       // Arrange
       const dateTime = DateTime.create('2024-01-15T10:30:00Z');
-      const dt = AppResultTestUtils.expectOk(dateTime);
+      const dt = HexappResultTestUtils.expectOk(dateTime);
       
       // Act
       const serialized = JSON.stringify({ timestamp: dt });
@@ -287,7 +288,7 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
       // Test round-trip
       const parsed = JSON.parse(serialized);
       const reconstructed = DateTime.create(parsed.timestamp);
-      const reconstructedDt = AppResultTestUtils.expectOk(reconstructed);
+      const reconstructedDt = HexappResultTestUtils.expectOk(reconstructed);
       expect(reconstructedDt.getTime()).to.equal(dt.getTime());
     });
 
@@ -303,7 +304,7 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
 
       dbFormats.forEach(format => {
         const result = DateTime.create(format);
-        const dateTime = AppResultTestUtils.expectOk(result);
+        const dateTime = HexappResultTestUtils.expectOk(result);
         expect(dateTime).to.be.instanceOf(Date);
         expect(isNaN(dateTime.getTime())).to.be.false;
       });
@@ -314,8 +315,8 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
       const utcTime = DateTime.create('2024-01-15T10:30:00Z');
       const timezoneTime = DateTime.create('2024-01-15T10:30:00+00:00');
       
-      const utcDt = AppResultTestUtils.expectOk(utcTime);
-      const tzDt = AppResultTestUtils.expectOk(timezoneTime);
+      const utcDt = HexappResultTestUtils.expectOk(utcTime);
+      const tzDt = HexappResultTestUtils.expectOk(timezoneTime);
       
       // Assert - Should represent the same moment
       expect(utcDt.getTime()).to.equal(tzDt.getTime());
@@ -332,7 +333,7 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
 
       invalidInputs.forEach(({ input, expectedMessage }) => {
         const result = DateTime.create(input);
-        const error = AppResultTestUtils.expectErr(result);
+        const error = HexappResultTestUtils.expectErr(result);
         expect(error.message).to.include(expectedMessage);
       });
     });
@@ -348,7 +349,7 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
 
       validNumbers.forEach(num => {
         const result = DateTime.create(num);
-        AppResultTestUtils.expectOk(result);
+        HexappResultTestUtils.expectOk(result);
       });
 
       // Invalid numbers
@@ -360,7 +361,7 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
 
       invalidNumbers.forEach(num => {
         const result = DateTime.create(num);
-        AppResultTestUtils.expectErr(result);
+        HexappResultTestUtils.expectErr(result);
       });
     });
 
@@ -370,7 +371,7 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
       
       emptyStrings.forEach(str => {
         const result = DateTime.create(str);
-        AppResultTestUtils.expectErr(result);
+        HexappResultTestUtils.expectErr(result);
       });
     });
 
@@ -386,7 +387,7 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
 
       objectInputs.forEach(input => {
         const result = DateTime.create(input);
-        AppResultTestUtils.expectErr(result);
+        HexappResultTestUtils.expectErr(result);
       });
     });
 
@@ -398,14 +399,14 @@ describe('Domain > Value Objects > DateTime (Hexapp Refined Type)', () => {
       const result = DateTime.create(invalidDate);
       
       // Assert
-      AppResultTestUtils.expectErr(result);
+      HexappResultTestUtils.expectErr(result);
     });
 
     it('should maintain precision for high-precision timestamps', () => {
       // Test millisecond precision
       const timestamp = 1705316200123; // With milliseconds
       const result = DateTime.create(timestamp);
-      const dateTime = AppResultTestUtils.expectOk(result);
+      const dateTime = HexappResultTestUtils.expectOk(result);
       
       expect(dateTime.getTime()).to.equal(timestamp);
       expect(dateTime.getMilliseconds()).to.equal(123);

@@ -554,7 +554,7 @@ describe('Domain > Value Objects > MimeType', () => {
           expect(mime.mainType).to.equal('text');
           expect(mime.subType).to.equal('html');
         } else {
-          const error = result.unwrapErr();
+          const error = AppResultTestUtils.expectErr(result);
           expect(error.message).to.be.a('string');
         }
       });

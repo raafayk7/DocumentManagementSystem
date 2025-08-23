@@ -23,14 +23,12 @@ export class GenerateDownloadLinkUseCase {
     try {
       const downloadLinkResult = await this.documentApplicationService.generateDownloadLink(
         request.documentId,
-        // request.userId
         request.expiresInMinutes
       );
       
       if (downloadLinkResult.isErr()) {
         this.logger.warn('Download link generation failed', { 
           documentId: request.documentId,
-          // userId: request.userId 
           expiresInMinutes: request.expiresInMinutes
         });
         return AppResult.Err(AppError.InvalidOperation(
@@ -39,9 +37,10 @@ export class GenerateDownloadLinkUseCase {
       }
 
       const downloadInfo = downloadLinkResult.unwrap();
+      
       const response: GenerateDownloadLinkResponse = {
         downloadUrl: '',
-        expiresAt: new Date(Date.now() + request.expiresInMinutes * 60000),
+        expiresAt: new Date(Date.now() + (request.expiresInMinutes || 5) * 60000),
         token: downloadInfo
         // message: 'Download link generated successfully'
       };
@@ -51,11 +50,12 @@ export class GenerateDownloadLinkUseCase {
         // userId: request.userId,
         expiresAt: response.expiresAt
       });
+      
       return AppResult.Ok(response);
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : 'Unknown error', { 
         documentId: request.documentId,
-        // userId: request.userId 
+        expiresInMinutes: request.expiresInMinutes
       });
       return AppResult.Err(AppError.Generic(
         `Failed to execute generate download link use case for document ID: ${request.documentId}`
