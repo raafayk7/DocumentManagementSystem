@@ -11,6 +11,7 @@ import {
   DownloadOptions,
   StorageOperationResult 
 } from '../../../../shared/storage/StorageTypes.js';
+import { NewRelicMiddleware } from '../../../../shared/observability/NewRelicMiddleware.js';
 
 /**
  * LocalStorageStrategy - implements IStorageStrategy for local file system storage
@@ -88,6 +89,21 @@ export class LocalStorageStrategy implements IStorageStrategy {
 
       // Write file
       await fs.writeFile(fullPath, file.content);
+
+      // Track successful upload operation
+      const duration = Date.now() - startTime;
+      NewRelicMiddleware.trackStorageOperation(
+        'upload',
+        'local',
+        duration,
+        true,
+        { 
+          filePath, 
+          fileSize: file.size, 
+          mimeType: file.mimeType,
+          operationId 
+        }
+      );
 
       // Update file metadata
       const fileInfo: FileInfo = {
@@ -703,6 +719,15 @@ export class LocalStorageStrategy implements IStorageStrategy {
   private recordSuccess(operation: string, startTime: number, operationId: string): void {
     const duration = Date.now() - startTime;
     
+    // Track successful operation with New Relic
+    NewRelicMiddleware.trackStorageOperation(
+      operation,
+      'local',
+      duration,
+      true,
+      { operationId }
+    );
+    
     // Update health metrics
     this.healthMetrics.totalOperations++;
     this.healthMetrics.successfulOperations++;
@@ -726,6 +751,18 @@ export class LocalStorageStrategy implements IStorageStrategy {
 
   private handleError(operation: string, errorMessage: string, startTime: number, operationId: string): AppResult<never> {
     const duration = Date.now() - startTime;
+    
+    // Track failed operation with New Relic
+    NewRelicMiddleware.trackStorageOperation(
+      operation,
+      'local',
+      duration,
+      false,
+      { 
+        operationId, 
+        error: errorMessage 
+      }
+    );
     
     // Update health metrics
     this.healthMetrics.totalOperations++;

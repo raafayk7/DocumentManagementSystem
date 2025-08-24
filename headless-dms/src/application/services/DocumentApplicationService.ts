@@ -22,6 +22,7 @@ import type { ILogger } from '../../ports/output/ILogger.js';
 // import { ApplicationError } from '../../shared/errors/ApplicationError.js';
 import type { IDocumentApplicationService } from '../../ports/input/IDocumentApplicationService.js';
 import jwt from 'jsonwebtoken';
+import { NewRelicDecorator } from '../../shared/observability/NewRelicDecorator.js';
 
 @injectable()
 export class DocumentApplicationService implements IDocumentApplicationService {
