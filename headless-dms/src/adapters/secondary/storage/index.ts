@@ -2,3 +2,4 @@
 export * from './strategies/index.js';
 export * from './StorageStrategyFactory.js';
 export * from './StorageHealthChecker.js';
+export * from './ResilientStorageWrapper.js';
