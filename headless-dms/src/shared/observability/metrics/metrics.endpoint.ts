@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { MetricsService } from './metrics.service.js';
-import { newRelicConfig } from './NewRelicConfig.js';
+import { newRelicConfig } from '../new-relic/NewRelicConfig.js';
 
 export interface MetricsEndpointOptions {
   requireAuth?: boolean;

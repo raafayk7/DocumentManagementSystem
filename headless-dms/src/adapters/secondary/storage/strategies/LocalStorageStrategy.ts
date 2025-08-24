@@ -11,7 +11,7 @@ import {
   DownloadOptions,
   StorageOperationResult 
 } from '../../../../shared/storage/StorageTypes.js';
-import { NewRelicMiddleware } from '../../../../shared/observability/NewRelicMiddleware.js';
+import { NewRelicMiddleware } from '../../../../shared/observability/new-relic/NewRelicMiddleware.js';
 
 /**
  * LocalStorageStrategy - implements IStorageStrategy for local file system storage

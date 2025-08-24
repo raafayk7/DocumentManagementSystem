@@ -1,10 +1,10 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
-import { MetricsService } from '../../../src/shared/observability/metrics.service.js';
-import { MetricsMiddleware } from '../../../src/shared/observability/metrics.middleware.js';
-import { MetricsEndpoint } from '../../../src/shared/observability/metrics.endpoint.js';
-import { TrackMetrics } from '../../../src/shared/observability/metrics.decorator.js';
-import { MetricsConfiguration } from '../../../src/shared/observability/metrics.config.js';
+import { MetricsService } from '../../../src/shared/observability/metrics/metrics.service.js';
+import { MetricsMiddleware } from '../../../src/shared/observability/metrics/metrics.middleware.js';
+import { MetricsEndpoint } from '../../../src/shared/observability/metrics/metrics.endpoint.js';
+import { TrackMetrics } from '../../../src/shared/observability/metrics/metrics.decorator.js';
+import { MetricsConfiguration } from '../../../src/shared/observability/metrics/metrics.config.js';
 
 // Simple test to verify the metrics system compiles and works
 describe('Metrics System', () => {

@@ -1,6 +1,6 @@
 // src/http/middleware.ts - HTTP middleware setup
 import { IHttpServer } from '../../../../ports/input/IHttpServer.js';
-import { NewRelicMiddleware } from '../../../../shared/observability/NewRelicMiddleware.js';
+import { NewRelicMiddleware } from '../../../../shared/observability/new-relic/NewRelicMiddleware.js';
 
 export async function registerMiddleware(server: IHttpServer): Promise<void> {
   console.log('Registering HTTP middleware...');

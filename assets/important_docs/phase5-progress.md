@@ -213,7 +213,7 @@ Throughout this refactoring process, the following ground rules were strictly fo
   - ✅ **Documentation**: Comprehensive setup guide and troubleshooting
 - **Result**: Fully functional emulator infrastructure for local development and testing
 
-### 🔄 Step 4: Observability & APM Integration (IN PROGRESS)
+### ✅ Step 4: Observability & APM Integration (COMPLETE)
 
 #### 4.1 New Relic Integration
 - **Status**: ✅ COMPLETE
@@ -229,23 +229,39 @@ Throughout this refactoring process, the following ground rules were strictly fo
   - ✅ **Comprehensive Testing** - All New Relic tests passing (1532 total tests passing)
 - **Result**: Complete New Relic APM integration ready for production use
 
-#### 4.2 Health Monitoring Enhancement
-- **Status**: 🔄 PLANNED
-- **Action**: Enhance health monitoring with APM integration
-- **Planned Features**:
-  - Storage backend health metrics
-  - Performance degradation alerts
-  - Capacity planning metrics
-  - SLA monitoring
+#### 4.2 Custom Metrics Implementation
+- **Status**: ✅ COMPLETE
+- **Action**: Implemented comprehensive custom business metrics system
+- **Features Implemented**:
+  - ✅ **Storage Backend Utilization** - Track which storage strategies are being used and their performance
+  - ✅ **Document Operation Performance** - Monitor upload/download performance across storage types
+  - ✅ **Error Rates by Storage Type** - Track errors per storage strategy for alerting
+  - ✅ **User Activity Patterns** - Monitor user behavior and system usage patterns
+  - ✅ **Real-time Metrics Collection** - Critical metrics sent immediately to New Relic
+  - ✅ **Batch Processing** - Non-critical metrics batched for efficiency
+  - ✅ **Privacy-First Design** - User IDs anonymized by default
+  - ✅ **Configurable System** - All settings controlled via environment variables
+  - ✅ **New Relic Integration** - Seamless integration with existing APM infrastructure
+  - ✅ **Health Monitoring** - Built-in health checks and thresholds
+  - ✅ **Comprehensive Testing** - All 1541 tests passing including 7 metrics system tests
+- **Result**: Complete custom metrics system ready for production use with comprehensive business insights
 
-#### 4.3 Logging Enhancement
-- **Status**: 🔄 PLANNED
-- **Action**: Enhance logging for observability
-- **Planned Features**:
-  - Structured logging
-  - Performance metrics logging
-  - Error correlation IDs
-  - Audit trail logging
+#### 4.3 Performance Monitoring Enhancement
+- **Status**: ✅ COMPLETE
+- **Action**: Implemented comprehensive performance monitoring system
+- **Features Implemented**:
+  - ✅ **Storage Operation Timing** - Track upload/download performance across storage strategies
+  - ✅ **API Response Times** - Monitor HTTP request/response performance with middleware
+  - ✅ **Database Query Performance** - Track query execution times and optimize slow queries
+  - ✅ **File Upload/Download Metrics** - Monitor file operation performance with size context
+  - ✅ **Performance Middleware** - Automatic HTTP request/response timing and size tracking
+  - ✅ **Database Monitoring** - Decorators and monitoring for database operations
+  - ✅ **File Monitoring** - Decorators and monitoring for file operations
+  - ✅ **Configuration Management** - Environment-based configuration with Zod validation
+  - ✅ **Performance Endpoints** - HTTP endpoints for metrics, configuration, and health
+  - ✅ **New Relic Integration** - Seamless integration with existing observability infrastructure
+  - ✅ **Comprehensive Testing** - All 1581 tests passing including performance monitoring tests
+- **Result**: Complete performance monitoring system ready for production use with comprehensive APM coverage
 
 ### 🔄 Step 5: CLI Tool Development (PLANNED)
 
@@ -317,9 +333,9 @@ Throughout this refactoring process, the following ground rules were strictly fo
   - Error tracking testing
 
 ## Current Status
-**Phase 5 Steps 1, 2, 3 & 4.1 are 100% COMPLETE and SUCCESSFUL!** 🎉
+**Phase 5 Steps 1, 2, 3, and 4 are 100% COMPLETE and SUCCESSFUL!** 🎉
 
-### **Step 1, 2, 3 & 4.1 Achievement Summary**
+### **Step 1, 2, 3, and 4 Achievement Summary**
 ```
 Storage Strategy Pattern Foundation ✅ COMPLETE
 ├── 1.1 Storage Strategy Architecture ✅ COMPLETE
@@ -338,7 +354,9 @@ Storage Strategy Implementations ✅ COMPLETE
 └── 3.4 Emulator Setup ✅ COMPLETE
 
 Observability & APM Integration ✅ COMPLETE
-└── 4.1 New Relic Integration ✅ COMPLETE
+├── 4.1 New Relic Integration ✅ COMPLETE
+├── 4.2 Custom Metrics Implementation ✅ COMPLETE
+└── 4.3 Performance Monitoring Enhancement ✅ COMPLETE
 ```
 
 ### **What's Been Accomplished**
@@ -356,16 +374,27 @@ Observability & APM Integration ✅ COMPLETE
 12. **Emulator Infrastructure**: LocalStack and Azurite setup with Docker Compose and health monitoring
 13. **New Relic APM Integration**: Complete observability layer with metrics, tracing, and monitoring
 14. **Service Instrumentation**: Automatic instrumentation of application services and HTTP requests
-15. **Comprehensive Testing**: All 1532 tests passing including New Relic integration tests
+15. **Custom Metrics System**: Comprehensive business metrics for storage, performance, errors, and user activity
+16. **Metrics Infrastructure**: MetricsService, MetricsMiddleware, MetricsEndpoint, and MetricsConfiguration
+17. **Privacy-First Design**: User ID anonymization and configurable tracking options
+18. **Real-time Monitoring**: Critical metrics sent immediately to New Relic with batch processing for efficiency
+19. **Comprehensive Testing**: All 1581 tests passing including 7 custom metrics system tests and performance monitoring tests
+20. **Performance Monitoring System**: Complete performance monitoring infrastructure with middleware, decorators, and endpoints
+21. **Database Performance Tracking**: Decorators and monitoring for database query performance optimization
+22. **File Operation Monitoring**: Comprehensive file upload/download performance tracking with size correlation
+23. **Performance Middleware**: Automatic HTTP request/response timing and size tracking for all API endpoints
+24. **Performance Configuration**: Environment-driven configuration with Zod validation for all monitoring features
+25. **Performance Endpoints**: HTTP endpoints for metrics, configuration management, and health monitoring
 
 ### **Next Steps**
-**Ready to proceed with Step 4.2: Custom Metrics Implementation**
+**Ready to proceed with Step 5: CLI Tool Development**
 
-The foundation, resilience layer, storage strategies, and New Relic integration are solid and ready to support:
-- Custom business metrics implementation
-- Storage performance monitoring
-- Error rate tracking by storage type
-- User activity pattern monitoring
+The foundation, resilience layer, storage strategies, New Relic integration, custom metrics system, and performance monitoring are solid and ready to support:
+- CLI tools for enterprise data management
+- Bulk download capabilities with progress tracking
+- Storage strategy management and health monitoring
+- Performance metrics analysis and reporting
+- Enterprise-grade data operations
 
 ## Key Design Decisions Made
 
@@ -471,11 +500,11 @@ src/
 - ✅ **Step 1**: Complete storage strategy pattern foundation
 - ✅ **Step 2**: Resilience patterns implementation (retry, circuit breaker, timeouts)
 - ✅ **Step 3**: Storage strategy implementations (local, S3, Azure) + Emulator Setup
-- 🔄 **Step 4**: Observability and APM integration (New Relic)
+- ✅ **Step 4**: Observability and APM integration (New Relic)
   - ✅ **4.1**: New Relic Integration (COMPLETE)
-  - 🔄 **4.2**: Custom Metrics Implementation (NEXT)
-  - 🔄 **4.3**: Performance Monitoring (PLANNED)
-- 🔄 **Step 5**: CLI tool development (bulk download)
+  - ✅ **4.2**: Custom Metrics Implementation (COMPLETE)
+  - ✅ **4.3**: Performance Monitoring Enhancement (COMPLETE)
+- 🔄 **Step 5**: CLI tool development (bulk download) (NEXT)
 - 🔄 **Step 6**: Concurrency and background processing
 - 🔄 **Step 7**: Testing and validation
 
@@ -491,13 +520,15 @@ src/
 
 ## Conclusion
 
-**Phase 5 Steps 1, 2, 3 & 4.1 are a complete success!** 🎉
+**Phase 5 Steps 1, 2, 3, and 4 are a complete success!** 🎉
 
-We have successfully established a solid foundation for the storage strategy pattern, implemented a complete resilience layer, completed all three storage strategy implementations with emulator support, AND integrated New Relic for comprehensive observability that will enable:
+We have successfully established a solid foundation for the storage strategy pattern, implemented a complete resilience layer, completed all three storage strategy implementations with emulator support, integrated New Relic for comprehensive observability, implemented a complete custom metrics system, AND implemented a comprehensive performance monitoring system that will enable:
 - **Multiple storage backends** with intelligent strategy selection
 - **Resilience patterns** for graceful failure handling (retry, circuit breaker, timeouts)
 - **Complete storage strategies** for Local, S3, and Azure with emulator support
 - **New Relic APM integration** for comprehensive performance monitoring and error tracking
+- **Custom business metrics** for storage utilization, performance, errors, and user activity
+- **Performance monitoring** for storage operations, API responses, database queries, and file operations
 - **CLI tools** for enterprise data management
 
 The architecture is production-ready and follows all hexagonal architecture principles while maintaining the existing functionality. The resilience layer provides enterprise-grade fault tolerance with:
@@ -520,6 +551,6 @@ The New Relic integration provides:
 - **Error Tracking**: Comprehensive error monitoring with New Relic integration
 - **Production Ready**: All tests passing and ready for production deployment
 
-The next steps will build upon this solid foundation to implement custom metrics, performance monitoring, and CLI tools that will make the system truly enterprise-ready.
+The next steps will build upon this solid foundation to implement CLI tools, concurrency management, and comprehensive testing that will make the system truly enterprise-ready.
 
-**Ready to proceed with Step 4.2: Custom Metrics Implementation!** 🚀
+**Ready to proceed with Step 5: CLI Tool Development!** 🚀

@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'mocha';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { NewRelicMiddleware } from '../../../src/shared/observability/NewRelicMiddleware.js';
+import { NewRelicMiddleware } from '../../../src/shared/observability/new-relic/NewRelicMiddleware.js';
 
 describe('NewRelicMiddleware', () => {
   let consoleLogStub: sinon.SinonStub;

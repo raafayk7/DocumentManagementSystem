@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'mocha';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { NewRelicDecorator } from '../../../src/shared/observability/NewRelicDecorator.js';
+import { NewRelicDecorator } from '../../../src/shared/observability/new-relic/NewRelicDecorator.js';
 
 describe('NewRelicDecorator', () => {
   let consoleLogStub: sinon.SinonStub;

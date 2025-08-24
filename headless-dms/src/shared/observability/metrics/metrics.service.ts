@@ -1,5 +1,5 @@
-import { newRelicConfig } from './NewRelicConfig.js';
-import { newRelicMetrics } from './NewRelicMetrics.js';
+import { newRelicConfig } from '../new-relic/NewRelicConfig.js';
+import { newRelicMetrics } from '../new-relic/NewRelicMetrics.js';
 
 export interface StorageMetrics {
   strategy: string;

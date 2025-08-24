@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply, HookHandlerDoneFunction } from 'fastify';
 import { MetricsService } from './metrics.service.js';
-import { newRelicMetrics } from './NewRelicMetrics.js';
+import { newRelicMetrics } from '../new-relic/NewRelicMetrics.js';
 
 export interface MetricsOptions {
   trackPerformance?: boolean;

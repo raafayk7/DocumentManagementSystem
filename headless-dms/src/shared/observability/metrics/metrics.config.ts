@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { newRelicConfig } from './NewRelicConfig.js';
+import { newRelicConfig } from '../new-relic/NewRelicConfig.js';
 
 const MetricsConfigSchema = z.object({
   // Metrics Collection Settings

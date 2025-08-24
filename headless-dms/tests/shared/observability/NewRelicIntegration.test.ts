@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'mocha';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { NewRelicIntegration } from '../../../src/shared/observability/NewRelicIntegration.js';
+import { NewRelicIntegration } from '../../../src/shared/observability/new-relic/NewRelicIntegration.js';
 
 describe('NewRelicIntegration', () => {
   let integration: NewRelicIntegration;

@@ -14,7 +14,7 @@ import {
 import type { IUserRepository } from '../../ports/output/IUserRepository.js';
 import type { ILogger } from '../../ports/output/ILogger.js';
 import type { IAuthApplicationService } from '../../ports/input/IAuthApplicationService.js';
-import { NewRelicDecorator } from '../../shared/observability/NewRelicDecorator.js';
+import { NewRelicDecorator } from '../../shared/observability/new-relic/NewRelicDecorator.js';
 
 @injectable()
 export class AuthApplicationService implements IAuthApplicationService {
