@@ -11,7 +11,7 @@ const fs = require('fs');
 
 // Configuration
 const DOCKER_COMPOSE_FILE = 'docker-compose.emulators.yml';
-const ENV_FILE = '.env.emulators';
+const ENV_FILE = '.env';
 const LOG_PREFIX = '[Emulator Setup]';
 
 /**
@@ -67,16 +67,12 @@ function checkDockerCompose() {
  */
 function setupEnvironment() {
   const envPath = path.join(process.cwd(), ENV_FILE);
-  const exampleEnvPath = path.join(process.cwd(), 'env.emulators.example');
   
-  if (!fs.existsSync(envPath) && fs.existsSync(exampleEnvPath)) {
-    console.log(`${LOG_PREFIX} 📝 Creating environment file from example...`);
-    fs.copyFileSync(exampleEnvPath, envPath);
-    console.log(`${LOG_PREFIX} ✅ Environment file created: ${ENV_FILE}`);
-  } else if (fs.existsSync(envPath)) {
+  if (fs.existsSync(envPath)) {
     console.log(`${LOG_PREFIX} ✅ Environment file already exists: ${ENV_FILE}`);
   } else {
-    console.warn(`${LOG_PREFIX} ⚠️  No environment file found. Please create ${ENV_FILE}`);
+    console.warn(`${LOG_PREFIX} ⚠️  No environment file found. Please create ${ENV_FILE} with the required variables`);
+    console.log(`${LOG_PREFIX} 💡 You can copy from env.emulators.example and env.metrics.example for reference`);
   }
 }
 

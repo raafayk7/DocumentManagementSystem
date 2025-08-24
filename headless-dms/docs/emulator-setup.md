@@ -101,12 +101,12 @@ AZURITE_ACCOUNT_KEY=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErC2
 
 Copy the example environment file:
 ```bash
-cp env.emulators.example .env.emulators
+cp env.emulators.example .env
 ```
 
 ### 2. Configure Environment Variables
 
-Edit `.env.emulators`:
+Edit `.env`:
 ```bash
 # Enable emulator mode
 USE_EMULATORS=true
@@ -125,7 +125,7 @@ AZURE_CONTAINER_NAME=dms-test-container
 
 ```bash
 # Load emulator environment
-source .env.emulators
+source .env
 
 # Or use with your application
 NODE_ENV=development npm start
