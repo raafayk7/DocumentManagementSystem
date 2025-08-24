@@ -2,7 +2,7 @@ import { promises as fs, existsSync, statSync } from 'fs';
 import { join, dirname, basename, extname } from 'path';
 import { createHash } from 'crypto';
 import { AppResult, AppError } from '@carbonteq/hexapp';
-import { IStorageStrategy } from '../../../ports/output/IStorageStrategy.js';
+import { IStorageStrategy } from '../../../../ports/output/IStorageStrategy.js';
 import { 
   FileInfo, 
   StorageHealth, 
@@ -10,7 +10,7 @@ import {
   UploadOptions, 
   DownloadOptions,
   StorageOperationResult 
-} from '../../../shared/storage/StorageTypes.js';
+} from '../../../../shared/storage/StorageTypes.js';
 
 /**
  * LocalStorageStrategy - implements IStorageStrategy for local file system storage

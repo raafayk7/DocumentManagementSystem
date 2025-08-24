@@ -5,323 +5,167 @@
  * Provides resilience against transient failures and cascading errors
  */
 
-import { Result } from '@carbonteq/fp';
-import { AppError } from '@carbonteq/hexapp';
-import type { IStorageStrategy } from '../../ports/output/IStorageStrategy';
-import type { FileInfo } from '../../../shared/types/FileInfo';
-import type { StorageConfig } from '../../../shared/storage/StorageConfig';
-import {
-  CircuitBreaker,
-  defaultCircuitBreakerConfig,
-  type CircuitBreakerOptions
-} from '../../../shared/resilience/CircuitBreaker.js';
-import {
-  RetryExecutor,
-  defaultRetryPolicyConfig,
-  type RetryOptions
-} from '../../../shared/resilience/RetryExecutor.js';
-import {
-  BackoffStrategyFactory,
-  type IBackoffStrategy
-} from '../../../shared/resilience/ExponentialBackoff.js';
+import { AppResult, AppError } from '@carbonteq/hexapp';
+import { IStorageStrategy } from '../../../ports/output/IStorageStrategy.js';
+import { FileInfo, StorageHealth, StorageStats, UploadOptions, DownloadOptions, StorageOperationResult } from '../../../shared/storage/StorageTypes.js';
+import { CircuitBreaker } from '../../../shared/resilience/CircuitBreaker.js';
+import { CircuitBreakerConfigManager } from '../../../shared/resilience/CircuitBreakerConfig.js';
+import { RetryExecutor } from '../../../shared/resilience/RetryExecutor.js';
 
 /**
- * Resilient Storage Wrapper Configuration
- * Combines circuit breaker and retry configurations
+ * Circuit Breaker Options for storage operations
  */
-export interface ResilientStorageConfig {
-  readonly circuitBreakerPrefix?: string;
-  readonly retryPolicyPrefix?: string;
-  readonly backoffStrategy?: string;
-  readonly enableCircuitBreaker?: boolean;
-  readonly enableRetry?: boolean;
-  readonly customRetryableErrors?: (error: Error) => boolean;
-  readonly onRetry?: (operation: string, attempt: number, error: Error, delayMs: number) => void;
-  readonly onCircuitBreakerOpen?: (operation: string) => void;
-  readonly onCircuitBreakerClose?: (operation: string) => void;
+interface CircuitBreakerOptions {
+  operationName: string;
+  timeoutMs: number;
+  metadata?: Record<string, any>;
 }
 
 /**
  * Resilient Storage Wrapper
- * Wraps storage operations with circuit breaker and retry mechanisms
+ * Wraps storage strategies with circuit breaker and retry logic
  */
 export class ResilientStorageWrapper implements IStorageStrategy {
   private readonly storageStrategy: IStorageStrategy;
   private readonly circuitBreaker: CircuitBreaker;
   private readonly retryExecutor: RetryExecutor;
-  private readonly config: ResilientStorageConfig;
+  private readonly config: {
+    circuitBreakerPrefix?: string;
+    retryPolicy?: any;
+    timeoutMs?: number;
+  };
 
   constructor(
     storageStrategy: IStorageStrategy,
-    config: ResilientStorageConfig = {}
+    config: {
+      circuitBreakerPrefix?: string;
+      retryPolicy?: any;
+      timeoutMs?: number;
+    } = {}
   ) {
     this.storageStrategy = storageStrategy;
     this.config = config;
 
     // Initialize circuit breaker
-    const circuitBreakerConfig = config.circuitBreakerPrefix 
-      ? defaultCircuitBreakerConfig.getConfig()
-      : defaultCircuitBreakerConfig.getConfig();
-    
-    const circuitBreakerOptions: CircuitBreakerOptions = {
-      name: `storage-${storageStrategy.constructor.name}`,
-      config: circuitBreakerConfig,
-      onStateChange: (fromState, toState) => {
-        if (toState === 'open' && this.config.onCircuitBreakerOpen) {
-          this.config.onCircuitBreakerOpen('storage-operation');
-        } else if (toState === 'closed' && this.config.onCircuitBreakerClose) {
-          this.config.onCircuitBreakerClose('storage-operation');
-        }
-      }
-    };
-
-    this.circuitBreaker = new CircuitBreaker(circuitBreakerOptions);
+    const defaultCircuitBreakerConfig = new CircuitBreakerConfigManager();
+    this.circuitBreaker = new CircuitBreaker(defaultCircuitBreakerConfig);
 
     // Initialize retry executor
-    const retryPolicyConfig = config.retryPolicyPrefix
-      ? defaultRetryPolicyConfig.getConfig()
-      : defaultRetryPolicyConfig.getConfig();
-
-    const retryOptions: RetryOptions = {
-      policy: retryPolicyConfig,
-      backoffStrategy: config.backoffStrategy 
-        ? BackoffStrategyFactory.create(config.backoffStrategy)
-        : BackoffStrategyFactory.getDefault(),
-      retryableErrors: config.customRetryableErrors,
-      onRetry: (attempt, error, delayMs) => {
-        if (this.config.onRetry) {
-          this.config.onRetry('storage-operation', attempt, error, delayMs);
-        }
-      }
-    };
-
     this.retryExecutor = new RetryExecutor();
   }
 
-  /**
-   * Execute storage operation with resilience
-   * @param operation Storage operation to execute
-   * @param operationName Name of the operation for logging
-   * @returns Promise with operation result
-   */
-  private async executeWithResilience<T>(
-    operation: () => Promise<T>,
-    operationName: string
-  ): Promise<T> {
-    // Check if circuit breaker is enabled
-    if (this.config.enableCircuitBreaker !== false) {
-      // Execute through circuit breaker
-      const circuitBreakerResult = await this.circuitBreaker.execute(operation);
-      
-      if (circuitBreakerResult.isErr()) {
-        throw circuitBreakerResult.error;
-      }
-      
-      return circuitBreakerResult.value;
-    }
-
-    // Execute directly if circuit breaker is disabled
-    return operation();
-  }
-
-  /**
-   * Execute storage operation with retry
-   * @param operation Storage operation to execute
-   * @param operationName Name of the operation for logging
-   * @returns Promise with operation result
-   */
-  private async executeWithRetry<T>(
-    operation: () => Promise<T>,
-    operationName: string
-  ): Promise<T> {
-    // Check if retry is enabled
-    if (this.config.enableRetry !== false) {
-      const retryPolicyConfig = defaultRetryPolicyConfig.getConfig();
-      
-      const retryOptions: RetryOptions = {
-        policy: retryPolicyConfig,
-        backoffStrategy: this.config.backoffStrategy 
-          ? BackoffStrategyFactory.create(this.config.backoffStrategy)
-          : BackoffStrategyFactory.getDefault(),
-        retryableErrors: this.config.customRetryableErrors,
-        onRetry: (attempt, error, delayMs) => {
-          if (this.config.onRetry) {
-            this.config.onRetry(operationName, attempt, error, delayMs);
-          }
-        }
-      };
-
-      const retryResult = await this.retryExecutor.execute(operation, retryOptions);
-      
-      if (retryResult.isErr()) {
-        throw retryResult.error;
-      }
-      
-      return retryResult.value;
-    }
-
-    // Execute directly if retry is disabled
-    return operation();
-  }
-
-  /**
-   * Execute storage operation with full resilience (circuit breaker + retry)
-   * @param operation Storage operation to execute
-   * @param operationName Name of the operation for logging
-   * @returns Promise with operation result
-   */
-  private async executeWithFullResilience<T>(
-    operation: () => Promise<T>,
-    operationName: string
-  ): Promise<T> {
-    // First apply retry mechanism
-    const retryOperation = () => this.executeWithRetry(operation, operationName);
-    
-    // Then apply circuit breaker
-    return this.executeWithResilience(retryOperation, operationName);
-  }
-
-  // IStorageStrategy Implementation with Resilience
-
-  async upload(file: Buffer, filename: string, mimeType: string): Promise<Result<FileInfo, AppError>> {
-    return this.executeWithFullResilience(
-      () => this.storageStrategy.upload(file, filename, mimeType),
+  async upload(file: FileInfo, options?: UploadOptions): Promise<AppResult<string>> {
+    return this.executeWithResilience(
+      () => this.storageStrategy.upload(file, options),
       'upload'
     );
   }
 
-  async download(filename: string): Promise<Result<Buffer, AppError>> {
-    return this.executeWithFullResilience(
-      () => this.storageStrategy.download(filename),
+  async download(filePath: string, options?: DownloadOptions): Promise<AppResult<Buffer>> {
+    return this.executeWithResilience(
+      () => this.storageStrategy.download(filePath, options),
       'download'
     );
   }
 
-  async delete(filename: string): Promise<Result<void, AppError>> {
-    return this.executeWithFullResilience(
-      () => this.storageStrategy.delete(filename),
+  async delete(filePath: string): Promise<AppResult<boolean>> {
+    return this.executeWithResilience(
+      () => this.storageStrategy.delete(filePath),
       'delete'
     );
   }
 
-  async exists(filename: string): Promise<Result<boolean, AppError>> {
-    return this.executeWithFullResilience(
-      () => this.storageStrategy.exists(filename),
+  async exists(filePath: string): Promise<AppResult<boolean>> {
+    return this.executeWithResilience(
+      () => this.storageStrategy.exists(filePath),
       'exists'
     );
   }
 
-  async listFiles(): Promise<Result<FileInfo[], AppError>> {
-    return this.executeWithFullResilience(
-      () => this.storageStrategy.listFiles(),
+  async getHealth(): Promise<AppResult<StorageHealth>> {
+    return this.executeWithResilience(
+      () => this.storageStrategy.getHealth(),
+      'getHealth'
+    );
+  }
+
+  async listFiles(prefix?: string): Promise<AppResult<FileInfo[]>> {
+    return this.executeWithResilience(
+      () => this.storageStrategy.listFiles(prefix),
       'listFiles'
     );
   }
 
-  async getFileInfo(filename: string): Promise<Result<FileInfo, AppError>> {
-    return this.executeWithFullResilience(
-      () => this.storageStrategy.getFileInfo(filename),
+  async copyFile(sourcePath: string, destinationPath: string): Promise<AppResult<boolean>> {
+    return this.executeWithResilience(
+      () => this.storageStrategy.copyFile(sourcePath, destinationPath),
+      'copyFile'
+    );
+  }
+
+  async getFileInfo(filePath: string): Promise<AppResult<FileInfo>> {
+    return this.executeWithResilience(
+      () => this.storageStrategy.getFileInfo(filePath),
       'getFileInfo'
     );
   }
 
-  async getStorageConfig(): Promise<Result<StorageConfig, AppError>> {
-    return this.executeWithFullResilience(
-      () => this.storageStrategy.getStorageConfig(),
-      'getStorageConfig'
+  async getStorageStats(): Promise<AppResult<StorageStats>> {
+    return this.executeWithResilience(
+      () => this.storageStrategy.getStorageStats(),
+      'getStorageStats'
     );
   }
 
-  async healthCheck(): Promise<Result<boolean, AppError>> {
-    return this.executeWithFullResilience(
-      () => this.storageStrategy.healthCheck(),
-      'healthCheck'
+  async moveFile(sourcePath: string, destinationPath: string): Promise<AppResult<boolean>> {
+    return this.executeWithResilience(
+      () => this.storageStrategy.moveFile(sourcePath, destinationPath),
+      'moveFile'
     );
   }
 
-  // Resilience-specific methods
-
-  /**
-   * Get circuit breaker state
-   */
-  getCircuitBreakerState(): string {
-    return this.circuitBreaker.getState();
+  async createDirectory(directoryPath: string): Promise<AppResult<boolean>> {
+    return this.executeWithResilience(
+      () => this.storageStrategy.createDirectory(directoryPath),
+      'createDirectory'
+    );
   }
 
   /**
-   * Get circuit breaker metrics
+   * Execute operation with resilience (circuit breaker + retry)
    */
-  getCircuitBreakerMetrics() {
-    return this.circuitBreaker.getMetrics();
-  }
+  private async executeWithResilience<T>(
+    operation: () => Promise<AppResult<T>>,
+    operationName: string
+  ): Promise<AppResult<T>> {
+    try {
+      // Execute with circuit breaker
+      const result = await this.circuitBreaker.execute(
+        async () => {
+          const operationResult = await operation();
+          if (operationResult.isOk()) {
+            return operationResult.unwrap();
+          } else {
+            // Type assertion to handle the type narrowing issue
+            const errorResult = operationResult as AppResult<never>;
+            throw new Error(errorResult.unwrapErr().message);
+          }
+        },
+        {
+          operationName: `storage-${operationName}`,
+          timeoutMs: this.config.timeoutMs || 30000,
+          metadata: {
+            strategyType: this.storageStrategy.constructor.name,
+            operation: operationName
+          }
+        }
+      );
 
-  /**
-   * Reset circuit breaker (force close)
-   */
-  resetCircuitBreaker(): void {
-    this.circuitBreaker.reset();
-  }
-
-  /**
-   * Get retry policy configuration
-   */
-  getRetryPolicyConfig() {
-    return defaultRetryPolicyConfig.getConfig();
-  }
-
-  /**
-   * Get resilience configuration summary
-   */
-  getResilienceConfig(): Record<string, unknown> {
-    return {
-      circuitBreaker: {
-        enabled: this.config.enableCircuitBreaker !== false,
-        state: this.getCircuitBreakerState(),
-        config: defaultCircuitBreakerConfig.getConfigSummary()
-      },
-      retry: {
-        enabled: this.config.enableRetry !== false,
-        config: defaultRetryPolicyConfig.getConfigSummary(),
-        backoffStrategy: this.config.backoffStrategy || 'exponential'
-      }
-    };
-  }
-
-  /**
-   * Create resilient storage wrapper with default configuration
-   */
-  static create(
-    storageStrategy: IStorageStrategy,
-    config: ResilientStorageConfig = {}
-  ): ResilientStorageWrapper {
-    return new ResilientStorageWrapper(storageStrategy, config);
-  }
-
-  /**
-   * Create resilient storage wrapper with custom circuit breaker prefix
-   */
-  static createWithCustomCircuitBreaker(
-    storageStrategy: IStorageStrategy,
-    circuitBreakerPrefix: string,
-    config: ResilientStorageConfig = {}
-  ): ResilientStorageWrapper {
-    return new ResilientStorageWrapper(storageStrategy, {
-      ...config,
-      circuitBreakerPrefix
-    });
-  }
-
-  /**
-   * Create resilient storage wrapper with custom retry policy prefix
-   */
-  static createWithCustomRetryPolicy(
-    storageStrategy: IStorageStrategy,
-    retryPolicyPrefix: string,
-    config: ResilientStorageConfig = {}
-  ): ResilientStorageWrapper {
-    return new ResilientStorageWrapper(storageStrategy, {
-      ...config,
-      retryPolicyPrefix
-    });
+      // The circuit breaker returns the unwrapped value, so we can directly wrap it
+      return AppResult.Ok(result as T);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return AppResult.Err(AppError.Generic(`Storage operation ${operationName} failed: ${errorMessage}`));
+    }
   }
 }

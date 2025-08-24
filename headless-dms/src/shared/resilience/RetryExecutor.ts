@@ -148,7 +148,7 @@ export class RetryExecutor {
           backoffStrategy: backoffStrategy.getName()
         };
         
-        return Result.ok(result.data);
+        return Result.Ok(result.data);
         
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));

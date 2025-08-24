@@ -248,7 +248,9 @@ export class StorageStrategyFactory {
             console.log(`Strategy ${strategyId} health changed from ${previousHealth.health.status} to ${health.status}`);
           }
         } else {
-          console.error(`Health check failed for strategy ${strategyId}:`, healthResult.unwrapErr());
+          // Type assertion to handle the type narrowing issue
+          const errorResult = healthResult as AppResult<never>;
+          console.error(`Health check failed for strategy ${strategyId}:`, errorResult.unwrapErr());
           
           // Mark strategy as unhealthy
           this.healthCache.set(strategyId, {
@@ -259,7 +261,7 @@ export class StorageStrategyFactory {
               availableCapacity: 0,
               totalCapacity: 0,
               lastChecked: new Date(),
-              error: healthResult.unwrapErr().message
+              error: errorResult.unwrapErr().message
             },
             lastChecked: new Date()
           });

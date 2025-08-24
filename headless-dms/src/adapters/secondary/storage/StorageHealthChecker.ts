@@ -63,7 +63,9 @@ export class StorageHealthChecker {
       if (healthResult.isOk()) {
         health = healthResult.unwrap();
       } else {
-        error = healthResult.unwrapErr().message;
+        // Type assertion to handle the type narrowing issue
+        const errorResult = healthResult as AppResult<never>;
+        error = errorResult.unwrapErr().message;
         health = this.createUnhealthyHealth(error);
       }
     } catch (err) {

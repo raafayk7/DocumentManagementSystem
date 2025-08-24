@@ -8,27 +8,22 @@
     "build": "tsc --noEmit",
     "start": "node dist/app.js",
     "start:dev": "tsx --watch src/app.ts",
-
     "_comment": "=== NEW MOCHA TESTS (Steps 7-10) ===",
     "test:mocha": "mocha",
     "test:mocha:all": "mocha tests/**/*.test.ts --ignore tests/_legacy/**/*",
-    
     "_comment:domain": "=== DOMAIN LAYER (Step 8) ===",
     "test:mocha:domain": "mocha tests/domain/**/*.test.ts",
     "test:mocha:entities": "mocha tests/domain/entities/**/*.test.ts",
     "test:mocha:value-objects": "mocha tests/domain/value-objects/**/*.test.ts",
     "test:mocha:domain:services": "mocha tests/domain/services/**/*.test.ts",
-    
     "_comment:application": "=== APPLICATION LAYER (Step 9) ===",
     "test:mocha:application": "mocha tests/application/**/*.test.ts",
     "test:mocha:application:services": "mocha tests/application/services/**/*.test.ts",
     "test:mocha:use-cases": "mocha tests/application/use-cases/**/*.test.ts",
-    
     "_comment:ports": "=== PORTS LAYER (Step 10) ===",
     "test:mocha:ports": "mocha tests/ports/**/*.test.ts",
     "test:mocha:ports:input": "mocha tests/ports/input/**/*.test.ts",
     "test:mocha:ports:output": "mocha tests/ports/output/**/*.test.ts",
-    
     "_comment:adapters": "=== ADAPTERS LAYER (Step 10) ===",
     "test:mocha:adapters": "mocha tests/adapters/**/*.test.ts",
     "test:mocha:adapters:primary": "mocha tests/adapters/primary/**/*.test.ts",
@@ -37,18 +32,15 @@
     "test:mocha:adapters:database": "mocha tests/adapters/secondary/database/**/*.test.ts",
     "test:mocha:adapters:auth": "mocha tests/adapters/secondary/auth/**/*.test.ts",
     "test:mocha:adapters:mocks": "mocha tests/adapters/secondary/mocks/**/*.test.ts",
-    
     "_comment:shared": "=== SHARED LAYER (Step 10) ===",
     "test:mocha:shared": "mocha tests/shared/**/*.test.ts",
     "test:mocha:shared:dto": "mocha tests/shared/dto/**/*.test.ts",
     "test:mocha:shared:config": "mocha tests/shared/config/**/*.test.ts",
     "test:mocha:shared:utilities": "mocha tests/shared/utilities/**/*.test.ts",
-    
     "_comment:watch": "=== WATCH MODE ===",
     "test:mocha:watch": "mocha --watch",
     "test:mocha:watch:domain": "mocha --watch tests/domain/**/*.test.ts",
     "test:mocha:watch:application": "mocha --watch tests/application/**/*.test.ts",
-
     "seed": "npx tsx src/adapters/secondary/database/migrations/seed_data/seed-cli.ts",
     "seed:run": "npx tsx src/adapters/secondary/database/migrations/seed_data/seed-cli.ts run",
     "seed:reset": "npx tsx src/adapters/secondary/database/migrations/seed_data/seed-cli.ts reset",
@@ -60,6 +52,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.873.0",
+    "@aws-sdk/s3-request-presigner": "^3.873.0",
     "@carbonteq/fp": "^0.7.0",
     "@carbonteq/hexapp": "^0.20.1",
     "@faker-js/faker": "^9.9.0",
@@ -77,6 +71,7 @@
     "zod": "^4.0.14"
   },
   "devDependencies": {
+    "@types/aws-sdk": "^0.0.42",
     "@types/bcrypt": "^6.0.0",
     "@types/chai": "^5.2.2",
     "@types/jsonwebtoken": "^9.0.10",
