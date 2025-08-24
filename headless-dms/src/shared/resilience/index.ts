@@ -1,7 +1,7 @@
 /**
  * Resilience Layer Exports
  * 
- * Provides circuit breaker pattern implementation for system resilience
+ * Provides circuit breaker pattern and retry mechanism implementations for system resilience
  */
 
 // Circuit Breaker State Management
@@ -27,3 +27,30 @@ export {
   type CircuitBreakerMetrics,
   type CircuitBreakerOptions
 } from './CircuitBreaker.js';
+
+// Retry Policy Configuration
+export {
+  RetryPolicyConfigManager,
+  createRetryPolicyConfig,
+  defaultRetryPolicyConfig,
+  type RetryPolicyConfig
+} from './RetryPolicy.js';
+
+// Exponential Backoff Strategy
+export {
+  ExponentialBackoffStrategy,
+  LinearBackoffStrategy,
+  FixedBackoffStrategy,
+  BackoffStrategyFactory,
+  type IBackoffStrategy
+} from './ExponentialBackoff.js';
+
+// Retry Executor
+export {
+  RetryExecutor,
+  RetryError,
+  RetryTimeoutError,
+  NonRetryableError,
+  type RetryResult,
+  type RetryOptions
+} from './RetryExecutor.js';
