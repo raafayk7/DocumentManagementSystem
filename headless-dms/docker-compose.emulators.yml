@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # LocalStack - S3 Emulator
+  localstack:
+    image: localstack/localstack:latest
+    container_name: dms-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - "${TMPDIR:-/tmp}/localstack:/tmp/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - dms-emulators
+
+  # Azurite - Azure Storage Emulator
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: dms-azurite
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    environment:
+      - AZURITE_ACCOUNTS=devstoreaccount1:Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==
+    volumes:
+      - azurite-data:/data
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:10000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - dms-emulators
+
+  # Emulator Health Check Service
+  emulator-health:
+    image: curlimages/curl:latest
+    container_name: dms-emulator-health
+    depends_on:
+      - localstack
+      - azurite
+    environment:
+      - LOCALSTACK_ENDPOINT=http://localstack:4566
+      - AZURITE_ENDPOINT=http://azurite:10000
+    command: |
+      sh -c "
+        echo 'Waiting for emulators to start...'
+        sleep 30
+        echo 'Checking LocalStack health...'
+        curl -f http://localstack:4566/health || echo 'LocalStack health check failed'
+        echo 'Checking Azurite health...'
+        curl -f http://azurite:10000/health || echo 'Azurite health check failed'
+        echo 'Emulator health check complete'
+      "
+    networks:
+      - dms-emulators
+
+volumes:
+  azurite-data:
+    driver: local
+
+networks:
+  dms-emulators:
+    driver: bridge
+    name: dms-emulators-network

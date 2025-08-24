@@ -46,7 +46,14 @@
     "seed:reset": "npx tsx src/adapters/secondary/database/migrations/seed_data/seed-cli.ts reset",
     "seed:refresh": "npx tsx src/adapters/secondary/database/migrations/seed_data/seed-cli.ts refresh",
     "seed:clearAll": "npx tsx src/adapters/secondary/database/migrations/seed_data/seed-cli.ts clearAll",
-    "seed:summary": "npx tsx src/adapters/secondary/database/migrations/seed_data/seed-cli.ts summary"
+    "seed:summary": "npx tsx src/adapters/secondary/database/migrations/seed_data/seed-cli.ts summary",
+    "_comment:emulators": "=== EMULATOR MANAGEMENT ===",
+    "emulators:start": "node scripts/start-emulators.js",
+    "emulators:stop": "docker-compose -f docker-compose.emulators.yml down",
+    "emulators:restart": "docker-compose -f docker-compose.emulators.yml restart",
+    "emulators:logs": "docker-compose -f docker-compose.emulators.yml logs -f",
+    "emulators:status": "docker-compose -f docker-compose.emulators.yml ps",
+    "emulators:cleanup": "docker-compose -f docker-compose.emulators.yml down -v --remove-orphans"
   },
   "keywords": [],
   "author": "",
