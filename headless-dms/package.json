@@ -54,6 +54,8 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.873.0",
     "@aws-sdk/s3-request-presigner": "^3.873.0",
+    "@azure/identity": "^4.11.1",
+    "@azure/storage-blob": "^12.28.0",
     "@carbonteq/fp": "^0.7.0",
     "@carbonteq/hexapp": "^0.20.1",
     "@faker-js/faker": "^9.9.0",
