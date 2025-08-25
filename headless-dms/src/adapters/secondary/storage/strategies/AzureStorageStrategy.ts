@@ -4,6 +4,7 @@ import { AppResult, AppError } from '@carbonteq/hexapp';
 import { IStorageStrategy } from '../../../../ports/output/IStorageStrategy.js';
 import { FileInfo, StorageHealth, StorageStats, UploadOptions, DownloadOptions, StorageOperationResult } from '../../../../shared/storage/StorageTypes.js';
 import { RetryExecutor } from '../../../../shared/resilience/RetryExecutor.js';
+import { injectable } from 'tsyringe';
 
 /**
  * Azure Storage Strategy Configuration
@@ -33,51 +34,46 @@ export interface AzureStorageConfig {
  * Azure Storage Strategy
  * Implements IStorageStrategy for Azure Blob Storage with Azurite emulator support
  */
+@injectable()
 export class AzureStorageStrategy implements IStorageStrategy {
-  private readonly blobServiceClient: BlobServiceClient;
-  private readonly containerClient: ContainerClient;
-  private readonly containerName: string;
-  private readonly maxFileSize: number;
-  private readonly allowedMimeTypes: string[];
-  private readonly retryExecutor: RetryExecutor;
-  private readonly performanceMetrics: Map<string, StorageOperationResult<any>[]> = new Map();
-  private readonly useEmulator: boolean;
+  private blobServiceClient: BlobServiceClient;
+  private containerClient: ContainerClient;
+  private containerName: string;
+  private maxFileSize: number;
+  private allowedMimeTypes: string[];
+  private retryExecutor: RetryExecutor;
+  private performanceMetrics: Map<string, StorageOperationResult<any>[]> = new Map();
+  private useEmulator: boolean;
 
-  constructor(config: AzureStorageConfig, retryExecutor?: RetryExecutor) {
-    if (!config.containerName || config.containerName.trim() === '') {
-      throw new Error('Container name is required');
-    }
-
-    this.containerName = config.containerName;
-    this.maxFileSize = config.maxFileSize || 100 * 1024 * 1024; // 100MB default
-    this.allowedMimeTypes = config.allowedMimeTypes || ['*/*']; // Allow all by default
-    this.retryExecutor = retryExecutor || new RetryExecutor();
-    this.useEmulator = config.useEmulator || false;
+  constructor() {
+    // Initialize with default values - will be configured by the factory
+    this.containerName = process.env.AZURE_STORAGE_CONTAINER || 'dms-container';
+    this.maxFileSize = 100 * 1024 * 1024; // 100MB default
+    this.allowedMimeTypes = ['*/*']; // Allow all by default
+    this.retryExecutor = new RetryExecutor();
+    this.useEmulator = process.env.AZURE_STORAGE_USE_EMULATOR === 'true';
 
     // Initialize Azure Blob Service Client
     if (this.useEmulator) {
-      // Use Azurite emulator - use credential-based approach to avoid URL validation issues
-      const accountName = config.accountName || 'devstoreaccount1';
-      const accountKey = config.accountKey || 'Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==';
+      // Use Azurite emulator
+      const accountName = process.env.AZURE_STORAGE_ACCOUNT || 'devstoreaccount1';
+      const accountKey = process.env.AZURE_STORAGE_KEY || 'Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==';
       
-      // Use credential-based approach for emulator to avoid URL validation issues
       const credential = new StorageSharedKeyCredential(accountName, accountKey);
-      const emulatorEndpoint = config.emulatorEndpoint || 'http://127.0.0.1:10000';
+      const emulatorEndpoint = process.env.AZURE_STORAGE_ENDPOINT || 'http://127.0.0.1:10000';
       const url = `${emulatorEndpoint}/${accountName}`;
       this.blobServiceClient = new BlobServiceClient(url, credential);
-    } else if (config.connectionString) {
-      // Use connection string
-      this.blobServiceClient = new BlobServiceClient(config.connectionString);
-    } else if (config.accountName && config.accountKey) {
-      // Use account name and key - create credential object first
-      const credential = new StorageSharedKeyCredential(config.accountName, config.accountKey);
-      const url = `https://${config.accountName}.blob.core.windows.net`;
-      this.blobServiceClient = new BlobServiceClient(url, credential);
     } else {
-      // Use DefaultAzureCredential (for managed identity, environment variables, etc.)
-      const credential = new DefaultAzureCredential();
-      const url = `https://${config.accountName || 'default'}.blob.core.windows.net`;
-      this.blobServiceClient = new BlobServiceClient(url, credential);
+      // Use connection string or default Azure credentials
+      const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+      if (connectionString) {
+        this.blobServiceClient = new BlobServiceClient(connectionString);
+      } else {
+        const credential = new DefaultAzureCredential();
+        const accountName = process.env.AZURE_STORAGE_ACCOUNT || 'default';
+        const url = `https://${accountName}.blob.core.windows.net`;
+        this.blobServiceClient = new BlobServiceClient(url, credential);
+      }
     }
 
     // Get container client

@@ -12,9 +12,9 @@ import { StatusCommand } from './commands/StatusCommand.js';
  */
 class DocumentManagementCLI {
   private program: Command;
-  private downloadCommand: DownloadCommand;
-  private uploadCommand: UploadCommand;
-  private statusCommand: StatusCommand;
+  private downloadCommand!: DownloadCommand;
+  private uploadCommand!: UploadCommand;
+  private statusCommand!: StatusCommand;
 
   constructor() {
     this.program = new Command();
@@ -23,16 +23,32 @@ class DocumentManagementCLI {
   }
 
   private initializeCommands(): void {
-    // Initialize commands with dependency injection
-    this.downloadCommand = container.resolve(DownloadCommand);
-    this.uploadCommand = container.resolve(UploadCommand);
-    this.statusCommand = container.resolve(StatusCommand);
+    try {
+      console.log('Initializing CLI commands...');
+      
+      // Initialize commands with dependency injection
+      this.downloadCommand = container.resolve(DownloadCommand);
+      console.log('✅ Download command initialized');
+      
+      this.uploadCommand = container.resolve(UploadCommand);
+      console.log('✅ Upload command initialized');
+      
+      this.statusCommand = container.resolve(StatusCommand);
+      console.log('✅ Status command initialized');
+      
+      console.log('All CLI commands initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize CLI commands:', error);
+      console.error('This might be due to missing dependencies in the container');
+      process.exit(1);
+    }
   }
 
   private setupCLI(): void {
     this.program
       .name('dms-cli')
-      .description('Document Management System CLI Tool');
+      .description('Document Management System CLI Tool')
+      .version('1.0.0');
 
     // Add download command
     this.downloadCommand.register(this.program);
@@ -49,6 +65,7 @@ class DocumentManagementCLI {
 
   public async run(): Promise<void> {
     try {
+      console.log('🚀 Starting DMS CLI...');
       await this.program.parseAsync();
     } catch (error) {
       console.error('CLI Error:', error);

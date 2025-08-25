@@ -4,31 +4,33 @@ import { AppResult, AppError } from '@carbonteq/hexapp';
 import { IStorageStrategy } from '../../../../ports/output/IStorageStrategy.js';
 import { FileInfo, StorageHealth, StorageStats, UploadOptions, DownloadOptions, StorageOperationResult } from '../../../../shared/storage/StorageTypes.js';
 import { RetryExecutor } from '../../../../shared/resilience/RetryExecutor.js';
+import { injectable } from 'tsyringe';
 
+@injectable()
 export class S3StorageStrategy implements IStorageStrategy {
-  private readonly s3Client: S3Client;
-  private readonly bucketName: string;
-  private readonly maxFileSize: number;
-  private readonly allowedMimeTypes: string[];
-  private readonly retryExecutor: RetryExecutor;
+  private s3Client: S3Client;
+  private bucketName: string;
+  private maxFileSize: number;
+  private allowedMimeTypes: string[];
+  private retryExecutor: RetryExecutor;
   private readonly performanceMetrics: Map<string, StorageOperationResult<any>[]> = new Map();
 
-  constructor(
-    s3Client: S3Client,
-    bucketName: string,
-    maxFileSize: number = 100 * 1024 * 1024, // 100MB default
-    allowedMimeTypes: string[] = ['*/*'], // Allow all by default
-    retryExecutor?: RetryExecutor
-  ) {
-    if (!bucketName || bucketName.trim() === '') {
-      throw new Error('Bucket name is required');
-    }
+  constructor() {
+    // Initialize with default values - will be configured by the factory
+    this.s3Client = new S3Client({
+      region: process.env.S3_REGION || 'us-east-1',
+      endpoint: process.env.S3_ENDPOINT || process.env.LOCALSTACK_ENDPOINT,
+      credentials: {
+        accessKeyId: process.env.S3_ACCESS_KEY_ID || process.env.LOCALSTACK_ACCESS_KEY || 'test',
+        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || process.env.LOCALSTACK_SECRET_KEY || 'test'
+      },
+      forcePathStyle: true // Required for LocalStack
+    });
     
-    this.s3Client = s3Client;
-    this.bucketName = bucketName;
-    this.maxFileSize = maxFileSize;
-    this.allowedMimeTypes = allowedMimeTypes;
-    this.retryExecutor = retryExecutor || new RetryExecutor();
+    this.bucketName = process.env.S3_BUCKET_NAME || 'dms-test-bucket';
+    this.maxFileSize = 100 * 1024 * 1024; // 100MB default
+    this.allowedMimeTypes = ['*/*']; // Allow all by default
+    this.retryExecutor = new RetryExecutor();
   }
 
   async upload(file: FileInfo, options?: UploadOptions): Promise<AppResult<string>> {

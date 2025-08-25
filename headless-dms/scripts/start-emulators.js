@@ -5,9 +5,13 @@
  * Starts LocalStack (S3) and Azurite (Azure) emulators for development
  */
 
-const { spawn } = require('child_process');
-const path = require('path');
-const fs = require('fs');
+import { spawn } from 'child_process';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Configuration
 const DOCKER_COMPOSE_FILE = 'docker-compose.emulators.yml';
@@ -192,11 +196,11 @@ async function main() {
 }
 
 // Run if called directly
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   main();
 }
 
-module.exports = {
+export {
   checkDocker,
   checkDockerCompose,
   setupEnvironment,

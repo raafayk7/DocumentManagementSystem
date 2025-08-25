@@ -1,7 +1,7 @@
 import { injectable, inject } from 'tsyringe';
 import { AppResult } from '@carbonteq/hexapp';
-import { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
-import { IStorageStrategy } from '../../../ports/output/IStorageStrategy.js';
+import type { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
+import type { IStorageStrategy } from '../../../ports/output/IStorageStrategy.js';
 import { ConcurrencyManager } from '../../../adapters/primary/cli/services/ConcurrencyManager.js';
 import { ProgressTracker } from '../../../adapters/primary/cli/services/ProgressTracker.js';
 
@@ -62,7 +62,7 @@ export class BulkUploadUseCase {
 
       // 2. Initialize progress tracking
       this.progressTracker.initialize(files.length);
-      this.concurrencyManager.updateLimits(options.concurrent, 100);
+      this.concurrencyManager.updateConfig({ maxConcurrent: options.concurrent });
 
       // 3. Process files with concurrency control
       const startTime = Date.now();
@@ -174,34 +174,33 @@ export class BulkUploadUseCase {
     const activeUploads: Promise<void>[] = [];
 
     for (const file of files) {
-      // Wait for available worker slot
-      while (!this.concurrencyManager.canStartWorker()) {
-        await this.concurrencyManager.waitForRateLimit();
-      }
-
-      // Start upload worker
-      this.concurrencyManager.startWorker();
-      
-      const uploadPromise = this.uploadSingleFile(file, options)
-        .then(() => {
-          uploadedCount++;
-          this.progressTracker.markCompleted();
-        })
-        .catch((error) => {
-          if (error.message.includes('skipped')) {
-            skippedCount++;
-            this.progressTracker.markCompleted(); // Count as completed for progress
-          } else {
-            failedCount++;
-            this.progressTracker.markFailed();
-            console.error(`Failed to upload ${file.fileName}:`, error.message);
+      // Submit upload job to concurrency manager
+      const jobId = await this.concurrencyManager.submitJob(
+        file, // jobData
+        async (fileData) => {
+          try {
+            await this.uploadSingleFile(fileData, options);
+            uploadedCount++;
+            this.progressTracker.markCompleted();
+            return { success: true, file: fileData.fileName };
+          } catch (error: any) {
+            if (error.message.includes('skipped')) {
+              skippedCount++;
+              this.progressTracker.markCompleted(); // Count as completed for progress
+              return { success: true, file: fileData.fileName, skipped: true };
+            } else {
+              failedCount++;
+              this.progressTracker.markFailed();
+              console.error(`Failed to upload ${fileData.fileName}:`, error.message);
+              return { success: false, file: fileData.fileName, error: error.message };
+            }
           }
-        })
-        .finally(() => {
-          this.concurrencyManager.stopWorker();
-        });
+        },
+        'normal' // priority
+      );
 
-      activeUploads.push(uploadPromise);
+      // Wait for job to complete
+      await this.concurrencyManager.getJobResult(jobId);
     }
 
     // Wait for all uploads to complete

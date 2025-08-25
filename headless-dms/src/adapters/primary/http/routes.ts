@@ -20,6 +20,8 @@ import {
 } from './route-handlers/documents.handlers.js';
 import { authenticateJWT } from './middleware/authenticate.js';
 import { requireRole } from './middleware/roleGuard.js';
+import { MetricsEndpoint } from '../../../shared/observability/metrics/metrics.endpoint.js';
+import { PerformanceEndpoint } from '../../../shared/observability/performance/performance.endpoint.js';
 
 export async function registerRoutes(server: IHttpServer): Promise<void> {
   console.log('Registering HTTP routes...');
@@ -36,6 +38,92 @@ export async function registerRoutes(server: IHttpServer): Promise<void> {
       uptime: process.uptime(),
       memory: process.memoryUsage()
     });
+  });
+
+  // Phase 5: Metrics and Performance Monitoring Endpoints
+  console.log('Setting up Phase 5 metrics and performance endpoints...');
+  
+  // Metrics endpoints
+  const metricsEndpoint = MetricsEndpoint.create({
+    requireAuth: false, // Public for demo
+    includeNewRelicStatus: true,
+    includeSystemMetrics: true
+  });
+
+  // Storage strategy endpoint
+  server.registerRoute('GET', '/storage/status', async (request: any, response: any) => {
+    try {
+      const container = (await import('../../../shared/di/container.js')).container;
+      const factory = container.resolve('StorageStrategyFactory');
+      
+      const status = factory.getStatus();
+      const allHealth = factory.getAllStrategyHealth();
+      
+      response.send({
+        timestamp: new Date().toISOString(),
+        success: true,
+        data: {
+          status,
+          strategies: Array.from(allHealth.entries()).map(([id, health]) => ({
+            id,
+            health: health.status,
+            responseTime: health.responseTime,
+            successRate: health.successRate,
+            availableCapacity: health.availableCapacity,
+            totalCapacity: health.totalCapacity,
+            lastChecked: health.lastChecked
+          }))
+        }
+      });
+    } catch (error) {
+      response.send({
+        timestamp: new Date().toISOString(),
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  server.registerRoute('GET', '/metrics', async (request: any, response: any) => {
+    await metricsEndpoint.getMetrics(request, response);
+    // Response already sent by the endpoint
+  });
+
+  server.registerRoute('GET', '/metrics/summary', async (request: any, response: any) => {
+    await metricsEndpoint.getMetricsSummary(request, response);
+    // Response already sent by the endpoint
+  });
+
+  server.registerRoute('GET', '/metrics/health', async (request: any, response: any) => {
+    await metricsEndpoint.getHealthMetrics(request, response);
+    // Response already sent by the endpoint
+  });
+
+  // Performance monitoring endpoints
+  const performanceEndpoint = PerformanceEndpoint.create({
+    includeNewRelicStatus: true,
+    includeConfiguration: true,
+    includeHealthChecks: true
+  });
+
+  server.registerRoute('GET', '/performance/metrics', async (request: any, response: any) => {
+    const metrics = await performanceEndpoint.getPerformanceMetrics(request, response);
+    // Response already sent by the endpoint
+  });
+
+  server.registerRoute('GET', '/performance/config', async (request: any, response: any) => {
+    const config = await performanceEndpoint.getConfiguration(request, response);
+    // Response already sent by the endpoint
+  });
+
+  server.registerRoute('GET', '/performance/health', async (request: any, response: any) => {
+    const health = await performanceEndpoint.getHealthStatus(request, response);
+    // Response already sent by the endpoint
+  });
+
+  server.registerRoute('GET', '/performance/status', async (request: any, response: any) => {
+    const status = await performanceEndpoint.getStatus(request, response);
+    // Response already sent by the endpoint
   });
 
   // Auth routes using abstraction

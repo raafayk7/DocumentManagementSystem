@@ -30,7 +30,7 @@ export class UploadCommand {
           const uploadOptions: BulkUploadOptions = {
             directory: options.directory,
             concurrent: parseInt(options.concurrent) || 3,
-            tags: options.tags ? options.tags.split(',').map(tag => tag.trim()) : [],
+            tags: options.tags ? options.tags.split(',').map((tag: string) => tag.trim()) : [],
             metadata: options.metadata ? JSON.parse(options.metadata) : {},
             dryRun: options.dryRun || false
           };
@@ -52,7 +52,7 @@ export class UploadCommand {
             console.log(`   Success rate: ${uploadResult.successRate.toFixed(1)}%`);
             console.log(`   Duration: ${(uploadResult.duration / 1000).toFixed(1)}s`);
           } else {
-            console.error('❌ Bulk upload failed:', result.unwrapErr().message);
+            console.error('❌ Bulk upload failed:', result.unwrapErr?.()?.message || 'Unknown error');
             process.exit(1);
         }
         } catch (error) {

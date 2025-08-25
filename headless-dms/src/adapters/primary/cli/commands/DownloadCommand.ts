@@ -52,7 +52,7 @@ export class DownloadCommand {
             console.log(`   Duration: ${(downloadResult.duration / 1000).toFixed(1)}s`);
             console.log(`   Output directory: ${downloadResult.outputPath}`);
           } else {
-            console.error('❌ Bulk download failed:', result.unwrapErr().message);
+            console.error('❌ Bulk download failed:', result.unwrapErr?.()?.message || 'Unknown error');
             process.exit(1);
           }
 

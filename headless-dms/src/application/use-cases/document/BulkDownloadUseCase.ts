@@ -1,7 +1,7 @@
 import { injectable, inject } from 'tsyringe';
 import { AppResult } from '@carbonteq/hexapp';
-import { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
-import { IStorageStrategy } from '../../../ports/output/IStorageStrategy.js';
+import type { IDocumentApplicationService } from '../../../ports/input/IDocumentApplicationService.js';
+import type { IStorageStrategy } from '../../../ports/output/IStorageStrategy.js';
 import { ConcurrencyManager } from '../../../adapters/primary/cli/services/ConcurrencyManager.js';
 import { ProgressTracker } from '../../../adapters/primary/cli/services/ProgressTracker.js';
 
@@ -63,7 +63,7 @@ export class BulkDownloadUseCase {
 
       // 2. Initialize progress tracking
       this.progressTracker.initialize(documents.length);
-      this.concurrencyManager.updateLimits(options.concurrent, 100);
+      this.concurrencyManager.updateConfig({ maxConcurrent: options.concurrent });
 
       // 3. Create output directory
       await this.ensureOutputDirectory(options.outputPath);
@@ -98,11 +98,13 @@ export class BulkDownloadUseCase {
   private async getDocumentsToDownload(folder?: string): Promise<AppResult<DocumentDownloadInfo[]>> {
     try {
       // Use existing document service to get documents
-      const documentsResult = await this.documentService.getDocuments({
-        page: 1,
-        limit: 1000, // TODO: Implement pagination for large datasets
-        folder: folder
-      });
+      const documentsResult = await this.documentService.getDocuments(
+        1, // page
+        1000, // limit
+        undefined, // sortBy
+        undefined, // sortOrder
+        { name: folder } // filters
+      );
 
       if (documentsResult.isErr()) {
         return AppResult.Err(documentsResult.unwrapErr());
@@ -111,7 +113,7 @@ export class BulkDownloadUseCase {
       const documents = documentsResult.unwrap();
       
       // Transform to download info format
-      const downloadInfo: DocumentDownloadInfo[] = documents.data.map(doc => ({
+      const downloadInfo: DocumentDownloadInfo[] = documents.map((doc: any) => ({
         id: doc.id,
         name: doc.name,
         filePath: doc.filePath,
@@ -154,29 +156,27 @@ export class BulkDownloadUseCase {
     const activeDownloads: Promise<void>[] = [];
 
     for (const document of documents) {
-      // Wait for available worker slot
-      while (!this.concurrencyManager.canStartWorker()) {
-        await this.concurrencyManager.waitForRateLimit();
-      }
+      // Submit download job to concurrency manager
+      const jobId = await this.concurrencyManager.submitJob(
+        document, // jobData
+        async (documentData) => {
+          try {
+            await this.downloadSingleDocument(documentData, options.outputPath);
+            downloadedCount++;
+            this.progressTracker.markCompleted();
+            return { success: true, document: documentData.name };
+          } catch (error: any) {
+            failedCount++;
+            this.progressTracker.markFailed();
+            console.error(`Failed to download ${documentData.name}:`, error.message);
+            return { success: false, document: documentData.name, error: error.message };
+          }
+        },
+        'normal' // priority
+      );
 
-      // Start download worker
-      this.concurrencyManager.startWorker();
-      
-      const downloadPromise = this.downloadSingleDocument(document, options.outputPath)
-        .then(() => {
-          downloadedCount++;
-          this.progressTracker.markCompleted();
-        })
-        .catch((error) => {
-          failedCount++;
-          this.progressTracker.markFailed();
-          console.error(`Failed to download ${document.name}:`, error.message);
-        })
-        .finally(() => {
-          this.concurrencyManager.stopWorker();
-        });
-
-      activeDownloads.push(downloadPromise);
+      // Wait for job to complete
+      await this.concurrencyManager.getJobResult(jobId);
     }
 
     // Wait for all downloads to complete

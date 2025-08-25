@@ -8,6 +8,9 @@ import { IFileService } from '../../ports/output/IFileService.js';
 import { LocalFileService } from '../../adapters/secondary/file-storage/local-file.service.js';
 import { IStorageStrategy } from '../../ports/output/IStorageStrategy.js';
 import { LocalStorageStrategy } from '../../adapters/secondary/storage/strategies/LocalStorageStrategy.js';
+import { S3StorageStrategy } from '../../adapters/secondary/storage/strategies/S3StorageStrategy.js';
+import { AzureStorageStrategy } from '../../adapters/secondary/storage/strategies/AzureStorageStrategy.js';
+import { StorageStrategyFactory } from '../../adapters/secondary/storage/StorageStrategyFactory.js';
 import { IAuthHandler } from '../../ports/output/IAuthHandler.js';
 import { AuthHandler } from '../../adapters/secondary/auth/implementations/AuthHandler.js';
 import { IAuthStrategy } from '../../ports/output/IAuthStrategy.js';
@@ -37,6 +40,11 @@ import { BackgroundJobProcessor } from '../../adapters/primary/cli/services/Back
 import { RateLimiter } from '../../adapters/primary/cli/services/RateLimiter.js';
 import { ResourceManager } from '../../adapters/primary/cli/services/ResourceManager.js';
 
+// CLI Commands
+import { DownloadCommand } from '../../adapters/primary/cli/commands/DownloadCommand.js';
+import { UploadCommand } from '../../adapters/primary/cli/commands/UploadCommand.js';
+import { StatusCommand } from '../../adapters/primary/cli/commands/StatusCommand.js';
+
 // Register repositories
 container.registerSingleton<IDocumentRepository>('IDocumentRepository', DrizzleDocumentRepository);
 container.registerSingleton<IUserRepository>('IUserRepository', DrizzleUserRepository);
@@ -45,7 +53,50 @@ container.registerSingleton<IUserRepository>('IUserRepository', DrizzleUserRepos
 container.registerSingleton<IFileService>('IFileService', LocalFileService);
 
 // Register storage strategies
-container.registerSingleton<IStorageStrategy>('IStorageStrategy', LocalStorageStrategy);
+container.registerSingleton('StorageStrategyFactory', StorageStrategyFactory);
+container.registerSingleton('LocalStorageStrategy', LocalStorageStrategy);
+container.registerSingleton('S3StorageStrategy', S3StorageStrategy);
+container.registerSingleton('AzureStorageStrategy', AzureStorageStrategy);
+
+// Initialize the factory with strategies
+const factory = container.resolve('StorageStrategyFactory') as any;
+const localStrategy = container.resolve('LocalStorageStrategy') as any;
+const s3Strategy = container.resolve('S3StorageStrategy') as any;
+const azureStrategy = container.resolve('AzureStorageStrategy') as any;
+
+// Register strategies with the factory
+factory.registerStrategy(localStrategy, { 
+  id: 'local', 
+  name: 'Local File System', 
+  type: 'local', 
+  enabled: true, 
+  priority: 3, 
+  allowFallback: true, 
+  config: {} 
+});
+
+factory.registerStrategy(s3Strategy, { 
+  id: 's3', 
+  name: 'AWS S3', 
+  type: 's3', 
+  enabled: true, 
+  priority: 1, 
+  allowFallback: true, 
+  config: {} 
+});
+
+factory.registerStrategy(azureStrategy, { 
+  id: 'azure', 
+  name: 'Azure Blob Storage', 
+  type: 'azure', 
+  enabled: true, 
+  priority: 2, 
+  allowFallback: true, 
+  config: {} 
+});
+
+// Register the factory as the storage strategy resolver
+container.registerSingleton<IStorageStrategy>('IStorageStrategy', factory.getPrimaryStrategy() || localStrategy);
 
 // Register auth services
 container.registerSingleton<IAuthHandler>('IAuthHandler', AuthHandler);
@@ -76,5 +127,10 @@ container.registerSingleton(ProgressTracker);
 container.registerSingleton(BackgroundJobProcessor);
 container.registerSingleton(RateLimiter);
 container.registerSingleton(ResourceManager);
+
+// Register CLI commands
+container.registerSingleton(DownloadCommand);
+container.registerSingleton(UploadCommand);
+container.registerSingleton(StatusCommand);
 
 export { container }; 

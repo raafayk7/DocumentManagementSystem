@@ -12,11 +12,13 @@ import {
   StorageOperationResult 
 } from '../../../../shared/storage/StorageTypes.js';
 import { NewRelicMiddleware } from '../../../../shared/observability/new-relic/NewRelicMiddleware.js';
+import { injectable } from 'tsyringe';
 
 /**
  * LocalStorageStrategy - implements IStorageStrategy for local file system storage
  * This will be the fallback strategy when cloud storage fails
  */
+@injectable()
 export class LocalStorageStrategy implements IStorageStrategy {
   private readonly basePath: string;
   private readonly maxFileSize: number;
