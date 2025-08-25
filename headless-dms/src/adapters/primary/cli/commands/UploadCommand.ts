@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { injectable } from 'tsyringe';
-import { container } from '../../../../shared/di/container.js';
+import { injectable, inject } from 'tsyringe';
+import { BulkUploadUseCase, BulkUploadOptions } from '../../../../application/use-cases/document/BulkUploadUseCase.js';
 
 /**
  * CLI command for bulk uploading documents
@@ -8,7 +8,9 @@ import { container } from '../../../../shared/di/container.js';
  */
 @injectable()
 export class UploadCommand {
-  constructor() {}
+  constructor(
+    @inject(BulkUploadUseCase) private bulkUploadUseCase: BulkUploadUseCase
+  ) {}
 
   /**
    * Register the upload command with the CLI program
@@ -24,14 +26,37 @@ export class UploadCommand {
       .option('--dry-run', 'Show what would be uploaded without actually uploading')
       .action(async (options) => {
         try {
-          // TODO: Implement bulk upload logic
-          // This will call BulkUploadUseCase from application layer
-          console.log('Upload command executed with options:', options);
-          
-          // Placeholder for actual implementation
-          console.log('Bulk upload functionality coming in next steps...');
+          // Parse and validate options
+          const uploadOptions: BulkUploadOptions = {
+            directory: options.directory,
+            concurrent: parseInt(options.concurrent) || 3,
+            tags: options.tags ? options.tags.split(',').map(tag => tag.trim()) : [],
+            metadata: options.metadata ? JSON.parse(options.metadata) : {},
+            dryRun: options.dryRun || false
+          };
+
+          console.log('Starting bulk upload operation...');
+          console.log('Options:', uploadOptions);
+
+          // Execute bulk upload use case
+          const result = await this.bulkUploadUseCase.execute(uploadOptions);
+
+          if (result.isOk()) {
+            const uploadResult = result.unwrap();
+            console.log('\n✅ Bulk upload completed successfully!');
+            console.log(`📊 Summary:`);
+            console.log(`   Total files: ${uploadResult.totalFiles}`);
+            console.log(`   Uploaded: ${uploadResult.uploadedFiles}`);
+            console.log(`   Failed: ${uploadResult.failedFiles}`);
+            console.log(`   Skipped: ${uploadResult.skippedFiles}`);
+            console.log(`   Success rate: ${uploadResult.successRate.toFixed(1)}%`);
+            console.log(`   Duration: ${(uploadResult.duration / 1000).toFixed(1)}s`);
+          } else {
+            console.error('❌ Bulk upload failed:', result.unwrapErr().message);
+            process.exit(1);
+        }
         } catch (error) {
-          console.error('Upload failed:', error);
+          console.error('❌ Upload failed:', error);
           process.exit(1);
         }
       });

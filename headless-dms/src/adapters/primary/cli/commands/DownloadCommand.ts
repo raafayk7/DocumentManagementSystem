@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { injectable } from 'tsyringe';
-import { container } from '../../../../shared/di/container.js';
+import { injectable, inject } from 'tsyringe';
+import { BulkDownloadUseCase, BulkDownloadOptions } from '../../../../application/use-cases/document/BulkDownloadUseCase.js';
 
 /**
  * CLI command for bulk downloading documents
@@ -8,7 +8,9 @@ import { container } from '../../../../shared/di/container.js';
  */
 @injectable()
 export class DownloadCommand {
-  constructor() {}
+  constructor(
+    @inject(BulkDownloadUseCase) private bulkDownloadUseCase: BulkDownloadUseCase
+  ) {}
 
   /**
    * Register the download command with the CLI program
@@ -24,14 +26,38 @@ export class DownloadCommand {
       .option('--format <format>', 'Output format (json, csv)', 'json')
       .action(async (options) => {
         try {
-          // TODO: Implement bulk download logic
-          // This will call BulkDownloadUseCase from application layer
-          console.log('Download command executed with options:', options);
-          
-          // Placeholder for actual implementation
-          console.log('Bulk download functionality coming in next steps...');
+          // Parse and validate options
+          const downloadOptions: BulkDownloadOptions = {
+            folder: options.folder,
+            outputPath: options.output,
+            concurrent: parseInt(options.concurrent) || 5,
+            resume: options.resume || false,
+            format: options.format === 'csv' ? 'csv' : 'json'
+          };
+
+          console.log('Starting bulk download operation...');
+          console.log('Options:', downloadOptions);
+
+          // Execute bulk download use case
+          const result = await this.bulkDownloadUseCase.execute(downloadOptions);
+
+          if (result.isOk()) {
+            const downloadResult = result.unwrap();
+            console.log('\n✅ Bulk download completed successfully!');
+            console.log(`📊 Summary:`);
+            console.log(`   Total documents: ${downloadResult.totalDocuments}`);
+            console.log(`   Downloaded: ${downloadResult.downloadedDocuments}`);
+            console.log(`   Failed: ${downloadResult.failedDocuments}`);
+            console.log(`   Success rate: ${downloadResult.successRate.toFixed(1)}%`);
+            console.log(`   Duration: ${(downloadResult.duration / 1000).toFixed(1)}s`);
+            console.log(`   Output directory: ${downloadResult.outputPath}`);
+          } else {
+            console.error('❌ Bulk download failed:', result.unwrapErr().message);
+            process.exit(1);
+          }
+
         } catch (error) {
-          console.error('Download failed:', error);
+          console.error('❌ Download failed:', error);
           process.exit(1);
         }
       });
