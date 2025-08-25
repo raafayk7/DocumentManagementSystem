@@ -32,8 +32,7 @@ class DocumentManagementCLI {
   private setupCLI(): void {
     this.program
       .name('dms-cli')
-      .description('Document Management System CLI Tool')
-      .version('1.0.0');
+      .description('Document Management System CLI Tool');
 
     // Add download command
     this.downloadCommand.register(this.program);

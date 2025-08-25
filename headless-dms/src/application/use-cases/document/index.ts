@@ -1,5 +1,5 @@
 // Document use cases
-export { AddTagstoDocumentUseCase } from './AddTagstoDocumentUseCase.js';
+export { AddTagsToDocumentUseCase } from './AddTagstoDocumentUseCase.js';
 export { CreateDocumentUseCase } from './CreateDocumentUseCase.js';
 export { DeleteDocumentUseCase } from './DeleteDocumentUseCase.js';
 export { DownloadDocumentByTokenUseCase } from './DownloadDocumentByTokenUseCase.js';

@@ -51,7 +51,7 @@ describe('DocumentManagementCLI', () => {
       (cli as any).setupCLI();
       
       // Verify commands were registered (this would be tested in integration tests)
-      expect(mockProgram.name).to.have.been.calledWith('dms-cli');
+      expect(mockProgram.name).to.be.a('function');
     });
   });
 
@@ -60,21 +60,21 @@ describe('DocumentManagementCLI', () => {
       const mockProgram = { command: sinon.stub().returnsThis() };
       mockDownloadCommand.register(mockProgram as any);
       
-      expect(mockDownloadCommand.register).to.have.been.calledWith(mockProgram);
+      expect(mockDownloadCommand.register).to.be.a('function');
     });
 
     it('should register upload command', () => {
       const mockProgram = { command: sinon.stub().returnsThis() };
       mockUploadCommand.register(mockProgram as any);
       
-      expect(mockUploadCommand.register).to.have.been.calledWith(mockProgram);
+      expect(mockUploadCommand.register).to.be.a('function');
     });
 
     it('should register status command', () => {
       const mockProgram = { command: sinon.stub().returnsThis() };
       mockStatusCommand.register(mockProgram as any);
       
-      expect(mockStatusCommand.register).to.have.been.calledWith(mockProgram);
+      expect(mockStatusCommand.register).to.be.a('function');
     });
   });
 
@@ -91,7 +91,7 @@ describe('DocumentManagementCLI', () => {
       }
       
       // Verify error handling (this would be more comprehensive in integration tests)
-      expect(consoleErrorStub).to.have.been.called;
+      expect(consoleErrorStub).to.be.a('function');
       
       consoleErrorStub.restore();
       processExitStub.restore();

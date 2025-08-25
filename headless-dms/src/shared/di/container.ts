@@ -6,6 +6,8 @@ import { IUserRepository } from '../../ports/output/IUserRepository.js';
 import { DrizzleUserRepository } from '../../adapters/secondary/database/implementations/drizzle-user.repository.js';
 import { IFileService } from '../../ports/output/IFileService.js';
 import { LocalFileService } from '../../adapters/secondary/file-storage/local-file.service.js';
+import { IStorageStrategy } from '../../ports/output/IStorageStrategy.js';
+import { LocalStorageStrategy } from '../../adapters/secondary/storage/strategies/LocalStorageStrategy.js';
 // DocumentService removed - now using DocumentApplicationService
 import { AuthApplicationService } from '../../application/services/AuthApplicationService.js';
 import { UserApplicationService } from '../../application/services/UserApplicationService.js';
@@ -44,7 +46,9 @@ import {
   UploadDocumentUseCase,
   GenerateDownloadLinkUseCase,
   DownloadDocumentByTokenUseCase,
-  ReplaceTagsInDocumentUseCase
+  ReplaceTagsInDocumentUseCase,
+  BulkDownloadUseCase,
+  BulkUploadUseCase
 } from '../../application/use-cases/document/index.js';
 
 // Register repositories
@@ -52,6 +56,9 @@ container.registerSingleton<IDocumentRepository>('IDocumentRepository', DrizzleD
 container.registerSingleton<IUserRepository>('IUserRepository', DrizzleUserRepository);
 container.registerSingleton<IFileService>('IFileService', LocalFileService);
 container.registerSingleton<IFileService>('IFileStorage', LocalFileService); // Alias for compatibility
+
+// Register storage strategy
+container.registerSingleton<IStorageStrategy>('IStorageStrategy', LocalStorageStrategy);
 
 // Register loggers
 container.registerSingleton<ILogger>('ILogger', ConsoleLogger);
@@ -108,5 +115,7 @@ container.registerSingleton(UploadDocumentUseCase);
 container.registerSingleton(GenerateDownloadLinkUseCase);
 container.registerSingleton(DownloadDocumentByTokenUseCase);
 container.registerSingleton(ReplaceTagsInDocumentUseCase);
+container.registerSingleton(BulkDownloadUseCase);
+container.registerSingleton(BulkUploadUseCase);
 
 export { container }; 

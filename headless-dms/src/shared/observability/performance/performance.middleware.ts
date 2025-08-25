@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply, HookHandlerDoneFunction } from 'fastify';
-import { performanceMonitor } from '../performance.monitor.js';
+import { performanceMonitor } from './performance.monitor.js';
 
 /**
  * Performance monitoring middleware options
