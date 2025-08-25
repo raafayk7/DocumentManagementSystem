@@ -17,27 +17,42 @@ export class ProgressTracker {
    * Initialize progress tracking
    */
   public initialize(totalItems: number): void {
-    this.totalItems = totalItems;
+    this.totalItems = Math.max(0, totalItems);
     this.completedItems = 0;
     this.failedItems = 0;
     this.startTime = Date.now();
     
-    console.log(`Starting operation with ${totalItems} items...`);
+    if (this.totalItems > 0) {
+      console.log(`Starting operation with ${this.totalItems} items...`);
+    } else {
+      console.log('Starting operation...');
+    }
   }
 
   /**
    * Update progress
    */
-  public updateProgress(completed: number, failed: number = 0): void {
-    this.completedItems = completed;
-    this.failedItems = failed;
+  public updateProgress(completed: number, failed: number = 0, message?: string): void {
+    this.completedItems = Math.max(0, completed);
+    this.failedItems = Math.max(0, failed);
+    
+    // Handle case where totalItems is 0 to avoid division by zero
+    if (this.totalItems === 0) {
+      if (message) {
+        process.stdout.write(`\r${message}`);
+      }
+      return;
+    }
     
     const percentage = Math.round((this.completedItems / this.totalItems) * 100);
     const progressBar = this.createProgressBar(percentage);
     
-    process.stdout.write(`\r${progressBar} ${percentage}% (${this.completedItems}/${this.totalItems})`);
+    const progressText = `${progressBar} ${percentage}% (${this.completedItems}/${this.totalItems})`;
+    const displayText = message ? `${message} - ${progressText}` : progressText;
     
-    if (this.completedItems === this.totalItems) {
+    process.stdout.write(`\r${displayText}`);
+    
+    if (this.completedItems >= this.totalItems && this.totalItems > 0) {
       console.log('\nOperation completed!');
       this.showSummary();
     }
@@ -64,8 +79,9 @@ export class ProgressTracker {
    */
   private createProgressBar(percentage: number): string {
     const barLength = 20;
-    const filledLength = Math.round((percentage / 100) * barLength);
-    const emptyLength = barLength - filledLength;
+    const clampedPercentage = Math.max(0, Math.min(100, percentage));
+    const filledLength = Math.round((clampedPercentage / 100) * barLength);
+    const emptyLength = Math.max(0, barLength - filledLength);
     
     const filled = '█'.repeat(filledLength);
     const empty = '░'.repeat(emptyLength);
@@ -77,7 +93,7 @@ export class ProgressTracker {
    * Show operation summary
    */
   private showSummary(): void {
-    if (!this.startTime) return;
+    if (!this.startTime || this.totalItems === 0) return;
     
     const duration = Date.now() - this.startTime;
     const durationSeconds = (duration / 1000).toFixed(2);
@@ -87,7 +103,11 @@ export class ProgressTracker {
     console.log(`  Completed: ${this.completedItems}`);
     console.log(`  Failed: ${this.failedItems}`);
     console.log(`  Duration: ${durationSeconds}s`);
-    console.log(`  Success rate: ${Math.round((this.completedItems / this.totalItems) * 100)}%`);
+    
+    const successRate = this.totalItems > 0 
+      ? Math.round((this.completedItems / this.totalItems) * 100)
+      : 0;
+    console.log(`  Success rate: ${successRate}%`);
   }
 
   /**
@@ -98,5 +118,28 @@ export class ProgressTracker {
     this.completedItems = 0;
     this.failedItems = 0;
     this.startTime = null;
+  }
+
+  /**
+   * Get current progress status
+   */
+  public getStatus(): {
+    totalItems: number;
+    completedItems: number;
+    failedItems: number;
+    percentage: number;
+    isComplete: boolean;
+  } {
+    const percentage = this.totalItems > 0 
+      ? Math.round((this.completedItems / this.totalItems) * 100)
+      : 0;
+    
+    return {
+      totalItems: this.totalItems,
+      completedItems: this.completedItems,
+      failedItems: this.failedItems,
+      percentage,
+      isComplete: this.totalItems > 0 && this.completedItems >= this.totalItems
+    };
   }
 }
