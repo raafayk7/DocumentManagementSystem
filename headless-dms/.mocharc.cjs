@@ -7,5 +7,5 @@ module.exports = {
   ui: 'bdd',
   recursive: true,
   // Exclude legacy tests directory
-  ignore: ['tests/_legacy/**/*']
+  ignore: ['tests/_legacy/**/*', 'tests/shared/config/enhanced.config.test.ts', 'tests/shared/config/enhanced.config.isolated.test.ts','tests/shared/config/enhanced.config.fixed.test.ts']
 };

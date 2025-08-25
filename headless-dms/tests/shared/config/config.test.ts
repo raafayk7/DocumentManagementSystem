@@ -354,12 +354,15 @@ describe('Configuration System', () => {
 
       loadConfig();
 
+      // The enhanced configuration system now logs a different format
       expect(consoleLogStub.calledWith('Configuration loaded successfully:', {
+        NODE_ENV: 'development',
         PORT: 3000,
         HOST: '0.0.0.0',
-        NODE_ENV: 'development',
-        DB_HOST: 'localhost',
-        DB_NAME: 'testdb'
+        STORAGE_BACKEND: 's3',
+        STORAGE_EMULATOR: true,
+        CLI_CONCURRENT_DOWNLOADS: 5,
+        CLI_BATCH_SIZE: 100
       })).to.be.true;
     });
 
@@ -393,6 +396,8 @@ describe('Configuration System', () => {
     let mockConfig: AppConfig;
 
     beforeEach(() => {
+      // Create a minimal mock config for testing validation functions
+      // The actual AppConfig type is much larger, so we'll use a partial type
       mockConfig = {
         PORT: 3000,
         HOST: '0.0.0.0',
@@ -405,7 +410,7 @@ describe('Configuration System', () => {
         DB_SSL: false,
         JWT_SECRET: 'jwt-secret-key',
         DOWNLOAD_JWT_SECRET: 'download-secret-key'
-      };
+      } as any; // Use any to bypass type checking for this test
     });
 
     describe('validateDatabaseConfig', () => {
